@@ -4,6 +4,7 @@ import { LogoutPage } from '../pages/LogoutPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
+import { RequestsPage } from '../pages/manager/RequestsPage'
 import { MyTasksPage } from '../pages/scholar/MyTasksPage'
 import { SubmissionPage } from '../pages/scholar/SubmissionPage'
 import { ManagerLayout } from './layouts/ManagerLayout'
@@ -35,7 +36,9 @@ export const router = createBrowserRouter([
     ), // C02 담당자
     children: [
       { index: true, element: <ManagerHomePage /> },
-      { path: 'requests', element: <PlaceholderPage title="요청 관리" when="11/9 주" /> },
+      { path: 'requests', element: <RequestsPage /> }, // A04
+      { path: 'requests/new', element: <PlaceholderPage title="요청 만들기" when="11/10~12" /> },
+      { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
       { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
       { path: 'scholars', element: <PlaceholderPage title="장학생" when="11/9 주" /> },
     ],
