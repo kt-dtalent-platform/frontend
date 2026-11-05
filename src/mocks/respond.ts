@@ -7,9 +7,9 @@ export function ok<T>(path: string, data: T) {
   return HttpResponse.json({ resultType: 'SUCCESS', success: { data }, error: null, meta: meta(path) })
 }
 
-export function fail(path: string, status: number, code: string, message: string) {
+export function fail(path: string, status: number, code: string, message: string, details?: unknown) {
   return HttpResponse.json(
-    { resultType: 'FAIL', success: null, error: { code, message }, meta: meta(path) },
+    { resultType: 'FAIL', success: null, error: { code, message, details: details ?? null }, meta: meta(path) },
     { status },
   )
 }
