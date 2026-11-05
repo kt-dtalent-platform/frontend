@@ -12,7 +12,7 @@ const time = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digi
 export const formatDue = (iso: string) => dateTime.format(new Date(iso))
 export const formatTime = (iso: string) => time.format(new Date(iso))
 
-export function dDayText(dDay: number) {
-  if (dDay === 0) return '오늘 마감'
+export function dDayText(dDay: number, overdue = dDay < 0) {
+  if (dDay === 0) return overdue ? '오늘 마감 지남' : '오늘 마감'
   return dDay > 0 ? `D-${dDay}` : `${-dDay}일 지남`
 }

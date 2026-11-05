@@ -13,16 +13,21 @@ type RawTask = {
   revisionReason: string | null
 }
 
-export type MyTask = RawTask & { dDay: number; done: boolean }
+export type MyTask = RawTask & { dDay: number; overdue: boolean; done: boolean }
 
 export function useMyTasks() {
   return useQuery({
     queryKey: ['me', 'tasks'],
     queryFn: async () => {
       const { items } = await api<{ items: RawTask[] }>('/me/tasks?status=ALL')
-      return items.map((t): MyTask => ({ ...t, dDay: daysUntil(t.requestDueAt), done: isDone(t.status) }))
+      return items.map((t): MyTask => ({ ...t, dDay: daysUntil(t.requestDueAt), overdue: isPastDue(t.requestDueAt), done: isDone(t.status) }))
     },
   })
+}
+
+// 마감 시각이 지났는지(날짜가 같아도 시각까지 비교)
+export function isPastDue(iso: string) {
+  return new Date(iso).getTime() < Date.now()
 }
 
 // 오늘 기준 남은 날(마감일 - 오늘, 날짜만 비교)

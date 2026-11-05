@@ -71,8 +71,8 @@ export function MyTasksPage() {
 
 function TaskCard({ task }: { task: MyTask }) {
   const { done } = task
-  const late = !done && task.dDay < 0
-  const soon = !done && task.dDay >= 0 && task.dDay <= 3
+  const late = !done && task.overdue
+  const soon = !done && !task.overdue && task.dDay <= 3
 
   return (
     <Link
@@ -91,7 +91,7 @@ function TaskCard({ task }: { task: MyTask }) {
             {!done && (
               <>
                 {' · '}
-                <span className={cn((late || soon) && 'font-semibold text-danger-text')}>{dDayText(task.dDay)}</span>
+                <span className={cn((late || soon) && 'font-semibold text-danger-text')}>{dDayText(task.dDay, task.overdue)}</span>
               </>
             )}
           </p>
