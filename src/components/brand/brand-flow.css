@@ -1,0 +1,91 @@
+/* 브랜드 플로우 움직임. 규칙은 디자인 시스템 › 브랜드 플로우 문서.
+   transform·opacity·stroke-dashoffset만 쓴다(Safari에서 mask 애니메이션 안 됨). */
+
+.brand-flow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--color-gray-50), var(--color-gray-150));
+  animation: brand-flow-enter 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.brand-flow__layer {
+  position: absolute;
+  inset: -6%;
+  will-change: transform;
+}
+
+.brand-flow__layer img,
+.brand-flow__layer svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brand-flow__haze {
+  animation: brand-flow-drift 16s ease-in-out infinite alternate;
+}
+
+.brand-flow__ribbon {
+  animation: brand-flow-sway 11s ease-in-out infinite alternate;
+}
+
+.brand-flow__ribbon svg {
+  will-change: transform;
+}
+
+.brand-flow__glint {
+  fill: none;
+  stroke: var(--color-gray-0);
+  stroke-opacity: 0.75;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.06 0.94;
+  stroke-dashoffset: 1;
+  animation: brand-flow-glint 7s linear 1.2s infinite;
+}
+
+@keyframes brand-flow-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+}
+
+@keyframes brand-flow-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-2.5%, 1.5%, 0);
+  }
+}
+
+@keyframes brand-flow-sway {
+  from {
+    transform: rotate(-1.2deg) translate3d(0, 0.8%, 0);
+  }
+  to {
+    transform: rotate(1.2deg) translate3d(0, -0.8%, 0);
+  }
+}
+
+@keyframes brand-flow-glint {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-flow,
+  .brand-flow__haze,
+  .brand-flow__ribbon,
+  .brand-flow__glint {
+    animation: none;
+  }
+}
