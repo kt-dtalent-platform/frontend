@@ -1,0 +1,32 @@
+/* 브랜드 플로우. 규칙은 디자인 시스템 › 브랜드 플로우 문서.
+   그리기는 flow.ts(캔버스), 여기서는 배치와 들어오는 움직임만. */
+
+.brand-flow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--color-gray-50), var(--color-gray-150));
+  animation: brand-flow-enter 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.brand-flow canvas,
+.brand-flow__still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes brand-flow-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-flow {
+    animation: none;
+  }
+}

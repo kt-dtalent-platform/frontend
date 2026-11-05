@@ -14,7 +14,7 @@ const menu: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
 export function ManagerLayout() {
   return (
     <div className="flex min-h-dvh">
-      <aside className="sticky top-0 flex h-dvh w-sidebar-w shrink-0 flex-col gap-6 border-r border-line bg-surface px-3 py-4">
+      <aside className="sticky top-0 flex h-dvh w-sidebar-w shrink-0 flex-col gap-6 bg-surface px-3 py-4">
         <div className="flex h-10 items-center px-3">
           <Logo />
         </div>

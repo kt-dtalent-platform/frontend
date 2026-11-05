@@ -5,7 +5,7 @@ import { Logo } from '../../components/ui/Logo'
 export function ScholarLayout() {
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-(--z-sticky) h-header-h border-b border-line bg-surface">
+      <header className="sticky top-0 z-(--z-sticky) h-header-h bg-surface">
         <div className="mx-auto flex h-full max-w-page-form items-center justify-between px-5">
           <Logo />
           <span className="text-caption text-ink-3">홍길동 · 6기</span>
