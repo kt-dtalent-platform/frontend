@@ -10,7 +10,7 @@ import { LabeledField } from '../components/form/LabeledField'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Logo } from '../components/ui/Logo'
-import { FullPageLoading } from '../components/ui/StateView'
+import { ErrorState, FullPageLoading } from '../components/ui/StateView'
 import { cn } from '../lib/cn'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -23,12 +23,19 @@ const rules = [
   { label: '숫자 포함', test: (v: string) => /\d/.test(v) },
 ]
 
-// C03 비밀번호 변경: 재단이 준 임시 비밀번호로 처음 로그인하면 여기서 바꾼 뒤 시작한다
+// C01 첫 로그인 비밀번호 변경: 재단이 준 임시 비밀번호로 처음 로그인하면 여기서 바꾼 뒤 시작한다
 export function PasswordChangePage() {
   usePageTitle('비밀번호 변경')
   const me = useMe()
-  if (tokenStore.access() === null) return <Navigate to="/login" replace />
+  if (tokenStore.access() === null || (me.error instanceof ApiError && me.error.status === 401)) return <Navigate to="/login" replace />
   if (me.isPending) return <FullPageLoading />
+  if (me.isError) {
+    return (
+      <div className="mx-auto max-w-page-form px-4 py-12">
+        <ErrorState error={me.error} onRetry={() => me.refetch()} />
+      </div>
+    )
+  }
   if (me.data && !me.data.passwordChangeRequired) return <Navigate to={roleHome(me.data.role)} replace />
   return <ChangeForm />
 }
@@ -36,7 +43,7 @@ export function PasswordChangePage() {
 function ChangeForm() {
   const change = useChangePassword()
   const rulesId = useId()
-  const { register, handleSubmit, control, formState, setError } = useForm<Values>({
+  const { register, handleSubmit, control, formState, setError, getValues, trigger } = useForm<Values>({
     defaultValues: { currentPassword: '', newPassword: '', confirm: '' },
     mode: 'onTouched',
   })
@@ -92,6 +99,8 @@ function ChangeForm() {
                   className={cn(fieldControl, fieldBorder(!!e.newPassword))}
                   {...register('newPassword', {
                     required: '새 비밀번호를 입력하세요.',
+                    // 확인 칸에 이미 입력했으면 새 비밀번호를 고칠 때 다시 검사한다
+                    onChange: () => getValues('confirm') && void trigger('confirm'),
                     validate: (v) => rules.every((r) => r.test(v)) || '아래 조건을 모두 맞춰 주세요.',
                   })}
                 />
