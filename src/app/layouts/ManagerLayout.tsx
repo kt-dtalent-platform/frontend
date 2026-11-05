@@ -17,7 +17,7 @@ export function ManagerLayout() {
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 flex h-dvh w-sidebar-w shrink-0 flex-col gap-6 bg-surface px-3 py-4">
         <div className="flex h-10 items-center px-3">
-          <Logo />
+          <Logo to="/manager" />
         </div>
         <nav className="flex flex-col gap-1">
           {menu.map(({ to, label, icon: Icon, end }) => (

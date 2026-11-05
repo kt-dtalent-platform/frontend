@@ -8,7 +8,7 @@ export function ScholarLayout() {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-(--z-sticky) h-header-h bg-surface">
         <div className="mx-auto flex h-full max-w-page-form items-center justify-between px-4 md:px-5">
-          <Logo />
+          <Logo to="/tasks" />
           <UserMenu />
         </div>
       </header>
