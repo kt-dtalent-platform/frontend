@@ -23,7 +23,7 @@ export function MyTasksPage() {
       {data && (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {data.items.map((task) => (
-            <li key={task.requestId} className="rounded-lg border border-line bg-surface p-6">
+            <li key={task.requestId} className="rounded-lg bg-surface px-6 py-6 md:px-8">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-col gap-2">
                   <StatusBadge status={task.status} className="self-start" />
