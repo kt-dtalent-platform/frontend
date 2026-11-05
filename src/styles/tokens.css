@@ -73,6 +73,10 @@
   --text-body--line-height: 22px;
   --text-body--font-weight: 400;
   --text-body--letter-spacing: -0.005em;
+  --text-body-long: 14px;
+  --text-body-long--line-height: 24px;
+  --text-body-long--font-weight: 400;
+  --text-body-long--letter-spacing: -0.005em;
   --text-body-strong: 14px;
   --text-body-strong--line-height: 22px;
   --text-body-strong--font-weight: 600;
