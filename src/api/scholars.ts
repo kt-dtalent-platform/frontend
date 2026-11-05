@@ -46,7 +46,8 @@ export type ScholarDetail = {
 }
 
 export function useScholar(id: number) {
-  return useQuery({ queryKey: ['manager', 'scholar', id], queryFn: () => api<ScholarDetail>(`/scholars/${id}`) })
+  // 주소의 번호가 숫자가 아니면 부르지 않는다
+  return useQuery({ queryKey: ['manager', 'scholar', id], queryFn: () => api<ScholarDetail>(`/scholars/${id}`), enabled: Number.isInteger(id) && id > 0 })
 }
 
 // PATCH /v1/scholars/{id} (KT-12): 보낸 문자열 항목만 바꾼다. 빈 값(null)으로 지우기와 상태 변경은 아직 지원하지 않음

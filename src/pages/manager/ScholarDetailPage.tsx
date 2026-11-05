@@ -11,14 +11,15 @@ import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
-import { ErrorState, LoadingCards } from '../../components/ui/StateView'
+import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 
-// A07 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
+// A05 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
 export function ScholarDetailPage() {
   const id = Number(useParams().scholarId)
   const query = useScholar(id)
+  const validId = Number.isInteger(id) && id > 0
   usePageTitle(query.data?.name ?? '장학생')
   return (
     <div className="mx-auto flex max-w-page-form flex-col gap-6">
@@ -26,7 +27,8 @@ export function ScholarDetailPage() {
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         장학생
       </Link>
-      {query.isPending && <LoadingCards count={1} />}
+      {!validId && <EmptyState title="장학생을 찾을 수 없어요">명단에서 다시 골라 주세요.</EmptyState>}
+      {validId && query.isPending && <LoadingCards count={1} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {query.data && <Detail key={query.data.id} s={query.data} />}
     </div>
@@ -35,7 +37,7 @@ export function ScholarDetailPage() {
 
 function Detail({ s }: { s: ScholarDetail }) {
   const [editing, setEditing] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [result, setResult] = useState<'saved' | 'unchanged' | null>(null)
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -44,18 +46,23 @@ function Detail({ s }: { s: ScholarDetail }) {
           <PageTitle description={[s.cohort.name, s.university].filter(Boolean).join(' · ')}>{s.name}</PageTitle>
         </div>
         {!editing && (
-          <Button size="default" onClick={() => (setSaved(false), setEditing(true))}>
+          <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
             정보 수정
           </Button>
         )}
       </div>
-      {saved && (
+      {result === 'saved' && (
         <Banner tone="success" title="정보를 고쳤어요">
           바뀐 내용이 명단에도 반영됐어요.
         </Banner>
       )}
+      {result === 'unchanged' && (
+        <Banner tone="info" title="바뀐 내용이 없어요">
+          저장할 것이 없어 그대로 두었어요.
+        </Banner>
+      )}
       {editing ? (
-        <EditForm s={s} onDone={(ok) => (setEditing(false), setSaved(ok))} />
+        <EditForm s={s} onDone={(r) => (setEditing(false), setResult(r))} />
       ) : (
         <section className="rounded-lg bg-surface px-6 py-6 md:px-8">
           <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
@@ -82,7 +89,7 @@ function Item({ label, value }: { label: string; value: string | null }) {
 
 type Values = { name: string; phone: string; university: string; major: string }
 
-function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) => void }) {
+function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 'unchanged' | null) => void }) {
   const update = useUpdateScholar(s.id)
   const { register, handleSubmit, formState, setError } = useForm<Values>({
     defaultValues: { name: s.name, phone: '', university: s.university, major: s.major ?? '' },
@@ -97,18 +104,19 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) =>
     if (v.phone.trim()) body.phone = v.phone.trim()
     if (v.university.trim() && v.university.trim() !== s.university) body.university = v.university.trim()
     if (v.major.trim() && v.major.trim() !== (s.major ?? '')) body.major = v.major.trim()
-    if (Object.keys(body).length === 0) return onDone(false)
+    if (Object.keys(body).length === 0) return onDone('unchanged')
     try {
       await update.mutateAsync(body)
-      onDone(true)
+      onDone('saved')
     } catch (err) {
-      if (err instanceof ApiError) setError('root', { message: err.message })
+      setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
     }
   })
 
   return (
     <form onSubmit={(ev) => void onSubmit(ev)} noValidate className="flex flex-col gap-6">
-      <UnsavedChangesGuard when={formState.isDirty && !formState.isSubmitSuccessful} />
+      {/* 저장에 성공하면 폼이 닫히므로 고친 내용이 있는 동안만 묻는다 */}
+      <UnsavedChangesGuard when={formState.isDirty} />
       <section className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-8 md:px-8">
         <LabeledField label="이름" required error={e.name?.message}>
           {(p) => (
@@ -140,6 +148,8 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) =>
               autoComplete="off"
               className={cn(fieldControl, fieldBorder(!!e.university))}
               {...register('university', {
+                // 백엔드가 빈 값으로 지우기를 아직 지원하지 않는다
+                validate: (x) => (x.trim() || !s.university ? true : '학교는 비워 둘 수 없어요.'),
                 maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
               })}
             />
@@ -151,7 +161,10 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) =>
               {...p}
               autoComplete="off"
               className={cn(fieldControl, fieldBorder(!!e.major))}
-              {...register('major', { maxLength: { value: 100, message: '100자 안으로 입력하세요.' } })}
+              {...register('major', {
+                validate: (x) => (x.trim() || !s.major ? true : '전공은 비워 둘 수 없어요.'),
+                maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
+              })}
             />
           )}
         </LabeledField>
@@ -162,7 +175,7 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) =>
         </Banner>
       )}
       <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
-        <Button disabled={update.isPending} onClick={() => onDone(false)}>
+        <Button disabled={update.isPending} onClick={() => onDone(null)}>
           취소
         </Button>
         <Button type="submit" variant="primary" disabled={update.isPending}>

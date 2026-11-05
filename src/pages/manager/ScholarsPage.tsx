@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
 import { useCohortOptions, useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
-import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { buttonClass } from '../../components/ui/buttonClass'
@@ -25,7 +25,7 @@ const statuses: { value: ScholarStatus | null; label: string }[] = [
 
 type Notice = { title: string; body: string }
 
-// A06 장학생 명단: 기수·상태·이름(이메일) 찾기, 행을 누르면 상세
+// A05 장학생 명단: 기수·상태·이름(이메일) 찾기, 행을 누르면 상세
 export function ScholarsPage() {
   usePageTitle('장학생')
   const [params, setParams] = useSearchParams()
@@ -34,6 +34,12 @@ export function ScholarsPage() {
   const keyword = params.get('q') ?? ''
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const [typed, setTyped] = useState(keyword)
+  // 뒤로 가기·메뉴 링크로 주소의 검색어가 바뀌면 입력칸도 맞춘다(안 맞추면 지운 검색어가 다시 들어간다)
+  const [seen, setSeen] = useState(keyword)
+  if (seen !== keyword) {
+    setSeen(keyword)
+    setTyped(keyword)
+  }
   const me = useMe()
   const cohorts = useCohortOptions(me.data?.accessiblePrograms?.[0]?.id)
   const query = useScholars({ cohortId, status, keyword, page })
@@ -75,6 +81,15 @@ export function ScholarsPage() {
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
   const loadingNext = query.isPlaceholderData
 
+  // 없는 쪽 번호(?page=99 등)면 마지막 쪽으로
+  useEffect(() => {
+    if (!data || query.isPlaceholderData || page <= lastPage) return
+    const p = new URLSearchParams(params)
+    if (lastPage > 1) p.set('page', String(lastPage))
+    else p.delete('page')
+    setParams(p, { replace: true })
+  }, [data, query.isPlaceholderData, page, lastPage, params, setParams])
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -99,7 +114,7 @@ export function ScholarsPage() {
               aria-label="기수"
               value={cohortId ? String(cohortId) : ''}
               onChange={(e) => set({ cohort: Number(e.target.value) || null })}
-              className={cn(fieldControl, 'h-control-default appearance-none pr-10', fieldBorder(false))}
+              className={cn(fieldBase, 'h-control-default appearance-none pr-10', fieldBorder(false))}
             >
               <option value="">전체 기수</option>
               {(cohorts.data ?? []).map((c) => (
@@ -118,7 +133,7 @@ export function ScholarsPage() {
               placeholder="이름·이메일"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className={cn(fieldControl, 'h-control-default pl-9', fieldBorder(false))}
+              className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
             />
           </div>
         </div>
