@@ -46,7 +46,7 @@ export function LoginPage() {
     <main className="relative grid min-h-dvh place-items-center overflow-hidden">
       <BrandFlow />
 
-      <div className="relative grid w-full max-w-page-brand items-center gap-8 px-4 py-8 md:grid-cols-[minmax(0,1fr)_var(--spacing-login-card-w)] md:gap-16 md:px-16 md:py-12">
+      <div className="relative grid w-full max-w-page-narrow items-center gap-8 px-6 py-10 md:max-w-page-brand md:grid-cols-[minmax(0,1fr)_var(--spacing-login-card-w)] md:gap-16 md:px-16 md:py-12">
         <div className="animate-[rise_.5s_ease-out_.5s_backwards]">
           <p className="m-0 flex items-center gap-2 text-caption font-semibold text-ink-2">
             <KtSquare />
