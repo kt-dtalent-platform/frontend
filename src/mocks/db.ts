@@ -17,7 +17,17 @@ export function now() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-type Saved = Record<number, { answers: Answers; status: SubmissionStatus; version: number; id: number }>
+type MockFile = RawSubmissionForm['files'][number]
+type Saved = Record<
+  number,
+  {
+    answers: Answers
+    status: SubmissionStatus
+    version: number
+    id: number
+    files?: MockFile[]
+  }
+>
 const KEY = 'kt-dtalent:mock-submissions'
 
 function load(): Saved {
@@ -28,30 +38,122 @@ function load(): Saved {
   }
 }
 
-export function saveDraft(requestId: number, answers: Answers) {
-  const saved = load()
-  const base = forms()[requestId].submission
-  const prev = saved[requestId] ?? base
-  const next = {
-    id: prev?.id ?? 500 + requestId,
-    answers,
-    status: (prev?.status === 'REVISION_REQUIRED' ? 'REVISION_REQUIRED' : 'DRAFT') as SubmissionStatus,
-    version: (prev?.version ?? 0) + 1,
-  }
-  saved[requestId] = next
+function persist(saved: Saved) {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(saved))
   } catch {
     // 저장소를 못 쓰면 이번 요청에만 반영된다
   }
+}
+
+// 지금 상태(기본값 + 저장된 변경)를 한 덩어리로
+function current(requestId: number) {
+  const saved = load()[requestId]
+  const base = forms()[requestId]
+  return {
+    id: saved?.id ?? base.submission?.id ?? 500 + requestId,
+    answers: saved?.answers ?? base.submission?.answers ?? {},
+    status: saved?.status ?? base.submission?.status ?? ('NOT_SUBMITTED' as SubmissionStatus),
+    version: saved?.version ?? base.submission?.version ?? 0,
+    files: saved?.files ?? base.files,
+    exists: !!(saved || base.submission),
+  }
+}
+
+function write(requestId: number, next: Omit<ReturnType<typeof current>, 'exists'>) {
+  const saved = load()
+  saved[requestId] = next
+  persist(saved)
   return next
+}
+
+export function saveDraft(requestId: number, answers: Answers) {
+  const prev = current(requestId)
+  return write(requestId, {
+    ...prev,
+    answers,
+    status: prev.status === 'REVISION_REQUIRED' ? 'REVISION_REQUIRED' : 'DRAFT',
+    version: prev.version + 1,
+  })
+}
+
+export function requestOfSubmission(submissionId: number) {
+  return [31, 35, 28].find((id) => current(id).exists && current(id).id === submissionId)
+}
+
+export function fieldOf(requestId: number, fieldKey: string) {
+  return forms()[requestId].fields.find((f) => f.fieldKey === fieldKey)
+}
+
+export function addFile(requestId: number, file: MockFile) {
+  const prev = current(requestId)
+  write(requestId, { ...prev, files: [...prev.files, file] })
+}
+
+// 파일을 바꿀 수 있는지: 검토 대기·확인 완료·마감이면 안 되고, 보완 필요면 보완 요청된 항목만
+export function canChangeFile(requestId: number, fieldKey: string) {
+  const form = getForm(requestId)
+  if (!form || form.request.status === 'CLOSED') return false
+  const status = form.submission?.status ?? 'NOT_SUBMITTED'
+  if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'CONFIRMED') return false
+  return status !== 'REVISION_REQUIRED' || !!form.revision?.fieldKeys.includes(fieldKey)
+}
+
+export function fileOwner(fileId: number) {
+  for (const id of [31, 35, 28]) {
+    const file = current(id).files.find((f) => f.id === fileId)
+    if (file) return { requestId: id, fieldKey: file.fieldKey }
+  }
+  return undefined
+}
+
+export function removeFile(fileId: number) {
+  for (const id of [31, 35, 28]) {
+    const prev = current(id)
+    if (prev.files.some((f) => f.id === fileId)) {
+      write(id, { ...prev, files: prev.files.filter((f) => f.id !== fileId) })
+      return id
+    }
+  }
+  return undefined
+}
+
+// 제출: 필수 항목을 모두 모아 검사한다(서버처럼 하나씩 끊지 않음)
+export function submit(requestId: number, answers: Answers, resubmit: boolean) {
+  const prev = current(requestId)
+  const form = forms()[requestId]
+  const merged = resubmit ? { ...prev.answers, ...answers } : answers
+  const editable = resubmit ? (form.revision?.fieldKeys ?? []) : form.fields.map((f) => f.fieldKey)
+  const fieldErrors = form.fields
+    .filter((f) => f.required && editable.includes(f.fieldKey))
+    .filter((f) =>
+      f.fieldType === 'FILE'
+        ? !prev.files.some((x) => x.fieldKey === f.fieldKey && x.uploadStatus === 'UPLOADED')
+        : merged[f.fieldKey] === null || merged[f.fieldKey] === undefined || merged[f.fieldKey] === '',
+    )
+    .map((f) => ({ key: f.fieldKey, message: '필수 항목입니다' }))
+  if (fieldErrors.length) return { fieldErrors }
+  return {
+    saved: write(requestId, {
+      ...prev,
+      answers: merged,
+      status: resubmit ? 'RESUBMITTED' : 'SUBMITTED',
+      version: prev.version + 1,
+    }),
+  }
 }
 
 // 31: 보완 필요(교통비), 35: 미제출(성적 증빙), 28: 확인 완료
 function forms(): Record<number, RawSubmissionForm> {
   return {
     31: {
-      request: { id: 31, title: '10월 행사 교통비 증빙', description: '10/5 행사 참석 교통비 영수증을 제출해 주세요.', requestDueAt: dueIn(2), status: 'IN_PROGRESS' },
+      request: {
+        id: 31,
+        title: '10월 행사 교통비 증빙',
+        description: '10/5 행사 참석 교통비 영수증을 제출해 주세요.',
+        requestDueAt: dueIn(2),
+        status: 'IN_PROGRESS',
+      },
       fields: [
         { fieldKey: 'used_on', label: '이용일자', fieldType: 'DATE', required: true },
         { fieldKey: 'method', label: '교통수단', fieldType: 'SELECT_ONE', required: true, options: ['KTX', '고속버스', '항공', '기타'] },
@@ -72,8 +174,22 @@ function forms(): Record<number, RawSubmissionForm> {
       },
       fields: [
         { fieldKey: 'semester', label: '학기', fieldType: 'SELECT_ONE', required: true, options: ['2026-1학기', '2025-2학기'] },
-        { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 4.5 }, helpText: 'F 과목을 포함한 평균을 소수 둘째 자리까지 입력하세요.' },
-        { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE', required: true, options: ['4.5', '4.3'], helpText: '학교 성적증명서에 적힌 만점을 고르세요.' },
+        {
+          fieldKey: 'gpa',
+          label: '직전 학기 평점',
+          fieldType: 'NUMBER',
+          required: true,
+          validation: { min: 0, max: 4.5 },
+          helpText: 'F 과목을 포함한 평균을 소수 둘째 자리까지 입력하세요.',
+        },
+        {
+          fieldKey: 'gpa_scale',
+          label: '만점 기준',
+          fieldType: 'SELECT_ONE',
+          required: true,
+          options: ['4.5', '4.3'],
+          helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
+        },
         { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
         { fieldKey: 'has_f', label: 'F 과목이 있어요', fieldType: 'CHECKBOX', required: false },
         { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true, validation: { allowedExtensions: ['pdf'], maxSizeMb: 10 } },
@@ -100,7 +216,11 @@ export function getForm(requestId: number): RawSubmissionForm | undefined {
   const base = forms()[requestId]
   if (!base) return undefined
   const saved = load()[requestId]
-  return saved ? { ...base, submission: saved } : base
+  if (!saved) return base
+  const { files, ...submission } = saved
+  // 보완 후 다시 제출하면 보완 요청은 끝난 것으로 본다
+  const revision = saved.status === 'REVISION_REQUIRED' ? base.revision : null
+  return { ...base, submission, files: files ?? base.files, revision }
 }
 
 export function taskList() {
