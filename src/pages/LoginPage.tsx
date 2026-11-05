@@ -1,11 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import { z } from 'zod'
 import { useLogin } from '../api/auth'
 import { ApiError } from '../api/client'
+import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
-import { Logo } from '../components/ui/Logo'
+import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
 
 const schema = z.object({
@@ -14,7 +16,7 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-// C01 로그인. 브랜드 플로우는 다음 작업에서 붙인다.
+// C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
   const navigate = useNavigate()
   const login = useLogin()
@@ -33,14 +35,26 @@ export function LoginPage() {
   const serverError = login.error instanceof ApiError ? login.error.message : login.error && '잠시 후 다시 시도하세요.'
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-surface px-5">
-      <form onSubmit={onSubmit} noValidate className="flex w-full max-w-page-narrow flex-col gap-8">
-        <div className="flex flex-col gap-3">
-          <Logo />
-          <h1 className="m-0 text-title-1">로그인</h1>
+    <main className="relative grid min-h-dvh place-items-center overflow-hidden">
+      <BrandFlow />
+
+      <div className="relative grid w-full max-w-page-brand items-center gap-8 px-4 py-8 md:grid-cols-[minmax(0,1fr)_var(--spacing-login-card-w)] md:gap-16 md:px-16 md:py-12">
+        <div className="animate-[rise_.5s_ease-out_.5s_backwards]">
+          <p className="m-0 flex items-center gap-2 text-caption font-semibold text-ink-2">
+            <KtSquare />
+            KT그룹희망나눔재단
+          </p>
+          <h1 className="m-0 mt-4 text-display-sm md:text-display">KT 디지털인재장학생</h1>
+          <p className="m-0 mt-3 text-ink-2">제출부터 검토까지, 장학 운영을 한곳에서.</p>
         </div>
 
-        <div className="flex flex-col gap-5">
+        <form
+          onSubmit={onSubmit}
+          noValidate
+          className="flex flex-col gap-6 rounded-xl bg-surface px-6 py-8 shadow-brand md:p-10 animate-[card-in_.6s_cubic-bezier(.2,.7,.2,1)_.3s_backwards]"
+        >
+          <h2 className="m-0 text-title-1">로그인</h2>
+
           <Field label="이메일" error={errors.email?.message}>
             <input
               type="email"
@@ -59,19 +73,19 @@ export function LoginPage() {
               {...register('password')}
             />
           </Field>
-        </div>
 
-        {serverError && (
-          <p role="alert" className="m-0 rounded-md bg-danger-bg px-4 py-3 text-label font-normal text-danger-text">
-            {serverError}
-          </p>
-        )}
+          {serverError && (
+            <p role="alert" className="m-0 rounded-md bg-danger-bg px-4 py-3 text-danger-text">
+              {serverError}
+            </p>
+          )}
 
-        <Button type="submit" variant="primary" size="cta" disabled={login.isPending}>
-          {login.isPending ? '확인하는 중' : '로그인'}
-        </Button>
-        <p className="m-0 text-caption text-ink-3">목업: admin으로 시작하는 이메일은 담당자 화면으로 갑니다.</p>
-      </form>
+          <Button type="submit" variant="primary" size="cta" className="mt-2" disabled={login.isPending}>
+            {login.isPending ? '확인하는 중' : '로그인'}
+          </Button>
+          <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
+        </form>
+      </div>
     </main>
   )
 }
@@ -84,9 +98,9 @@ function inputClass(invalid: boolean) {
   )
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-3">
+    <label className="flex flex-col gap-2">
       <span className="text-label text-ink">{label}</span>
       {children}
       {error && <span className="text-caption text-danger-text">{error}</span>}
