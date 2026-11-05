@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 린트 · 토큰 · 빌드
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 디자인 토큰 동기화 확인
+        run: |
+          npm run tokens
+          git diff --exit-code -- src/styles/tokens.css || {
+            echo "design/tokens.json과 src/styles/tokens.css가 다릅니다. npm run tokens를 실행하고 커밋하세요."
+            exit 1
+          }
+
+      - name: 타입 검사와 빌드
+        run: npm run build
