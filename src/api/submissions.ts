@@ -118,8 +118,10 @@ export function useSubmit(requestId: number) {
   return useMutation({
     mutationFn: ({ resubmit, ...body }: { answers: Answers; version: number; resubmit: boolean }) =>
       api<SubmitResult>(`/me/submissions/${requestId}/${resubmit ? 'resubmit' : 'submit'}`, { method: 'POST', body }),
-    onSuccess: () => {
-      // 상태·버전·잠금이 모두 바뀌므로 서버 값으로 다시 불러온다
+    onSuccess: (result) => {
+      // 다시 불러오기 전에도 바로 잠기도록 상태와 수정 가능 항목을 먼저 바꾼다
+      queryClient.setQueryData<SubmissionForm>(submissionKey(requestId), (prev) => (prev ? { ...prev, status: result.status, editableFieldKeys: [] } : prev))
+      // 버전 등 나머지는 서버 값으로 다시 불러온다
       queryClient.invalidateQueries({ queryKey: submissionKey(requestId) })
       queryClient.invalidateQueries({ queryKey: ['me', 'tasks'] })
     },

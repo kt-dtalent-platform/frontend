@@ -88,6 +88,7 @@ export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxS
 
 export function uploadErrorText(error: unknown) {
   const code = (error as { code?: string } | null)?.code
+  if (code === 'FORM_INVALID') return '형식이 맞지 않는 항목을 먼저 고친 뒤 올리세요.'
   if (code === 'INVALID_EXTENSION') return '올릴 수 없는 파일 형식이에요.'
   if (code === 'FILE_TOO_LARGE') return '파일이 너무 커요.'
   if (code === 'FILE_COUNT_EXCEEDED') return '더 올릴 수 없어요. 기존 파일을 지운 뒤 올리세요.'

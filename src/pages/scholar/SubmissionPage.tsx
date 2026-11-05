@@ -1,10 +1,12 @@
 import { Check, ChevronLeft } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type BaseSyntheticEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useBlocker, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
-import { useFileActions } from '../../api/files'
+import { UploadError, useFileActions } from '../../api/files'
+import { useQueryClient } from '@tanstack/react-query'
 import {
+  submissionKey,
   useSaveDraft,
   useSubmissionForm,
   useSubmit,
@@ -64,7 +66,8 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   const [busyFields, setBusyFields] = useState<string[]>([])
   const topRef = useRef<HTMLDivElement>(null)
   const defaults = useMemo(() => toFormValues(form.fields, form.answers), [form.fields, form.answers])
-  const { register, handleSubmit, watch, setError, clearErrors, reset, getValues, formState } = useForm<FormValues>({
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, watch, setError, clearErrors, reset, getValues, trigger, formState } = useForm<FormValues>({
     defaultValues: defaults,
     mode: 'onBlur',
   })
@@ -75,24 +78,56 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   const late = !locked && isPastDue(form.request.dueAt)
   const uploading = busyFields.length > 0
 
+  // 저장·제출 직전의 최신 서버 상태(버전, 제출 ID). 렌더 사이에 바뀌었을 수 있어 캐시에서 바로 읽는다.
+  const latest = useCallback(() => queryClient.getQueryData<SubmissionForm>(submissionKey(requestId)) ?? form, [queryClient, requestId, form])
+
+  // 화면에 등록되지 않은 항목(파일, 잠긴 항목)의 오류는 handleSubmit이 다시 검사하지 않아 남는다. 저장·제출 전에 지운다.
+  const clearUnregistered = () =>
+    clearErrors(form.fields.filter((f) => f.fieldType === 'FILE' || !form.editableFieldKeys.includes(f.fieldKey)).map((f) => f.fieldKey))
+
+  const showFieldErrors = useCallback(
+    (error: unknown) => {
+      if (!(error instanceof ApiError)) return
+      fieldErrorsOf(error.details).forEach((fe, i) => setError(fe.key, { message: fe.message }, { shouldFocus: i === 0 }))
+    },
+    [setError],
+  )
+
+  // 임시 저장은 한 번에 하나만. 수동 저장과 파일 때문의 자동 저장이 겹치지 않게 진행 중인 저장을 기억한다.
+  const inflight = useRef<Promise<number> | null>(null)
+  const runSave = useCallback(
+    (values: FormValues) => {
+      const now = latest()
+      const p = save
+        .mutateAsync({ answers: toAnswers(now.fields, values, now.answers), version: now.version })
+        .then((result) => {
+          // 보낸 값을 "저장된 상태"로 삼되, 저장 중에 더 입력한 내용은 그대로 둔다
+          reset(values, { keepValues: true })
+          setSavedAt(result.savedAt)
+          return result.submissionId
+        })
+        .finally(() => {
+          inflight.current = null
+        })
+      inflight.current = p
+      return p
+    },
+    [latest, reset, save],
+  )
+
   // 파일은 제출 ID가 있어야 올릴 수 있다. 처음 들어온 요청이면 지금 값으로 임시 저장부터 한다.
-  const creating = useRef<Promise<number> | null>(null)
   const ensureSubmissionId = useCallback(async () => {
-    if (form.submissionId) return form.submissionId
-    creating.current ??= (async () => {
-      const values = getValues()
-      const result = await save.mutateAsync({
-        answers: toAnswers(form.fields, values, form.answers),
-        version: form.version,
-      })
-      reset(values, { keepValues: true })
-      setSavedAt(result.savedAt)
-      return result.submissionId
-    })().finally(() => {
-      creating.current = null
-    })
-    return creating.current
-  }, [form.submissionId, form.fields, form.answers, form.version, getValues, reset, save])
+    if (inflight.current) await inflight.current.catch(() => undefined)
+    const id = latest().submissionId
+    if (id) return id
+    if (!(await trigger())) throw new UploadError('FORM_INVALID')
+    try {
+      return await runSave(getValues())
+    } catch (error) {
+      showFieldErrors(error)
+      throw error
+    }
+  }, [latest, trigger, runSave, getValues, showFieldErrors])
 
   const onBusyChange = useCallback(
     (fieldKey: string, busy: boolean) => setBusyFields((list) => (busy ? [...new Set([...list, fieldKey])] : list.filter((k) => k !== fieldKey))),
@@ -102,13 +137,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   const fileHandlers: FileHandlers = {
     upload: async (fieldKey, file, onProgress, signal) => {
       const submissionId = await ensureSubmissionId()
-      const uploaded = await fileActions.upload({
-        submissionId,
-        fieldKey,
-        file,
-        onProgress,
-        signal,
-      })
+      const uploaded = await fileActions.upload({ submissionId, fieldKey, file, onProgress, signal })
       clearErrors(fieldKey)
       return uploaded
     },
@@ -116,24 +145,13 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     onBusyChange,
   }
 
-  const onSave = handleSubmit((values) => {
-    if (save.isPending) return
-    const answers = toAnswers(form.fields, values, form.answers)
-    save.mutate(
-      { answers, version: form.version },
-      {
-        onSuccess: (result) => {
-          // 보낸 값을 "저장된 상태"로 삼되, 저장 중에 더 입력한 내용은 그대로 둔다
-          reset(values, { keepValues: true })
-          setSavedAt(result.savedAt)
-        },
-        onError: (error) => {
-          if (!(error instanceof ApiError)) return
-          fieldErrorsOf(error.details).forEach((fe, i) => setError(fe.key, { message: fe.message }, { shouldFocus: i === 0 }))
-        },
-      },
-    )
-  })
+  const onSave = (e?: BaseSyntheticEvent) => {
+    clearUnregistered()
+    return handleSubmit((values) => {
+      if (inflight.current || submit.isPending) return
+      runSave(values).catch(showFieldErrors)
+    })(e)
+  }
 
   // 409(다른 곳에서 먼저 저장)일 때만 서버 내용으로 다시 채운다
   const reload = async () => {
@@ -172,7 +190,12 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   })
 
   // 제출 전 확인: 형식 검사(handleSubmit) → 올리는 중인 파일 → 빈 필수 항목 → 확인 창
-  const onSubmitClick = handleSubmit(() => {
+  const onSubmitClick = () => {
+    clearUnregistered()
+    return handleSubmit(checkBeforeSubmit)()
+  }
+
+  function checkBeforeSubmit() {
     setNotice(null)
     if (uploading) {
       setNotice({
@@ -184,6 +207,8 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     const missing = missingRequired(form, getValues())
     if (missing.length > 0) {
       missing.forEach((key, i) => setError(key, { message: '필수 항목이에요.' }, { shouldFocus: i === 0 }))
+      // 파일 항목은 폼에 등록되지 않아 위에서 포커스가 가지 않는다. 첫 항목이 파일이면 직접 옮긴다.
+      if (form.fields.find((f) => f.fieldKey === missing[0])?.fieldType === 'FILE') document.getElementById(`f-${missing[0]}`)?.focus()
       setNotice({
         title: `빈 필수 항목이 ${missing.length}개 있어요`,
         body: '빨간색으로 표시된 항목을 채운 뒤 제출하세요.',
@@ -191,16 +216,20 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       return
     }
     setConfirming(true)
-  })
+  }
 
   const doSubmit = () => {
     setConfirming(false)
+    if (uploading) {
+      setNotice({ title: '파일을 올리는 중이에요', body: '다 올라간 뒤 제출하세요.' })
+      return
+    }
     const values = getValues()
     const all = toAnswers(form.fields, values, form.answers)
     // 보완 후 다시 제출할 때는 보완 요청된 항목만 보낸다(그 밖의 항목이 있으면 서버가 거부)
     const answers = isRevision ? Object.fromEntries(Object.entries(all).filter(([k]) => form.editableFieldKeys.includes(k))) : all
     submit.mutate(
-      { answers, version: form.version, resubmit: isRevision },
+      { answers, version: latest().version, resubmit: isRevision },
       {
         onSuccess: (result) => {
           reset(values)
@@ -209,10 +238,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
           window.scrollTo({ top: 0 })
           requestAnimationFrame(() => topRef.current?.focus())
         },
-        onError: (error) => {
-          if (!(error instanceof ApiError)) return
-          fieldErrorsOf(error.details).forEach((fe, i) => setError(fe.key, { message: fe.message }, { shouldFocus: i === 0 }))
-        },
+        onError: showFieldErrors,
       },
     )
   }

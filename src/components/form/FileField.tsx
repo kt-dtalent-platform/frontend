@@ -33,6 +33,9 @@ type Props = {
 // 첨부 파일 항목: 올린 파일 목록 + 올리는 중(진행률) + 실패(다시 시도) + 파일 고르기/끌어 놓기
 export function FileField({ id, field, files, editable, invalid, describedBy, handlers }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const pickerRef = useRef<HTMLButtonElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [live, setLive] = useState('') // 화면 낭독기에 알릴 결과
   const [pending, setPending] = useState<Pending[]>([])
   const [removing, setRemoving] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -58,6 +61,21 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   }, [pending])
   useEffect(() => () => pendingRef.current.forEach((p) => p.controller.abort()), [])
 
+  // 누른 버튼이 사라지면 포커스를 잃으므로 "파일 고르기"(없으면 항목 전체)로 옮긴다
+  const refocus = () => requestAnimationFrame(() => (pickerRef.current ?? rootRef.current)?.focus())
+
+  // 영역 밖에 파일을 놓으면 브라우저가 그 파일을 열어 버리므로 막는다
+  useEffect(() => {
+    if (!editable) return
+    const stop = (e: globalThis.DragEvent) => e.preventDefault()
+    window.addEventListener('dragover', stop)
+    window.addEventListener('drop', stop)
+    return () => {
+      window.removeEventListener('dragover', stop)
+      window.removeEventListener('drop', stop)
+    }
+  }, [editable])
+
   const patch = (key: string, next: Partial<Pending>) => setPending((list) => list.map((p) => (p.key === key ? { ...p, ...next } : p)))
   const drop = (key: string) => setPending((list) => list.filter((p) => p.key !== key))
 
@@ -66,9 +84,17 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
     try {
       await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
       drop(item.key)
+      setLive(`${item.file.name}을(를) 올렸어요.`)
     } catch (error) {
-      if ((error as { code?: string }).code === 'ABORTED') return drop(item.key)
+      // 취소: 저장소 업로드(XHR) 중이면 ABORTED, 주소 발급·완료 처리(fetch) 중이면 AbortError
+      if (item.controller.signal.aborted || (error as { name?: string }).name === 'AbortError') {
+        drop(item.key)
+        setLive(`${item.file.name} 올리기를 취소했어요.`)
+        refocus()
+        return
+      }
       patch(item.key, { error: uploadErrorText(error) })
+      setLive(`${item.file.name}을(를) 올리지 못했어요.`)
     }
   }
 
@@ -108,6 +134,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
     }
     patch(item.key, next)
     void start(next)
+    refocus()
   }
 
   async function removeUploaded(file: UploadedFile) {
@@ -116,6 +143,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
     setRemoving(file.id)
     try {
       await handlers.remove(file.id)
+      setLive(`${file.originalName}을(를) 지웠어요.`)
+      refocus()
     } catch {
       setMessage(`${file.originalName}을(를) 지우지 못했어요. 다시 시도하세요.`)
     } finally {
@@ -130,7 +159,10 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div ref={rootRef} tabIndex={-1} className="flex flex-col gap-2 outline-none">
+      <p className="sr-only" aria-live="polite">
+        {live}
+      </p>
       {files.map((f) => (
         <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-surface-sunken pr-1 pl-4 text-ink-2">
           <FileText size={16} strokeWidth={2} className="shrink-0" aria-hidden />
@@ -162,7 +194,12 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
               size="compact"
               variant="ghost"
               aria-label={p.error ? `${p.file.name} 목록에서 빼기` : `${p.file.name} 올리기 취소`}
-              onClick={() => (p.error ? drop(p.key) : p.controller.abort())}
+              onClick={() => {
+                if (p.error) {
+                  drop(p.key)
+                  refocus()
+                } else p.controller.abort()
+              }}
             >
               <X size={16} strokeWidth={2} aria-hidden />
             </Button>
@@ -180,7 +217,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
               aria-valuenow={Math.round(p.progress * 100)}
               className="h-1 overflow-hidden rounded-full bg-line-control"
             >
-              <div className="h-full bg-action transition-[width]" style={{ width: `${Math.round(p.progress * 100)}%` }} />
+              <div className="h-full bg-action transition-all" style={{ width: `${Math.round(p.progress * 100)}%` }} />
             </div>
           )}
         </div>
@@ -202,19 +239,26 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
         >
           <input
             ref={inputRef}
-            id={id}
             type="file"
             accept={accept}
             multiple={maxFiles > 1}
-            aria-invalid={invalid}
-            aria-describedby={describedBy}
+            tabIndex={-1} // 보이지 않는 칸에 Tab이 멈추지 않게. 키보드는 아래 버튼으로 연다
+            aria-hidden
             className="sr-only"
             onChange={(e) => {
               add(e.target.files)
               e.target.value = '' // 같은 파일을 다시 고를 수 있게
             }}
           />
-          <Button size="compact" onClick={() => inputRef.current?.click()}>
+          <Button
+            ref={pickerRef}
+            id={id}
+            size="compact"
+            aria-label={`${field.label} 파일 고르기`}
+            aria-invalid={invalid}
+            aria-describedby={describedBy}
+            onClick={() => inputRef.current?.click()}
+          >
             <Paperclip size={16} strokeWidth={2} aria-hidden />
             파일 고르기
           </Button>
