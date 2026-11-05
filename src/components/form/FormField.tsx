@@ -1,9 +1,10 @@
-import { ChevronDown, FileText, Lock, Paperclip } from 'lucide-react'
+import { ChevronDown, Lock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { UseFormRegister } from 'react-hook-form'
-import type { AnswerValue, FormField as Field } from '../../api/submissions'
+import type { AnswerValue, FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
 import { Tag } from '../ui/Tag'
+import { FileField, type FileHandlers } from './FileField'
 
 export type FormValues = Record<string, string | boolean | string[]>
 
@@ -15,7 +16,8 @@ type Props = {
   error?: string
   hint?: ReactNode // 막지는 않는 경고(예: 평점이 만점보다 큼)
   value: AnswerValue
-  files: { id: number; originalName: string }[]
+  files: UploadedFile[]
+  fileHandlers?: FileHandlers
 }
 
 const base =
@@ -23,7 +25,7 @@ const base =
 const control = `${base} h-control-h`
 
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
-export function FormField({ field, register, editable, highlight, error, hint, value, files }: Props) {
+export function FormField({ field, register, editable, highlight, error, hint, value, files, fileHandlers }: Props) {
   const id = `f-${field.fieldKey}`
   const describedBy = [field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
   const border = error ? 'border-danger-line' : 'border-line-control'
@@ -40,7 +42,8 @@ export function FormField({ field, register, editable, highlight, error, hint, v
           <textarea
             id={id}
             rows={4}
-            aria-invalid={!!error} aria-required={required || undefined}
+            aria-invalid={!!error}
+            aria-required={required || undefined}
             aria-describedby={describedBy}
             className={cn(base, 'resize-y py-3 text-input-touch md:text-body-long', border)}
             {...register(field.fieldKey, rules)}
@@ -53,7 +56,8 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             id={id}
             inputMode="decimal"
             autoComplete="off"
-            aria-invalid={!!error} aria-required={required || undefined}
+            aria-invalid={!!error}
+            aria-required={required || undefined}
             aria-describedby={describedBy}
             className={cn(control, 'tabular-nums', border)}
             {...register(field.fieldKey, rules)}
@@ -61,12 +65,29 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         )
         break
       case 'DATE':
-        input = <input id={id} type="date" aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
+        input = (
+          <input
+            id={id}
+            type="date"
+            aria-invalid={!!error}
+            aria-required={required || undefined}
+            aria-describedby={describedBy}
+            className={cn(control, border)}
+            {...register(field.fieldKey, rules)}
+          />
+        )
         break
       case 'SELECT_ONE':
         input = (
           <div className="relative">
-            <select id={id} aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, 'appearance-none pr-10', border)} {...register(field.fieldKey, rules)}>
+            <select
+              id={id}
+              aria-invalid={!!error}
+              aria-required={required || undefined}
+              aria-describedby={describedBy}
+              className={cn(control, 'appearance-none pr-10', border)}
+              {...register(field.fieldKey, rules)}
+            >
               <option value="">선택하세요</option>
               {(field.options ?? []).map((o) => (
                 <option key={o} value={o}>
@@ -95,10 +116,19 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         input = null
         break
       case 'FILE':
-        input = <FileSlot field={field} files={files} editable={editable} />
+        input = <FileField id={id} field={field} files={files} editable={editable} invalid={!!error} describedBy={describedBy} handlers={fileHandlers} />
         break
       default:
-        input = <input id={id} aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
+        input = (
+          <input
+            id={id}
+            aria-invalid={!!error}
+            aria-required={required || undefined}
+            aria-describedby={describedBy}
+            className={cn(control, border)}
+            {...register(field.fieldKey, rules)}
+          />
+        )
     }
   }
 
@@ -146,7 +176,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
           )}
         </label>
         {highlight && <Tag tone="warning">보완 요청</Tag>}
-        {!editable && field.fieldType !== 'FILE' && <Lock size={16} strokeWidth={2} className="text-ink-3" role="img" aria-label="수정할 수 없음" />}
+        {!editable && <Lock size={16} strokeWidth={2} className="text-ink-3" role="img" aria-label="수정할 수 없음" />}
       </div>
       {input}
       {field.helpText && editable && (
@@ -181,7 +211,12 @@ function formatRules(field: Field) {
     }
   }
   if (v.maxLength) {
-    return { maxLength: { value: v.maxLength, message: `${v.maxLength}자 안으로 입력하세요.` } }
+    return {
+      maxLength: {
+        value: v.maxLength,
+        message: `${v.maxLength}자 안으로 입력하세요.`,
+      },
+    }
   }
   return {}
 }
@@ -196,32 +231,6 @@ function ReadOnlyValue({ field, value }: { field: Field; value: AnswerValue }) {
           ? value.toLocaleString()
           : String(value)
   return (
-    <div className={cn('flex min-h-control-h items-center rounded-md bg-surface-sunken px-4 text-ink-2', field.fieldType === 'TEXTAREA' && 'py-3')}>
-      {text}
-    </div>
-  )
-}
-
-// 파일 첨부는 다음 작업(업로드 URL 발급·완료 처리)에서 연결한다.
-function FileSlot({ field, files, editable }: { field: Field; files: { id: number; originalName: string }[]; editable: boolean }) {
-  const ext = field.validation?.allowedExtensions?.join(', ').toUpperCase()
-  return (
-    <div className="flex flex-col gap-2">
-      {files.map((f) => (
-        <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-surface-sunken px-4 text-ink-2">
-          <FileText size={16} strokeWidth={2} aria-hidden />
-          <span className="truncate">{f.originalName}</span>
-        </div>
-      ))}
-      {editable && (
-        <div className="flex min-h-control-h items-center gap-2 rounded-md border border-dashed border-line-control px-4 text-ink-3">
-          <Paperclip size={16} strokeWidth={2} aria-hidden />
-          <span>
-            파일 올리기는 다음 단계에서 열려요{ext && ` · ${ext}`}
-            {field.validation?.maxSizeMb && `, ${field.validation.maxSizeMb}MB 이하`}
-          </span>
-        </div>
-      )}
-    </div>
+    <div className={cn('flex min-h-control-h items-center rounded-md bg-surface-sunken px-4 text-ink-2', field.fieldType === 'TEXTAREA' && 'py-3')}>{text}</div>
   )
 }
