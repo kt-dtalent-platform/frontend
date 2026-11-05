@@ -89,7 +89,8 @@ export const handlers = [
       size: number
     }
     const rule = fieldOf(requestId, body.fieldKey)?.validation
-    const ext = body.fileName.split('.').pop()?.toLowerCase() ?? ''
+    const raw = body.fileName.split('.').pop()?.toLowerCase() ?? ''
+    const ext = raw === 'jpeg' ? 'jpg' : raw
     if (rule?.allowedExtensions && !rule.allowedExtensions.includes(ext)) return fail(path, 400, 'INVALID_EXTENSION', '허용되지 않은 파일 형식입니다')
     if (rule?.maxSizeMb && body.size > rule.maxSizeMb * 1024 * 1024) return fail(path, 413, 'FILE_TOO_LARGE', '허용 용량을 초과했습니다')
     const fileId = 9000 + Math.floor(Math.random() * 100000)
