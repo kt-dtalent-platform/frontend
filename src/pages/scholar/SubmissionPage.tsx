@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useSaveDraft, useSubmissionForm, type Answers, type FormField as Field, type SubmissionForm } from '../../api/submissions'
-import type { FieldError } from '../../api/types'
+import { fieldErrorsOf } from '../../api/types'
 import { FormField, type FormValues } from '../../components/form/FormField'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -12,12 +12,15 @@ import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
+import { daysUntil } from '../../api/tasks'
 import { dDayText, formatDue, formatTime } from '../../lib/format'
+import { usePageTitle } from '../../lib/usePageTitle'
 
 // S02 제출 입력 · 임시 저장
 export function SubmissionPage() {
   const requestId = Number(useParams().requestId)
   const query = useSubmissionForm(requestId)
+  usePageTitle(query.data?.request.title ?? '제출')
   // 저장하면 버전이 바뀌어 폼이 새로 그려지므로, 저장 시각은 바깥에 둔다
   const [savedAt, setSavedAt] = useState<string | null>(null)
 
@@ -69,6 +72,19 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [formState.isDirty])
 
+  // Cmd/Ctrl + S로도 임시 저장
+  useEffect(() => {
+    if (locked) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        void onSave()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   const onSave = handleSubmit((values) => {
     const answers = toAnswers(form.fields, values, form.answers)
     save.mutate(
@@ -79,8 +95,8 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
           onSaved(result.savedAt)
         },
         onError: (error) => {
-          const fieldErrors = (error instanceof ApiError && (error.details as { fieldErrors?: FieldError[] } | undefined)?.fieldErrors) || []
-          for (const fe of fieldErrors) setError(fe.key, { message: fe.message })
+          if (!(error instanceof ApiError)) return
+          for (const fe of fieldErrorsOf(error.details)) setError(fe.key, { message: fe.message })
         },
       },
     )
@@ -112,14 +128,18 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
           지금 제출해도 받지만 지연 제출로 표시돼요.
         </Banner>
       )}
-      {form.status === 'SUBMITTED' && <Banner tone="info" title="검토를 기다리고 있어요">결과가 나오면 여기와 내 할 일에서 알려 드려요.</Banner>}
+      {(form.status === 'SUBMITTED' || form.status === 'RESUBMITTED') && (
+        <Banner tone="info" title="검토를 기다리고 있어요">결과가 나오면 여기와 내 할 일에서 알려 드려요.</Banner>
+      )}
+      {form.request.closed && form.status !== 'CONFIRMED' && (
+        <Banner tone="info" title="마감된 요청이에요">더 이상 고치거나 제출할 수 없어요.</Banner>
+      )}
       {form.status === 'CONFIRMED' && <Banner tone="success" title="확인이 끝났어요">확인이 끝난 제출은 고칠 수 없어요.</Banner>}
 
-      {(form.request.description || form.request.privacyNotice) && (
+      {form.request.description && (
         <section className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
           <h2 className="m-0 text-title-2">안내</h2>
-          {form.request.description && <p className="m-0 text-body-long text-ink-2">{form.request.description}</p>}
-          {form.request.privacyNotice && <p className="m-0 text-caption text-ink-3">{form.request.privacyNotice}</p>}
+          <p className="m-0 text-body-long text-ink-2">{form.request.description}</p>
         </section>
       )}
 
@@ -160,8 +180,9 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
       )}
 
       {!locked && (
-        <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-center md:justify-end">
-          <p className="m-0 inline-flex items-center gap-1.5 text-caption text-ink-3 md:mr-auto" aria-live="polite">
+        // 모바일: 화면 아래에 고정(디자인 시스템 › 레이아웃 › 고정 영역). PC: 폼 끝 오른쪽
+        <div className="sticky bottom-0 z-(--z-sticky) -mx-4 flex items-center gap-3 border-t border-line-subtle bg-surface px-4 pt-3 pb-[max(var(--space-3),env(safe-area-inset-bottom))] md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+          <p className="m-0 inline-flex flex-1 items-center gap-1.5 text-caption text-ink-3" aria-live="polite">
             {savedAt && !formState.isDirty && (
               <>
                 <Check size={16} strokeWidth={2} aria-hidden />
@@ -170,11 +191,9 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
             )}
             {formState.isDirty && '저장하지 않은 내용이 있어요'}
           </p>
-          <Button type="submit" disabled={save.isPending}>
+          {/* 제출하기는 파일 첨부와 함께 다음 작업에서 붙인다 */}
+          <Button type="submit" size="cta" className="md:h-control-h" disabled={save.isPending}>
             {save.isPending ? '저장하는 중' : '임시 저장'}
-          </Button>
-          <Button variant="primary" disabled title="파일 첨부와 함께 다음 단계에서 열려요">
-            제출하기
           </Button>
         </div>
       )}
@@ -221,24 +240,17 @@ function crossCheck(field: Field, watch: (key: string) => FormValues[string]) {
   return `만점 기준(${scale})보다 큽니다. 평점이나 만점 기준을 확인하세요.`
 }
 
-function daysUntil(iso: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const due = new Date(iso)
-  due.setHours(0, 0, 0, 0)
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000)
-}
 
 function saveErrorTitle(code: string) {
   if (code === 'VERSION_CONFLICT') return '다른 곳에서 먼저 저장했어요'
   if (code === 'SUBMISSION_LOCKED') return '저장할 수 없는 요청이에요'
-  if (code === 'VALIDATION_ERROR') return '형식이 맞지 않는 항목이 있어요'
+  if (code === 'INVALID_REQUEST' || code === 'VALIDATION_ERROR') return '형식이 맞지 않는 항목이 있어요'
   return '저장하지 못했어요'
 }
 
 function saveErrorBody(error: ApiError) {
   if (error.code === 'VERSION_CONFLICT') return '다른 탭이나 기기에서 고친 내용이 있어요. 새로 불러온 뒤 다시 입력하세요.'
   if (error.code === 'SUBMISSION_LOCKED') return '이미 제출했거나 마감된 요청이에요.'
-  if (error.code === 'VALIDATION_ERROR') return '빨간색으로 표시된 항목을 확인하세요.'
+  if (error.code === 'INVALID_REQUEST' || error.code === 'VALIDATION_ERROR') return '빨간색으로 표시된 항목을 확인하세요.'
   return '입력한 내용은 그대로 있어요. 잠시 후 다시 시도하세요.'
 }

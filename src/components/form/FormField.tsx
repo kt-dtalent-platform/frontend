@@ -18,8 +18,9 @@ type Props = {
   files: { id: number; originalName: string }[]
 }
 
-const control =
-  'h-control-h w-full rounded-md border bg-surface px-4 text-body text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-sunken'
+const base =
+  'w-full rounded-md border bg-surface px-4 text-body text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-sunken'
+const control = `${base} h-control-h`
 
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
 export function FormField({ field, register, editable, highlight, error, hint, value, files }: Props) {
@@ -40,7 +41,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             rows={4}
             aria-invalid={!!error}
             aria-describedby={describedBy}
-            className={cn(control, 'h-auto py-3 text-body-long', border)}
+            className={cn(base, 'resize-y py-3 text-body-long', border)}
             {...register(field.fieldKey, rules)}
           />
         )
@@ -118,7 +119,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
       <div className="flex items-center gap-2">
         <label id={`${id}-label`} htmlFor={id} className="text-label text-ink">
           {field.label}
-          {field.required && (
+          {field.required && editable && (
             <span className="ml-0.5 text-kt-red-text" aria-label="필수">
               *
             </span>
