@@ -1,6 +1,7 @@
 import { ChevronRight, Inbox } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { useMyTasks, type MyTask } from '../../api/tasks'
+import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -29,25 +30,12 @@ export function MyTasksPage() {
     <div className="flex flex-col gap-8">
       <PageTitle>내 할 일</PageTitle>
 
-      <div aria-label="할 일 나누기" className="flex gap-2">
-        {views.map((v) => (
-          <button
-            key={v.key}
-            type="button"
-            aria-pressed={view === v.key}
-            onClick={() => setParams(v.key === 'DONE' ? { view: 'done' } : {}, { replace: true })}
-            className={cn(
-              'h-control-compact rounded-full border px-3 text-label',
-              view === v.key
-                ? 'border-gray-900 bg-gray-900 text-gray-0'
-                : 'border-line-control bg-surface text-ink hover:bg-gray-50 active:bg-gray-150',
-            )}
-          >
-            {v.label}
-            {data && <span className="ml-1 tabular-nums opacity-70">{counts[v.key]}</span>}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="할 일 나누기"
+        items={views.map((v) => ({ value: v.key, label: v.label, count: data ? counts[v.key] : undefined }))}
+        value={view}
+        onChange={(key) => setParams(key === 'DONE' ? { view: 'done' } : {}, { replace: true })}
+      />
 
       {isPending && <LoadingCards />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
