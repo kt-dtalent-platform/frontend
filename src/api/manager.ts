@@ -104,6 +104,25 @@ export function useCreateRequest() {
   })
 }
 
+// GET /requests/{id}: 작성 중 요청 열기. 백엔드 구현 없음, 응답 모양 확인 필요
+export type RequestDetail = Omit<CreateRequestBody, 'templateId'> & { id: number; status: RequestStatus; templateId: number | null }
+
+export function useRequestDetail(id: number) {
+  return useQuery({ queryKey: ['manager', 'request', id], queryFn: () => api<RequestDetail>(`/requests/${id}`) })
+}
+
+// PATCH /requests/{id}: 작성 중일 때만 고칠 수 있다. 백엔드 구현 없음, 확인 필요
+export function useUpdateRequest(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateRequestBody) => api<CreatedRequest>(`/requests/${id}`, { method: 'PATCH', body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'request', id] })
+    },
+  })
+}
+
 export function usePublishRequest() {
   const queryClient = useQueryClient()
   return useMutation({

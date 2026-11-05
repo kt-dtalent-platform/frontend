@@ -4,7 +4,16 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../api/auth'
 import { ApiError } from '../../api/client'
-import { useCohorts, useCreateRequest, usePublishRequest, useRequestTemplates, type RequestStatus, type Semester } from '../../api/manager'
+import {
+  useCohorts,
+  useCreateRequest,
+  usePublishRequest,
+  useRequestTemplates,
+  useUpdateRequest,
+  type RequestDetail,
+  type RequestStatus,
+  type Semester,
+} from '../../api/manager'
 import { fieldErrorsOf } from '../../api/types'
 import { fieldBase, fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
@@ -58,16 +67,49 @@ function defaults(): Values {
   }
 }
 
+// 저장된 작성 중 요청을 입력칸 값으로
+function fromDetail(d: RequestDetail): Values {
+  const [date = '', time = ''] = (d.closesAt ?? '').split('T')
+  return {
+    templateId: d.templateId ? String(d.templateId) : '',
+    title: d.title,
+    cohortId: d.cohortId ? String(d.cohortId) : '',
+    academicYear: String(d.academicYear),
+    semester: d.semester,
+    closeDate: date,
+    closeTime: time.slice(0, 5) || '23:59',
+    description: d.description ?? '',
+    completionMessage: d.completionMessage ?? '',
+  }
+}
+
 // A05 요청 만들기: 유형 고르기 → 요청 정보 → 작성 중으로 저장 또는 공개
 export function RequestCreatePage() {
   usePageTitle('요청 만들기')
+  return <RequestFormShell title="요청 만들기">{(props) => <CreateForm {...props} />}</RequestFormShell>
+}
+
+// 요청 만들기·작성 중 요청 고치기가 함께 쓰는 틀: 담당 프로그램·유형·기수를 불러온 뒤 폼을 그린다
+export function RequestFormShell({
+  title,
+  extraLoading,
+  extraError,
+  onRetryExtra,
+  children,
+}: {
+  title: string
+  extraLoading?: boolean
+  extraError?: Error | null
+  onRetryExtra?: () => void
+  children: (props: FormProps) => ReactNode
+}) {
   const me = useMe()
   const programId = me.data?.accessiblePrograms?.[0]?.id
   const templates = useRequestTemplates()
   const cohorts = useCohorts(programId)
 
-  const loading = me.isPending || templates.isPending || (programId !== undefined && cohorts.isPending)
-  const error = me.error ?? templates.error ?? cohorts.error
+  const loading = me.isPending || templates.isPending || (programId !== undefined && cohorts.isPending) || !!extraLoading
+  const error = me.error ?? templates.error ?? cohorts.error ?? extraError ?? null
 
   return (
     <div className="mx-auto flex max-w-page-form flex-col gap-6">
@@ -75,37 +117,50 @@ export function RequestCreatePage() {
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         요청 관리
       </Link>
-      <PageTitle>요청 만들기</PageTitle>
+      <PageTitle>{title}</PageTitle>
       {loading && <LoadingCards count={2} />}
-      {error && <ErrorState error={error} onRetry={() => (me.error ? me.refetch() : templates.error ? templates.refetch() : cohorts.refetch())} />}
+      {error && (
+        <ErrorState
+          error={error}
+          onRetry={() => (me.error ? me.refetch() : templates.error ? templates.refetch() : cohorts.error ? cohorts.refetch() : onRetryExtra?.())}
+        />
+      )}
       {!loading && !error && programId === undefined && (
         <Banner tone="danger" title="담당 프로그램이 없어요">
           재단 관리자에게 담당 프로그램 지정을 요청하세요.
         </Banner>
       )}
-      {!loading && !error && programId !== undefined && templates.data && cohorts.data && (
-        <CreateForm programId={programId} templates={templates.data} cohorts={cohorts.data} />
-      )}
+      {!loading &&
+        !error &&
+        programId !== undefined &&
+        templates.data &&
+        cohorts.data &&
+        children({ programId, templates: templates.data, cohorts: cohorts.data })}
     </div>
   )
 }
 
-type FormProps = {
+export type FormProps = {
   programId: number
   templates: NonNullable<ReturnType<typeof useRequestTemplates>['data']>
   cohorts: NonNullable<ReturnType<typeof useCohorts>['data']>
+  existing?: RequestDetail // 있으면 작성 중 요청 고치기
 }
 
-function CreateForm({ programId, templates, cohorts }: FormProps) {
+export function CreateForm({ programId, templates, cohorts, existing }: FormProps) {
   const navigate = useNavigate()
   const create = useCreateRequest()
+  const update = useUpdateRequest(existing?.id ?? 0)
   const publish = usePublishRequest()
   const [confirming, setConfirming] = useState(false)
   // 저장이 끝나 이동할 곳. 이동 확인 창이 뜨지 않도록 렌더 뒤에 이동한다
   const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: Notice } | null>(null)
   const [today] = useState(() => ymd(new Date()))
   const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
-  const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({ defaultValues: defaults(), mode: 'onBlur' })
+  const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({
+    defaultValues: existing ? fromDetail(existing) : defaults(),
+    mode: 'onBlur',
+  })
   const errors = formState.errors
 
   useEffect(() => {
@@ -117,7 +172,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
   const template = templates.find((t) => String(t.id) === templateId)
   const cohort = cohorts.find((c) => String(c.id) === cohortId)
   const targetCount = cohort ? cohort.scholarCount : cohorts.reduce((n, c) => n + c.scholarCount, 0)
-  const busy = formState.isSubmitting || create.isPending || publish.isPending
+  const busy = formState.isSubmitting || create.isPending || update.isPending || publish.isPending
 
   const toBody = (v: Values) => ({
     programId,
@@ -140,9 +195,12 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
     })
   }
 
+  // 새로 만들거나(POST) 작성 중 요청을 고친다(PATCH). 요청 번호를 돌려준다
+  const save = async (v: Values) => (existing ? (await update.mutateAsync(toBody(v)), existing.id) : (await create.mutateAsync(toBody(v))).id)
+
   const onSaveDraft = handleSubmit(async (v) => {
     try {
-      await create.mutateAsync(toBody(v))
+      await save(v)
       setLeaving({
         status: 'DRAFT',
         notice: { tone: 'success', title: '작성 중으로 저장했어요', body: `"${v.title.trim()}" 요청은 공개하기 전까지 장학생에게 보이지 않아요.` },
@@ -166,7 +224,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
   const doPublish = handleSubmit(async (v) => {
     setConfirming(false)
     try {
-      const { id } = await create.mutateAsync(toBody(v))
+      const id = await save(v)
       try {
         const result = await publish.mutateAsync(id)
         setLeaving({
@@ -185,7 +243,8 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
     }
   })
 
-  const actionError = create.error instanceof ApiError ? create.error : create.error ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' }) : null
+  const saveError = create.error ?? update.error
+  const actionError = saveError instanceof ApiError ? saveError : saveError ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' }) : null
 
   return (
     <form onSubmit={(e) => e.preventDefault()} noValidate className="flex flex-col gap-6">
@@ -345,7 +404,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
 
       <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
         <Button disabled={busy} onClick={once(onSaveDraft)}>
-          {create.isPending && !confirming ? '저장하는 중' : '작성 중으로 저장'}
+          {(create.isPending || update.isPending) && !confirming ? '저장하는 중' : '작성 중으로 저장'}
         </Button>
         <Button variant="primary" disabled={busy} onClick={() => void onPublishClick()}>
           {publish.isPending ? '공개하는 중' : '공개하기'}
