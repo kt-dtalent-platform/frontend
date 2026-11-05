@@ -14,7 +14,7 @@ const sizes: Record<Size, string> = {
   compact: 'h-control-compact px-3 text-label',
   default: 'h-control-default px-4 text-label',
   md: 'h-control-h px-5 text-label',
-  cta: 'h-control-cta px-6 text-title-2',
+  cta: 'h-control-cta px-6 text-label',
 }
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
