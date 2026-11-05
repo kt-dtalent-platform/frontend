@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
+import { usePageTitle } from '../../lib/usePageTitle'
 
 const views = [
   { key: 'TODO', label: '해야 할 일' },
@@ -17,19 +18,23 @@ const views = [
 export function MyTasksPage() {
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'done' ? 'DONE' : 'TODO'
-  const { data, isPending, isError, error, refetch } = useMyTasks(view)
+  const { data, isPending, isError, error, refetch } = useMyTasks()
+  usePageTitle('내 할 일')
+  const todo = data?.filter((t) => !t.done) ?? []
+  const done = data?.filter((t) => t.done) ?? []
+  const items = view === 'DONE' ? done : todo
+  const counts = { TODO: todo.length, DONE: done.length }
 
   return (
     <div className="flex flex-col gap-8">
       <PageTitle>내 할 일</PageTitle>
 
-      <div role="tablist" aria-label="할 일 나누기" className="flex gap-2">
+      <div aria-label="할 일 나누기" className="flex gap-2">
         {views.map((v) => (
           <button
             key={v.key}
             type="button"
-            role="tab"
-            aria-selected={view === v.key}
+            aria-pressed={view === v.key}
             onClick={() => setParams(v.key === 'DONE' ? { view: 'done' } : {}, { replace: true })}
             className={cn(
               'h-control-compact rounded-full border px-3 text-label',
@@ -39,20 +44,21 @@ export function MyTasksPage() {
             )}
           >
             {v.label}
+            {data && <span className="ml-1 tabular-nums opacity-70">{counts[v.key]}</span>}
           </button>
         ))}
       </div>
 
       {isPending && <LoadingCards />}
       {isError && <ErrorState error={error} onRetry={() => refetch()} />}
-      {data && data.items.length === 0 && (
+      {data && items.length === 0 && (
         <EmptyState title={view === 'TODO' ? '지금 해야 할 일이 없어요' : '아직 끝낸 일이 없어요'} icon={<Inbox size={24} strokeWidth={1.75} />}>
           {view === 'TODO' ? '새 요청이 열리면 여기에 보여요.' : '제출하면 여기에서 결과를 볼 수 있어요.'}
         </EmptyState>
       )}
-      {data && data.items.length > 0 && (
+      {data && items.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {data.items.map((task) => (
+          {items.map((task) => (
             <li key={task.requestId}>
               <TaskCard task={task} />
             </li>
@@ -64,7 +70,7 @@ export function MyTasksPage() {
 }
 
 function TaskCard({ task }: { task: MyTask }) {
-  const done = task.status === 'SUBMITTED' || task.status === 'CONFIRMED'
+  const { done } = task
   const late = !done && task.dDay < 0
   const soon = !done && task.dDay >= 0 && task.dDay <= 3
 
@@ -81,7 +87,7 @@ function TaskCard({ task }: { task: MyTask }) {
           </div>
           <h2 className="m-0 text-title-2">{task.title}</h2>
           <p className="m-0 text-caption text-ink-3 tabular-nums">
-            마감 {formatDue(task.dueAt)}
+            마감 {formatDue(task.requestDueAt)}
             {!done && (
               <>
                 {' · '}
