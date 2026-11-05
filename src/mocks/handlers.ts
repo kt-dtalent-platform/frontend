@@ -1,6 +1,6 @@
-import { delay, http } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import type { Answers } from '../api/submissions'
-import { getForm, now, saveDraft, taskList } from './db'
+import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { managerDashboard, requestList } from './manager'
 import { fail, ok } from './respond'
 
@@ -75,6 +75,117 @@ export const handlers = [
     return ok(path, { submissionId: saved.id, status: saved.status, savedAt: now(), version: saved.version })
   }),
 
+  // 파일 1단계: 업로드 주소 발급. 진짜 S3 대신 목업 주소(/mock-s3/{fileId})를 준다.
+  http.post(`${BASE}/submissions/:submissionId/files/presign`, async ({ params, request }) => {
+    const sid = Number(params.submissionId)
+    const path = `/api/v1/submissions/${sid}/files/presign`
+    if (!roleOf(request)) return unauthorized(path)
+    const requestId = requestOfSubmission(sid)
+    if (!requestId) return fail(path, 404, 'RESOURCE_NOT_FOUND', '제출을 찾을 수 없습니다')
+    const body = (await request.json()) as {
+      fieldKey: string
+      fileName: string
+      contentType: string
+      size: number
+    }
+    const rule = fieldOf(requestId, body.fieldKey)?.validation
+    const ext = body.fileName.split('.').pop()?.toLowerCase() ?? ''
+    if (rule?.allowedExtensions && !rule.allowedExtensions.includes(ext)) return fail(path, 400, 'INVALID_EXTENSION', '허용되지 않은 파일 형식입니다')
+    if (rule?.maxSizeMb && body.size > rule.maxSizeMb * 1024 * 1024) return fail(path, 413, 'FILE_TOO_LARGE', '허용 용량을 초과했습니다')
+    const fileId = 9000 + Math.floor(Math.random() * 100000)
+    pendingUploads.set(fileId, {
+      requestId,
+      fieldKey: body.fieldKey,
+      originalName: body.fileName,
+      size: body.size,
+    })
+    return ok(path, {
+      fileId,
+      uploadUrl: `${location.origin}/mock-s3/${fileId}`,
+      expiresAt: now(),
+    })
+  }),
+
+  // 파일 2단계: 저장소에 직접 올리기(목업). 진행률이 보이게 조금 늦춘다.
+  http.put('*/mock-s3/:fileId', async () => {
+    await delay(900)
+    return new HttpResponse(null, { status: 200 })
+  }),
+
+  // 파일 3단계: 업로드 완료 처리
+  http.post(`${BASE}/submissions/:submissionId/files/:fileId/complete`, ({ params, request }) => {
+    const fileId = Number(params.fileId)
+    const path = `/api/v1/submissions/${params.submissionId}/files/${fileId}/complete`
+    if (!roleOf(request)) return unauthorized(path)
+    const p = pendingUploads.get(fileId)
+    if (!p) return fail(path, 400, 'UPLOAD_NOT_FOUND', 'S3에 파일이 존재하지 않습니다')
+    pendingUploads.delete(fileId)
+    if (!canChangeFile(p.requestId, p.fieldKey)) return fail(path, 422, 'FILE_LOCKED', '확인 중이거나 보완 요청되지 않은 항목의 파일은 바꿀 수 없습니다')
+    addFile(p.requestId, {
+      id: fileId,
+      fieldKey: p.fieldKey,
+      originalName: p.originalName,
+      uploadStatus: 'UPLOADED',
+    })
+    return ok(path, { fileId, uploadStatus: 'UPLOADED', sizeBytes: p.size })
+  }),
+
+  http.delete(`${BASE}/files/:fileId`, ({ params, request }) => {
+    const path = `/api/v1/files/${params.fileId}`
+    if (!roleOf(request)) return unauthorized(path)
+    const owner = fileOwner(Number(params.fileId))
+    if (!owner) return fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
+    if (!canChangeFile(owner.requestId, owner.fieldKey))
+      return fail(path, 422, 'FILE_LOCKED', '확인 중이거나 보완 요청되지 않은 항목의 파일은 삭제할 수 없습니다')
+    return removeFile(Number(params.fileId)) ? ok(path, null) : fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
+  }),
+
+  // 제출 / 보완 후 다시 제출
+  ...(['submit', 'resubmit'] as const).map((kind) =>
+    http.post(`${BASE}/me/submissions/:requestId/${kind}`, async ({ params, request }) => {
+      const id = Number(params.requestId)
+      const path = `/api/v1/me/submissions/${id}/${kind}`
+      if (!roleOf(request)) return unauthorized(path)
+      const form = getForm(id)
+      if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+      const status = form.submission?.status ?? 'NOT_SUBMITTED'
+      if (kind === 'resubmit' && status !== 'REVISION_REQUIRED') return fail(path, 422, 'NOT_IN_REVISION', '보완 요청 상태가 아닙니다')
+      if (kind === 'submit' && (form.request.status === 'CLOSED' || ['SUBMITTED', 'RESUBMITTED', 'CONFIRMED', 'REVISION_REQUIRED'].includes(status))) {
+        return fail(path, 422, 'SUBMISSION_LOCKED', '이미 제출했거나 마감된 요청입니다')
+      }
+      const body = (await request.json()) as {
+        answers: Answers
+        version: number
+      }
+      if (body.version !== (form.submission?.version ?? 0)) return fail(path, 409, 'VERSION_CONFLICT', '제출 상태가 변경되었습니다')
+      if (kind === 'resubmit' && Object.keys(body.answers).some((k) => !form.revision?.fieldKeys.includes(k))) {
+        return fail(path, 400, 'FIELD_NOT_EDITABLE', '보완 요청되지 않은 항목은 수정할 수 없습니다')
+      }
+      const result = submit(id, body.answers, kind === 'resubmit')
+      if ('fieldErrors' in result)
+        return fail(path, 400, 'VALIDATION_ERROR', '입력값을 확인해주세요.', {
+          fieldErrors: result.fieldErrors,
+        })
+      const at = now()
+      return ok(
+        path,
+        kind === 'submit'
+          ? {
+              submissionId: result.saved.id,
+              status: 'SUBMITTED',
+              submittedAt: at,
+              completionMessage: '제출이 완료되었습니다. 확인 후 안내드리겠습니다.',
+            }
+          : {
+              submissionId: result.saved.id,
+              status: 'RESUBMITTED',
+              resubmittedAt: at,
+              version: result.saved.version,
+            },
+      )
+    }),
+  ),
+
   // 담당자: 대시보드, 요청 목록
   http.get(`${BASE}/dashboard/manager`, ({ request }) => {
     const path = '/api/v1/dashboard/manager'
@@ -94,3 +205,6 @@ export const handlers = [
     return ok(path, requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
   }),
 ]
+
+// 발급만 하고 아직 완료 처리 안 된 파일(서버의 PENDING 행 역할)
+const pendingUploads = new Map<number, { requestId: number; fieldKey: string; originalName: string; size: number }>()
