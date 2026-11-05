@@ -44,7 +44,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel()
       }}
-      className="m-auto w-full max-w-dialog-w rounded-lg bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim"
+      className="mx-4 my-auto w-auto max-w-dialog-w rounded-lg md:mx-auto md:w-full bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim"
     >
       <div className="flex flex-col gap-3 p-6">
         <h2 id={titleId} className="m-0 text-title-2">
