@@ -1,11 +1,12 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useEffect } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { PAGE_SIZE, useRequests, type RequestRow, type RequestStatus } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { buttonClass } from '../../components/ui/buttonClass'
+import type { Notice } from './RequestCreatePage'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { RequestStatusBadge } from '../../components/ui/RequestStatusBadge'
 import { FilterChips } from '../../components/ui/FilterChips'
@@ -31,8 +32,13 @@ export function RequestsPage() {
   const status = (tabs.find((t) => t.status === params.get('status'))?.status ?? null) as RequestStatus | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const query = useRequests({ status, page })
-  // 요청 만들기에서 넘어온 결과 안내(작성 중으로 저장, 공개)
-  const notice = (useLocation().state as { notice?: { title: string; body: string } } | null)?.notice
+  // 요청 만들기에서 넘어온 결과 안내(작성 중으로 저장, 공개). 한 번 보여 준 뒤 기록에서 지워 새로고침하면 사라지게 한다
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [notice] = useState(() => (location.state as { notice?: Notice } | null)?.notice)
+  useEffect(() => {
+    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [location, navigate])
   const tab = tabs.find((t) => t.status === status)!
 
   const go = (next: { status?: RequestStatus | null; page?: number }) => {
@@ -71,7 +77,7 @@ export function RequestsPage() {
       </div>
 
       {notice && (
-        <Banner tone="success" title={notice.title}>
+        <Banner tone={notice.tone} title={notice.title}>
           {notice.body}
         </Banner>
       )}

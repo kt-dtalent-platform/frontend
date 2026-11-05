@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronLeft } from 'lucide-react'
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -15,6 +15,8 @@ import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+
+export type Notice = { tone: 'success' | 'warning'; title: string; body: string }
 
 type Values = {
   templateId: string
@@ -46,7 +48,8 @@ function defaults(): Values {
     templateId: '',
     title: '',
     cohortId: '',
-    academicYear: String(now.getFullYear()),
+    // 1~2월은 아직 지난해 2학기
+    academicYear: String(month <= 2 ? now.getFullYear() - 1 : now.getFullYear()),
     semester: month >= 3 && month <= 8 ? '1' : '2',
     closeDate: ymd(due),
     closeTime: '23:59',
@@ -64,7 +67,7 @@ export function RequestCreatePage() {
   const cohorts = useCohorts(programId)
 
   const loading = me.isPending || templates.isPending || (programId !== undefined && cohorts.isPending)
-  const error = templates.error ?? cohorts.error
+  const error = me.error ?? templates.error ?? cohorts.error
 
   return (
     <div className="mx-auto flex max-w-page-form flex-col gap-6">
@@ -74,7 +77,7 @@ export function RequestCreatePage() {
       </Link>
       <PageTitle>요청 만들기</PageTitle>
       {loading && <LoadingCards count={2} />}
-      {error && <ErrorState error={error} onRetry={() => (templates.error ? templates.refetch() : cohorts.refetch())} />}
+      {error && <ErrorState error={error} onRetry={() => (me.error ? me.refetch() : templates.error ? templates.refetch() : cohorts.refetch())} />}
       {!loading && !error && programId === undefined && (
         <Banner tone="danger" title="담당 프로그램이 없어요">
           재단 관리자에게 담당 프로그램 지정을 요청하세요.
@@ -99,20 +102,22 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
   const publish = usePublishRequest()
   const [confirming, setConfirming] = useState(false)
   // 저장이 끝나 이동할 곳. 이동 확인 창이 뜨지 않도록 렌더 뒤에 이동한다
-  const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: { title: string; body: string } } | null>(null)
-  const [publishFailedId, setPublishFailedId] = useState<number | null>(null)
-  const { register, handleSubmit, control, setError, formState } = useForm<Values>({ defaultValues: defaults(), mode: 'onBlur' })
+  const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: Notice } | null>(null)
+  const [today] = useState(() => ymd(new Date()))
+  const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
+  const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({ defaultValues: defaults(), mode: 'onBlur' })
   const errors = formState.errors
 
   useEffect(() => {
-    if (leaving) navigate(`/manager/requests?status=${leaving.status}`, { state: { notice: leaving.notice } })
+    // replace: 뒤로 가기로 빈 만들기 화면에 돌아오지 않게
+    if (leaving) navigate(`/manager/requests?status=${leaving.status}`, { replace: true, state: { notice: leaving.notice } })
   }, [leaving, navigate])
 
   const [templateId, cohortId] = useWatch({ control, name: ['templateId', 'cohortId'] })
   const template = templates.find((t) => String(t.id) === templateId)
   const cohort = cohorts.find((c) => String(c.id) === cohortId)
   const targetCount = cohort ? cohort.scholarCount : cohorts.reduce((n, c) => n + c.scholarCount, 0)
-  const busy = create.isPending || publish.isPending
+  const busy = formState.isSubmitting || create.isPending || publish.isPending
 
   const toBody = (v: Values) => ({
     programId,
@@ -135,45 +140,52 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
     })
   }
 
-  const onSaveDraft = handleSubmit((v) => {
-    create.mutate(toBody(v), {
-      onSuccess: () =>
-        setLeaving({
-          status: 'DRAFT',
-          notice: { title: '작성 중으로 저장했어요', body: `"${v.title.trim()}" 요청은 공개하기 전까지 장학생에게 보이지 않아요.` },
-        }),
-      onError: showServerErrors,
-    })
+  const onSaveDraft = handleSubmit(async (v) => {
+    try {
+      await create.mutateAsync(toBody(v))
+      setLeaving({
+        status: 'DRAFT',
+        notice: { tone: 'success', title: '작성 중으로 저장했어요', body: `"${v.title.trim()}" 요청은 공개하기 전까지 장학생에게 보이지 않아요.` },
+      })
+    } catch (error) {
+      showServerErrors(error)
+    }
   })
+
+  // 빠르게 두 번 눌러도 한 번만 실행되게 한다(검사가 끝나 버튼이 꺼지기 전의 두 번째 누름)
+  const once = (run: () => Promise<void>) => () => {
+    if (running.current) return
+    running.current = true
+    void run().finally(() => {
+      running.current = false
+    })
+  }
 
   const onPublishClick = handleSubmit(() => setConfirming(true))
 
   const doPublish = handleSubmit(async (v) => {
     setConfirming(false)
     try {
-      // 이미 만들어 두었는데 공개만 실패한 경우에는 다시 만들지 않는다
-      const id = publishFailedId ?? (await create.mutateAsync(toBody(v))).id
+      const { id } = await create.mutateAsync(toBody(v))
       try {
         const result = await publish.mutateAsync(id)
         setLeaving({
           status: 'IN_PROGRESS',
-          notice: { title: '요청을 공개했어요', body: `"${v.title.trim()}" 요청이 장학생 ${result.targetCount}명의 내 할 일에 보여요.` },
+          notice: { tone: 'success', title: '요청을 공개했어요', body: `"${v.title.trim()}" 요청이 장학생 ${result.targetCount}명의 내 할 일에 보여요.` },
         })
       } catch {
-        setPublishFailedId(id)
+        // 만들기는 됐고 공개만 실패: 같은 요청을 다시 만들지 않도록 작성 중 목록으로 보낸다
+        setLeaving({
+          status: 'DRAFT',
+          notice: { tone: 'warning', title: '작성 중으로 저장됐지만 공개하지 못했어요', body: `"${v.title.trim()}" 요청을 열어 다시 공개하세요.` },
+        })
       }
     } catch (error) {
       showServerErrors(error)
     }
   })
 
-  const actionError = publishFailedId
-    ? null
-    : create.error instanceof ApiError
-      ? create.error
-      : create.error
-        ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' })
-        : null
+  const actionError = create.error instanceof ApiError ? create.error : create.error ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' }) : null
 
   return (
     <form onSubmit={(e) => e.preventDefault()} noValidate className="flex flex-col gap-6">
@@ -191,6 +203,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
               <input
                 type="radio"
                 value={String(t.id)}
+                aria-invalid={!!errors.templateId}
                 className="mt-0.5 size-5 shrink-0 accent-action"
                 {...register('templateId', { required: '요청 유형을 고르세요.' })}
               />
@@ -271,16 +284,28 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
               <input
                 {...p}
                 type="date"
+                min={today}
                 className={cn(fieldControl, fieldBorder(!!errors.closeDate))}
                 {...register('closeDate', {
                   required: '마감일을 고르세요.',
-                  validate: (d, all) => (new Date(`${d}T${all.closeTime}:00`).getTime() > Date.now() ? true : '마감은 지금보다 뒤여야 해요.'),
+                  validate: (d, all) => (!all.closeTime || new Date(`${d}T${all.closeTime}:00`).getTime() > Date.now() ? true : '마감은 지금보다 뒤여야 해요.'),
                 })}
               />
             )}
           </Field>
-          <Field label="마감 시각" required>
-            {(p) => <input {...p} type="time" className={cn(fieldControl, fieldBorder(false))} {...register('closeTime', { required: true })} />}
+          <Field label="마감 시각" required error={errors.closeTime?.message}>
+            {(p) => (
+              <input
+                {...p}
+                type="time"
+                className={cn(fieldControl, fieldBorder(!!errors.closeTime))}
+                // 시각을 바꾸면 "마감은 지금보다 뒤" 검사를 날짜 쪽에서 다시 한다
+                {...register('closeTime', {
+                  required: '마감 시각을 고르세요.',
+                  onChange: () => formState.touchedFields.closeDate && void trigger('closeDate'),
+                })}
+              />
+            )}
           </Field>
         </div>
 
@@ -307,11 +332,6 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
         </Field>
       </section>
 
-      {publishFailedId && (
-        <Banner tone="danger" title="작성 중으로는 저장됐지만 공개하지 못했어요">
-          다시 공개하기를 누르거나, 요청 관리의 작성 중 목록에서 확인하세요.
-        </Banner>
-      )}
       {actionError && (
         <Banner
           tone="danger"
@@ -324,7 +344,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
-        <Button disabled={busy || publishFailedId !== null} onClick={() => void onSaveDraft()}>
+        <Button disabled={busy} onClick={once(onSaveDraft)}>
           {create.isPending && !confirming ? '저장하는 중' : '작성 중으로 저장'}
         </Button>
         <Button variant="primary" disabled={busy} onClick={() => void onPublishClick()}>
@@ -332,7 +352,7 @@ function CreateForm({ programId, templates, cohorts }: FormProps) {
         </Button>
       </div>
 
-      <ConfirmDialog open={confirming} title="공개하기" confirmLabel="공개하기" onConfirm={() => void doPublish()} onCancel={() => setConfirming(false)}>
+      <ConfirmDialog open={confirming} title="공개하기" confirmLabel="공개하기" onConfirm={once(doPublish)} onCancel={() => setConfirming(false)}>
         {cohort ? cohort.name : '전체 기수'} 장학생 {targetCount}명의 내 할 일에 이 요청이 바로 보여요. 공개한 뒤에는 입력 항목을 바꿀 수 없어요.
       </ConfirmDialog>
     </form>
