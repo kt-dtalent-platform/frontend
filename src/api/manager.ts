@@ -96,7 +96,11 @@ export function useCreateRequest() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateRequestBody) => api<CreatedRequest>('/requests', { method: 'POST', body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manager'] }),
+    // 바뀌는 것은 요청 목록·대시보드뿐. 기다리지 않아야 화면 이동이 늦어지지 않는다
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
+    },
   })
 }
 
@@ -104,6 +108,10 @@ export function usePublishRequest() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (requestId: number) => api<PublishResult>(`/requests/${requestId}/publish`, { method: 'POST', body: {} }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manager'] }),
+    // 바뀌는 것은 요청 목록·대시보드뿐. 기다리지 않아야 화면 이동이 늦어지지 않는다
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
+    },
   })
 }
