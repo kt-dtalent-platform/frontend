@@ -1,50 +1,20 @@
 import { http } from 'msw'
-import type { MyTask } from '../api/tasks'
+import type { Answers } from '../api/submissions'
+import { getForm, now, saveDraft, taskList } from './db'
 import { fail, ok } from './respond'
 
 const BASE = '/api/v1'
 
-const DAY = 24 * 60 * 60 * 1000
+const ME = {
+  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '6기' }, accessiblePrograms: null },
+  MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT 디지털인재장학' }] },
+} as const
 
-// 오늘 기준 n일 뒤 23:59:59 (서버처럼 시간대 없는 형식)
-function dueIn(days: number) {
-  const d = new Date(Date.now() + days * DAY)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:59`
-}
+// 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다
+const roleOf = (request: Request) =>
+  request.headers.get('Authorization')?.includes('manager') ? 'MANAGER' : request.headers.get('Authorization') ? 'SCHOLAR' : null
 
-function dDayOf(dueAt: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const due = new Date(dueAt)
-  due.setHours(0, 0, 0, 0)
-  return Math.round((due.getTime() - today.getTime()) / DAY)
-}
-
-// 명세서 예시 값을 쓰되 마감일은 오늘 기준으로 잡는다. 화면을 만들 때 경우(빈 목록, 마감 지남 등)를 여기에 더한다.
-const tasks: Omit<MyTask, 'dDay'>[] = [
-  {
-    requestId: 31,
-    title: '10월 행사 교통비 증빙',
-    dueAt: dueIn(2),
-    status: 'REVISION_REQUIRED',
-    revisionReason: '영수증 이미지가 흐려 금액이 보이지 않습니다.',
-  },
-  {
-    requestId: 35,
-    title: '2학기 지속심사 서류 제출',
-    dueAt: dueIn(10),
-    status: 'NOT_SUBMITTED',
-    revisionReason: null,
-  },
-  {
-    requestId: 28,
-    title: '1학기 성적 증빙',
-    dueAt: dueIn(-15),
-    status: 'CONFIRMED',
-    revisionReason: null,
-  },
-]
+const unauthorized = (path: string) => fail(path, 401, 'UNAUTHORIZED', '인증 정보가 없거나 만료되었습니다')
 
 export const handlers = [
   http.post(`${BASE}/auth/login`, async ({ request }) => {
@@ -54,22 +24,53 @@ export const handlers = [
     }
     const role = email.startsWith('admin') ? 'MANAGER' : 'SCHOLAR'
     return ok('/api/v1/auth/login', {
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
+      accessToken: `mock-access-${role.toLowerCase()}`,
+      refreshToken: `mock-refresh-${role.toLowerCase()}`,
       role,
-      name: role === 'MANAGER' ? '정지은' : '홍길동',
+      name: ME[role].name,
     })
   }),
 
+  http.post(`${BASE}/auth/logout`, () => ok('/api/v1/auth/logout', null)),
+
+  http.get(`${BASE}/me`, ({ request }) => {
+    const role = roleOf(request)
+    return role ? ok('/api/v1/me', ME[role]) : unauthorized('/api/v1/me')
+  }),
+
   http.get(`${BASE}/me/tasks`, ({ request }) => {
-    const status = new URL(request.url).searchParams.get('status') ?? 'TODO'
-    const items: MyTask[] = tasks
-      .filter((t) => {
-        if (status === 'ALL') return true
-        const done = t.status === 'SUBMITTED' || t.status === 'CONFIRMED'
-        return status === 'DONE' ? done : !done
-      })
-      .map((t) => ({ ...t, dDay: dDayOf(t.dueAt) }))
+    if (!roleOf(request)) return unauthorized('/api/v1/me/tasks')
+    // 백엔드 필터: TODO(미제출·작성 중·보완 필요) / ALL
+    const filter = new URL(request.url).searchParams.get('status') ?? 'TODO'
+    const todo = (s: string) => s === 'NOT_SUBMITTED' || s === 'DRAFT' || s === 'REVISION_REQUIRED'
+    const items = taskList()
+      .filter((t) => filter === 'ALL' || todo(t.status))
+      .sort((a, b) => a.requestDueAt.localeCompare(b.requestDueAt))
     return ok('/api/v1/me/tasks', { items })
+  }),
+
+  http.get(`${BASE}/me/submissions/:requestId`, ({ params, request }) => {
+    const path = `/api/v1/me/submissions/${params.requestId}`
+    if (!roleOf(request)) return unauthorized(path)
+    const form = getForm(Number(params.requestId))
+    return form ? ok(path, form) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다.')
+  }),
+
+  http.put(`${BASE}/me/submissions/:requestId/draft`, async ({ params, request }) => {
+    const id = Number(params.requestId)
+    const path = `/api/v1/me/submissions/${id}/draft`
+    if (!roleOf(request)) return unauthorized(path)
+    const form = getForm(id)
+    if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+    const body = (await request.json()) as { answers: Answers; version: number }
+    const status = form.submission?.status ?? 'NOT_SUBMITTED'
+    if (form.request.status === 'CLOSED' || ['SUBMITTED', 'RESUBMITTED', 'CONFIRMED'].includes(status)) {
+      return fail(path, 422, 'SUBMISSION_LOCKED', '이미 제출했거나 마감된 요청입니다')
+    }
+    if (body.version !== (form.submission?.version ?? 0)) {
+      return fail(path, 409, 'VERSION_CONFLICT', '다른 탭에서 수정되었습니다')
+    }
+    const saved = saveDraft(id, body.answers)
+    return ok(path, { submissionId: saved.id, status: saved.status, savedAt: now(), version: saved.version })
   }),
 ]

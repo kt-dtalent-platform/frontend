@@ -47,3 +47,8 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* 모바일 하단 고정 바: 홈 인디케이터(안전 영역)를 피해 아래 여백을 둔다 */
+@utility pb-safe-bar {
+  padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+}

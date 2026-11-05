@@ -1,13 +1,15 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ComponentProps } from 'react'
 import { cn } from '../../lib/cn'
 
-type Variant = 'primary' | 'secondary'
+type Variant = 'primary' | 'secondary' | 'ghost'
 type Size = 'compact' | 'default' | 'md' | 'cta'
 
 const variants: Record<Variant, string> = {
   // 주요 버튼은 화면에 하나.
   primary: 'bg-action text-on-action hover:bg-action-hover active:bg-gray-600',
   secondary: 'border border-line-control bg-surface text-ink hover:bg-gray-50 active:bg-gray-150',
+  // 테두리 없는 버튼: 상단 바 로그아웃처럼 덜 중요한 행동
+  ghost: 'bg-transparent text-ink hover:bg-gray-50 active:bg-gray-150',
 }
 
 const sizes: Record<Size, string> = {
@@ -17,7 +19,7 @@ const sizes: Record<Size, string> = {
   cta: 'h-control-cta px-6 text-label',
 }
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
+type Props = ComponentProps<'button'> & { variant?: Variant; size?: Size }
 
 export function Button({ variant = 'secondary', size = 'md', className, type = 'button', ...props }: Props) {
   return (

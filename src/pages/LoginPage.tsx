@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
-import { useLogin } from '../api/auth'
+import { roleHome, useLogin } from '../api/auth'
 import { ApiError } from '../api/client'
 import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
@@ -22,6 +22,7 @@ const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
 // C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
   const navigate = useNavigate()
+  const from = (useLocation().state as { from?: string } | null)?.from
   const login = useLogin()
   const {
     register,
@@ -31,7 +32,11 @@ export function LoginPage() {
 
   const onSubmit = handleSubmit((values) =>
     login.mutate(values, {
-      onSuccess: (data) => navigate(data.role === 'MANAGER' ? '/manager' : '/tasks'),
+      // 로그인 전에 가려던 화면이 같은 역할의 화면이면 그리로, 아니면 역할별 첫 화면으로
+      onSuccess: (data) => {
+        const home = roleHome(data.role)
+        navigate(from && from.startsWith(home) ? from : home, { replace: true })
+      },
     }),
   )
 

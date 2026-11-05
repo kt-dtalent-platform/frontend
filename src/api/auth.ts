@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 import { tokenStore } from './token'
-import type { Role } from './types'
+import type { Me, Role } from './types'
 
 // POST /auth/login · 담당 승완 · FE 연동: Mock
 export type LoginBody = { email: string; password: string }
@@ -11,10 +11,39 @@ export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: LoginBody) => api<LoginResult>('/auth/login', { method: 'POST', body }),
-    onSuccess: (data) => {
-      tokenStore.set(data.accessToken)
+    onSuccess: ({ accessToken, refreshToken }) => {
+      tokenStore.set({ accessToken, refreshToken })
       // 다른 계정으로 로그인하면 이전 계정의 내 정보·할 일이 남지 않게 지운다.
       queryClient.removeQueries({ queryKey: ['me'] })
     },
   })
 }
+
+// GET /me · 담당 승완 · FE 연동: Mock
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<Me>('/me'),
+    enabled: tokenStore.access() !== null,
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
+// POST /auth/logout · 담당 승완 · FE 연동: Mock
+export function useLogout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const refreshToken = tokenStore.refresh()
+      if (refreshToken) await api<null>('/auth/logout', { method: 'POST', body: { refreshToken } })
+    },
+    // 서버 응답과 상관없이 이 브라우저에서는 로그아웃한다.
+    onSettled: () => {
+      tokenStore.set(null)
+      queryClient.clear()
+    },
+  })
+}
+
+export const roleHome = (role: Role) => (role === 'MANAGER' ? '/manager' : '/tasks')

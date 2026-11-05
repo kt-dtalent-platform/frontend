@@ -77,6 +77,10 @@
   --text-body-long--line-height: 24px;
   --text-body-long--font-weight: 400;
   --text-body-long--letter-spacing: -0.005em;
+  --text-input-touch: 16px;
+  --text-input-touch--line-height: 24px;
+  --text-input-touch--font-weight: 400;
+  --text-input-touch--letter-spacing: -0.005em;
   --text-body-strong: 14px;
   --text-body-strong--line-height: 22px;
   --text-body-strong--font-weight: 600;
@@ -104,6 +108,8 @@
   --shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.18);
   --shadow-brand: 0 24px 64px rgba(22, 22, 22, 0.14), 0 2px 8px rgba(22, 22, 22, 0.06);
 
+  --spacing-badge-h: 26px;
+  --spacing-tag-h: 22px;
   --spacing-control-compact: 32px;
   --spacing-control-default: 40px;
   --spacing-control-h: 44px;
@@ -117,6 +123,7 @@
   --container-page-form: 720px;
   --container-page-narrow: 400px;
   --spacing-login-card-w: 360px;
+  --spacing-dialog-w: 440px;
 }
 
 /* 간격은 Tailwind 기본(4px 단위)과 같아서 p-4 = 16px, gap-6 = 24px 처럼 쓴다.
