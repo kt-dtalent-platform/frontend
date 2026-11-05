@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { downloadExport, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
-import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { FilterChips } from '../../components/ui/FilterChips'
@@ -151,7 +151,7 @@ export function RequestSubmissionsPage() {
                 placeholder="이름으로 찾기"
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
-                className={cn(fieldControl, 'h-control-default pl-9', fieldBorder(false))}
+                className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
               />
             </div>
           </div>
