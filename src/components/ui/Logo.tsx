@@ -9,7 +9,7 @@ export function Logo({ to }: { to?: string }) {
       <KtSquare />
     </>
   )
-  const cls = 'inline-flex items-center gap-2 text-label font-extrabold tracking-tight text-ink no-underline'
+  const cls = 'inline-flex items-center gap-2 text-label font-extrabold tracking-tight whitespace-nowrap text-ink no-underline'
   return to ? (
     <Link to={to} className={cls}>
       {body}

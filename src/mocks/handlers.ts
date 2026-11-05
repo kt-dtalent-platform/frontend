@@ -1,6 +1,7 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
+import { managerDashboard, requestList } from './manager'
 import { fail, ok } from './respond'
 
 const BASE = '/api/v1'
@@ -185,6 +186,25 @@ export const handlers = [
       )
     }),
   ),
+
+  // 담당자: 대시보드, 요청 목록
+  http.get(`${BASE}/dashboard/manager`, ({ request }) => {
+    const path = '/api/v1/dashboard/manager'
+    const role = roleOf(request)
+    if (!role) return unauthorized(path)
+    if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    return ok(path, managerDashboard())
+  }),
+
+  http.get(`${BASE}/requests`, async ({ request }) => {
+    const path = '/api/v1/requests'
+    const role = roleOf(request)
+    if (!role) return unauthorized(path)
+    if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 프로그램입니다')
+    await delay(250)
+    const q = new URL(request.url).searchParams
+    return ok(path, requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
+  }),
 ]
 
 // 발급만 하고 아직 완료 처리 안 된 파일(서버의 PENDING 행 역할)
