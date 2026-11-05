@@ -46,4 +46,15 @@ export function useLogout() {
   })
 }
 
+// PATCH /me/password · 담당 승완 · 백엔드 미정, 경로·필드 확인 필요 · FE 연동: Mock
+export type PasswordChange = { currentPassword: string; newPassword: string }
+
+export function useChangePassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PasswordChange) => api<null>('/me/password', { method: 'PATCH', body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
+  })
+}
+
 export const roleHome = (role: Role) => (role === 'MANAGER' ? '/manager' : '/tasks')
