@@ -231,11 +231,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
           }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
-          className={cn(
-            'flex flex-wrap items-center gap-3 rounded-md border border-dashed px-4 py-3',
-            invalid ? 'border-danger-line' : 'border-line-control',
-            dragOver && 'bg-surface-sunken',
-          )}
+          // 카드 안에 또 상자를 두지 않는다. 끌어 놓는 동안에만 테두리를 보여 준다
+          className={cn('flex flex-wrap items-center gap-3 rounded-md', dragOver && 'outline-2 outline-offset-4 outline-line-control outline-dashed')}
         >
           <input
             ref={inputRef}
@@ -253,7 +250,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
           <Button
             ref={pickerRef}
             id={id}
-            size="compact"
+            size="default"
+            className={cn(invalid && 'border-danger-line')}
             aria-label={`${field.label} 파일 고르기`}
             aria-invalid={invalid}
             aria-describedby={describedBy}
