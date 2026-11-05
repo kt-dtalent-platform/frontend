@@ -19,3 +19,16 @@ export type SubmissionStatus =
   | 'SUBMITTED'
   | 'REVISION_REQUIRED'
   | 'CONFIRMED'
+
+// GET /me
+export type Me = {
+  id: number
+  name: string
+  email: string
+  role: Role
+  cohort: { id: number; name: string } | null
+  accessiblePrograms: { id: number; name: string }[] | null
+}
+
+// 검증 실패 시 error.details
+export type FieldError = { key: string; message: string }

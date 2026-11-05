@@ -21,7 +21,7 @@ type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
 // 공통 응답을 풀어서 data만 돌려준다. 실패면 ApiError를 던진다.
 export async function api<T>(path: string, { body, headers, ...init }: RequestOptions = {}): Promise<T> {
-  const token = tokenStore.get()
+  const token = tokenStore.access()
   // 호출하는 쪽이 넘긴 헤더가 먼저다. 없을 때만 기본값을 채운다.
   const merged = new Headers(headers)
   if (body !== undefined && !merged.has('Content-Type')) merged.set('Content-Type', 'application/json')

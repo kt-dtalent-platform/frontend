@@ -1,6 +1,7 @@
 import { ChartColumn, ClipboardList, LayoutDashboard, Users, type LucideIcon } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router'
 import { Logo } from '../../components/ui/Logo'
+import { UserMenu } from '../../components/ui/UserMenu'
 import { cn } from '../../lib/cn'
 
 const menu: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
@@ -40,11 +41,16 @@ export function ManagerLayout() {
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 px-8 py-12">
-        <div className="mx-auto max-w-page-wide">
-          <Outlet />
-        </div>
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-(--z-sticky) flex h-header-h items-center justify-end bg-canvas px-8">
+          <UserMenu />
+        </header>
+        <main className="min-w-0 flex-1 px-8 pt-4 pb-12">
+          <div className="mx-auto max-w-page-wide">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
