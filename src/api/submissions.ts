@@ -16,6 +16,7 @@ export type FormField = {
     maxLength?: number
     allowedExtensions?: string[]
     maxSizeMb?: number
+    maxFiles?: number // 없으면 1개로 본다(확인 필요)
   } | null
   // DB(request_fields)에는 options·help_text가 있지만 백엔드 조회 결과에는 아직 없다(확인 필요)
   options?: string[] | null
@@ -35,6 +36,8 @@ export type RawSubmissionForm = {
   revision: { id: number; reason: string; fieldKeys: string[] } | null
 }
 
+export type UploadedFile = { id: number; fieldKey: string; originalName: string; sizeBytes?: number }
+
 // 화면에서 쓰는 모양
 export type SubmissionForm = {
   request: { id: number; title: string; description: string | null; dueAt: string; closed: boolean }
@@ -42,7 +45,7 @@ export type SubmissionForm = {
   submissionId: number | null
   status: SubmissionStatus
   answers: Answers
-  files: { id: number; fieldKey: string; originalName: string }[]
+  files: UploadedFile[]
   editableFieldKeys: string[] // 수정 가능한 항목. 백엔드가 주지 않아 상태로 계산한다
   revision: { reason: string } | null
   version: number
@@ -52,8 +55,7 @@ export function toForm(raw: RawSubmissionForm): SubmissionForm {
   const status = raw.submission?.status ?? 'NOT_SUBMITTED'
   const closed = raw.request.status === 'CLOSED'
   const allKeys = raw.fields.map((f) => f.fieldKey)
-  const editableFieldKeys =
-    closed || isDone(status) ? [] : status === 'REVISION_REQUIRED' ? (raw.revision?.fieldKeys ?? []) : allKeys
+  const editableFieldKeys = closed || isDone(status) ? [] : status === 'REVISION_REQUIRED' ? (raw.revision?.fieldKeys ?? []) : allKeys
   return {
     request: {
       id: raw.request.id,
@@ -66,7 +68,7 @@ export function toForm(raw: RawSubmissionForm): SubmissionForm {
     submissionId: raw.submission?.id ?? null,
     status,
     answers: raw.submission?.answers ?? {},
-    files: raw.files.filter((f) => f.uploadStatus === 'UPLOADED'),
+    files: raw.files.filter((f) => f.uploadStatus === 'UPLOADED').map(({ id, fieldKey, originalName }) => ({ id, fieldKey, originalName })),
     editableFieldKeys,
     revision: raw.revision ? { reason: raw.revision.reason } : null,
     version: raw.submission?.version ?? 0,
@@ -88,13 +90,37 @@ export type DraftResult = { submissionId: number; status: SubmissionStatus; save
 export function useSaveDraft(requestId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { answers: Answers; version: number }) =>
-      api<DraftResult>(`/me/submissions/${requestId}/draft`, { method: 'PUT', body }),
+    mutationFn: (body: { answers: Answers; version: number }) => api<DraftResult>(`/me/submissions/${requestId}/draft`, { method: 'PUT', body }),
     onSuccess: (result, { answers }) => {
       // 다시 불러오지 않고 저장한 값과 새 버전을 그대로 반영한다.
       queryClient.setQueryData<SubmissionForm>(submissionKey(requestId), (prev) =>
         prev ? { ...prev, answers, status: result.status, submissionId: result.submissionId, version: result.version } : prev,
       )
+      queryClient.invalidateQueries({ queryKey: ['me', 'tasks'] })
+    },
+  })
+}
+
+// 제출: POST /me/submissions/{requestId}/submit (정윤)
+// 보완 후 다시 제출: POST .../resubmit (승완). 보완 요청된 항목만 보낸다.
+// 둘 다 백엔드 구현 없음(노션 명세서 모양을 임시로 씀, 확인 필요)
+export type SubmitResult = {
+  submissionId: number
+  status: SubmissionStatus
+  submittedAt?: string
+  resubmittedAt?: string
+  completionMessage?: string | null
+  version?: number
+}
+
+export function useSubmit(requestId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ resubmit, ...body }: { answers: Answers; version: number; resubmit: boolean }) =>
+      api<SubmitResult>(`/me/submissions/${requestId}/${resubmit ? 'resubmit' : 'submit'}`, { method: 'POST', body }),
+    onSuccess: () => {
+      // 상태·버전·잠금이 모두 바뀌므로 서버 값으로 다시 불러온다
+      queryClient.invalidateQueries({ queryKey: submissionKey(requestId) })
       queryClient.invalidateQueries({ queryKey: ['me', 'tasks'] })
     },
   })
