@@ -5,6 +5,7 @@ import type { AnswerValue, FormField as Field, UploadedFile } from '../../api/su
 import { cn } from '../../lib/cn'
 import { Tag } from '../ui/Tag'
 import { FileField, type FileHandlers } from './FileField'
+import { fieldBase, fieldControl } from './fieldClass'
 
 export type FormValues = Record<string, string | boolean | string[]>
 
@@ -20,9 +21,8 @@ type Props = {
   fileHandlers?: FileHandlers
 }
 
-const base =
-  'w-full rounded-md border bg-surface px-4 text-input-touch text-ink outline-none md:text-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-sunken'
-const control = `${base} h-control-h`
+const base = fieldBase
+const control = fieldControl
 
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
 export function FormField({ field, register, editable, highlight, error, hint, value, files, fileHandlers }: Props) {
