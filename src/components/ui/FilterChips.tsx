@@ -17,7 +17,7 @@ export function FilterChips<T>({ label, items, value, onChange }: { label: strin
             onClick={() => onChange(item.value)}
             className={cn(
               'h-control-compact rounded-full border px-3 text-label',
-              active ? 'border-action bg-action text-on-action' : 'border-line-control bg-surface text-ink hover:bg-surface-hover',
+              active ? 'border-action bg-action text-on-action' : 'border-line-control bg-surface text-ink hover:bg-surface-hover active:bg-surface-sunken',
             )}
           >
             {item.label}

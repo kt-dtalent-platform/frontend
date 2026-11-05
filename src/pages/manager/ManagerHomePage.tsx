@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { useManagerDashboard, type ManagerDashboard } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
@@ -29,10 +29,11 @@ export function ManagerHomePage() {
 
 function Dashboard({ data }: { data: ManagerDashboard }) {
   const { today: t, tasks, overview } = data
+  const id = useId()
   return (
     <>
-      <section aria-labelledby="today" className="flex flex-col gap-4">
-        <h2 id="today" className="m-0 text-title-2">
+      <section aria-labelledby={`${id}-today`} className="flex flex-col gap-4">
+        <h2 id={`${id}-today`} className="m-0 text-title-2">
           오늘 처리할 일
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -42,8 +43,8 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
       </section>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        <section aria-labelledby="closing" className="flex flex-col gap-4 lg:col-span-2">
-          <h2 id="closing" className="m-0 text-title-2">
+        <section aria-labelledby={`${id}-closing`} className="flex flex-col gap-4 lg:col-span-2">
+          <h2 id={`${id}-closing`} className="m-0 text-title-2">
             마감이 가까운 요청
           </h2>
           {tasks.closingSoon.length === 0 ? (
@@ -57,8 +58,8 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           )}
         </section>
 
-        <section aria-labelledby="overview" className="flex flex-col gap-4">
-          <h2 id="overview" className="m-0 text-title-2">
+        <section aria-labelledby={`${id}-overview`} className="flex flex-col gap-4">
+          <h2 id={`${id}-overview`} className="m-0 text-title-2">
             현황
           </h2>
           <dl className="m-0 flex flex-col gap-6 rounded-lg bg-surface px-6 py-6">

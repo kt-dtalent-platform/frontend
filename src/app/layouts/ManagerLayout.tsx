@@ -44,6 +44,24 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
 function MobileNav() {
   const ref = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
+  // 메뉴를 연 채 화면을 넓히면(1024px 이상) 메뉴는 안 보이는데 모달이 남아 화면이 막힌다. 그때 닫는다.
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => wide.matches && setOpen(false)
+    wide.addEventListener('change', onChange)
+    return () => wide.removeEventListener('change', onChange)
+  }, [])
+
+  // iOS Safari는 모달 뒤 본문도 스크롤되므로 열려 있는 동안 막는다
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   useEffect(() => {
     const d = ref.current
     if (!d) return
@@ -63,7 +81,7 @@ function MobileNav() {
         onClick={(e) => e.target === e.currentTarget && setOpen(false)}
         className="m-0 h-dvh max-h-none w-sidebar-w bg-surface p-0 backdrop:bg-scrim lg:hidden"
       >
-        <div className="flex flex-col gap-6 px-3 py-4">
+        <div className="flex h-full flex-col gap-6 px-3 py-4">
           <div className="flex h-10 items-center justify-between pl-3">
             <Logo to="/manager" />
             <Button size="compact" variant="ghost" aria-label="메뉴 닫기" onClick={() => setOpen(false)}>
