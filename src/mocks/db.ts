@@ -191,7 +191,6 @@ function forms(): Record<number, RawSubmissionForm> {
           helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
         },
         { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
-        { fieldKey: 'has_f', label: 'F 과목이 있어요', fieldType: 'CHECKBOX', required: false },
         { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true, validation: { allowedExtensions: ['pdf'], maxSizeMb: 10 } },
         { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA', required: false, validation: { maxLength: 500 } },
       ],
