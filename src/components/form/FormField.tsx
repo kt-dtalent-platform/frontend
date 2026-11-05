@@ -19,7 +19,7 @@ type Props = {
 }
 
 const base =
-  'w-full rounded-md border bg-surface px-4 text-body text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-sunken'
+  'w-full rounded-md border bg-surface px-4 text-input-touch text-ink outline-none md:text-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:bg-surface-sunken'
 const control = `${base} h-control-h`
 
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
@@ -28,6 +28,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
   const describedBy = [field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
   const border = error ? 'border-danger-line' : 'border-line-control'
   const rules = formatRules(field)
+  const required = field.required && editable
 
   let input: ReactNode
   if (!editable && field.fieldType !== 'FILE') {
@@ -39,9 +40,9 @@ export function FormField({ field, register, editable, highlight, error, hint, v
           <textarea
             id={id}
             rows={4}
-            aria-invalid={!!error}
+            aria-invalid={!!error} aria-required={required || undefined}
             aria-describedby={describedBy}
-            className={cn(base, 'resize-y py-3 text-body-long', border)}
+            className={cn(base, 'resize-y py-3 text-input-touch md:text-body-long', border)}
             {...register(field.fieldKey, rules)}
           />
         )
@@ -52,7 +53,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             id={id}
             inputMode="decimal"
             autoComplete="off"
-            aria-invalid={!!error}
+            aria-invalid={!!error} aria-required={required || undefined}
             aria-describedby={describedBy}
             className={cn(control, 'tabular-nums', border)}
             {...register(field.fieldKey, rules)}
@@ -60,12 +61,12 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         )
         break
       case 'DATE':
-        input = <input id={id} type="date" aria-invalid={!!error} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
+        input = <input id={id} type="date" aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
         break
       case 'SELECT_ONE':
         input = (
           <div className="relative">
-            <select id={id} aria-invalid={!!error} aria-describedby={describedBy} className={cn(control, 'appearance-none pr-10', border)} {...register(field.fieldKey, rules)}>
+            <select id={id} aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, 'appearance-none pr-10', border)} {...register(field.fieldKey, rules)}>
               <option value="">선택하세요</option>
               {(field.options ?? []).map((o) => (
                 <option key={o} value={o}>
@@ -79,7 +80,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         break
       case 'SELECT_MULTI':
         input = (
-          <div className="flex flex-col gap-2" role="group" aria-labelledby={`${id}-label`}>
+          <div className="flex flex-col gap-2" role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy}>
             {(field.options ?? []).map((o) => (
               <label key={o} className="flex min-h-control-default items-center gap-2">
                 <input type="checkbox" value={o} className="size-5 accent-gray-900" {...register(field.fieldKey)} />
@@ -97,7 +98,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         input = <FileSlot field={field} files={files} editable={editable} />
         break
       default:
-        input = <input id={id} aria-invalid={!!error} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
+        input = <input id={id} aria-invalid={!!error} aria-required={required || undefined} aria-describedby={describedBy} className={cn(control, border)} {...register(field.fieldKey, rules)} />
     }
   }
 
@@ -105,11 +106,27 @@ export function FormField({ field, register, editable, highlight, error, hint, v
     return (
       <div className="flex flex-col gap-2">
         <label className="flex min-h-control-default items-center gap-3">
-          <input type="checkbox" disabled={!editable} className="size-5 accent-gray-900" {...register(field.fieldKey)} />
+          <input
+            type="checkbox"
+            disabled={!editable}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
+            className="size-5 accent-gray-900"
+            {...register(field.fieldKey)}
+          />
           <span className="text-label">{field.label}</span>
           {highlight && <Tag tone="warning">보완 요청</Tag>}
         </label>
-        {field.helpText && <p className="m-0 pl-8 text-caption text-ink-3">{field.helpText}</p>}
+        {field.helpText && (
+          <p id={`${id}-help`} className="m-0 pl-8 text-caption text-ink-3">
+            {field.helpText}
+          </p>
+        )}
+        {error && (
+          <p id={`${id}-error`} className="m-0 pl-8 text-caption text-danger-text">
+            {error}
+          </p>
+        )}
       </div>
     )
   }
@@ -119,14 +136,17 @@ export function FormField({ field, register, editable, highlight, error, hint, v
       <div className="flex items-center gap-2">
         <label id={`${id}-label`} htmlFor={id} className="text-label text-ink">
           {field.label}
-          {field.required && editable && (
-            <span className="ml-0.5 text-kt-red-text" aria-label="필수">
-              *
-            </span>
+          {required && (
+            <>
+              <span className="ml-0.5 text-kt-red-text" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">(필수)</span>
+            </>
           )}
         </label>
         {highlight && <Tag tone="warning">보완 요청</Tag>}
-        {!editable && field.fieldType !== 'FILE' && <Lock size={16} strokeWidth={2} className="text-ink-3" aria-label="수정할 수 없음" />}
+        {!editable && field.fieldType !== 'FILE' && <Lock size={16} strokeWidth={2} className="text-ink-3" role="img" aria-label="수정할 수 없음" />}
       </div>
       {input}
       {field.helpText && editable && (
