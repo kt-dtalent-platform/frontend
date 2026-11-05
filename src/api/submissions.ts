@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { SubmissionStatus } from './types'
+import { isDone, type SubmissionStatus } from './types'
 
 // 항목 입력 방식 (backend request_fields.field_type)
 export type FieldType = 'TEXT' | 'TEXTAREA' | 'NUMBER' | 'DATE' | 'SELECT_ONE' | 'SELECT_MULTI' | 'CHECKBOX' | 'FILE'
@@ -17,7 +17,7 @@ export type FormField = {
     allowedExtensions?: string[]
     maxSizeMb?: number
   } | null
-  // options·helpText는 DB에는 있지만 명세서 응답 예시에는 없다(확인 필요)
+  // DB(request_fields)에는 options·help_text가 있지만 백엔드 조회 결과에는 아직 없다(확인 필요)
   options?: string[] | null
   helpText?: string | null
 }
@@ -25,17 +25,52 @@ export type FormField = {
 export type AnswerValue = string | number | boolean | string[] | null
 export type Answers = Record<string, AnswerValue>
 
-// GET /me/submissions/{requestId} · 담당 정윤 · FE 연동: Mock
+// GET /me/submissions/{requestId} · 담당 정윤 · 백엔드 PR #26(KT-17) 기준
+// 백엔드 조회 결과(SubmissionFormData)를 그대로 받는다. 응답 모양이 확정되면 이 타입과 toForm만 고친다.
+export type RawSubmissionForm = {
+  request: { id: number; title: string; description: string | null; requestDueAt: string; status: 'IN_PROGRESS' | 'CLOSED' }
+  fields: FormField[]
+  submission: { id: number; status: SubmissionStatus; answers: Answers; version: number } | null
+  files: { id: number; fieldKey: string; originalName: string; uploadStatus: 'PENDING' | 'UPLOADED' | 'DELETED' }[]
+  revision: { id: number; reason: string; fieldKeys: string[] } | null
+}
+
+// 화면에서 쓰는 모양
 export type SubmissionForm = {
-  request: { id: number; title: string; description: string | null; dueAt: string; privacyNotice: string | null }
+  request: { id: number; title: string; description: string | null; dueAt: string; closed: boolean }
   fields: FormField[]
   submissionId: number | null
   status: SubmissionStatus
   answers: Answers
   files: { id: number; fieldKey: string; originalName: string }[]
-  editableFieldKeys: string[]
-  revision: { reason: string; dueAt: string } | null
+  editableFieldKeys: string[] // 수정 가능한 항목. 백엔드가 주지 않아 상태로 계산한다
+  revision: { reason: string } | null
   version: number
+}
+
+export function toForm(raw: RawSubmissionForm): SubmissionForm {
+  const status = raw.submission?.status ?? 'NOT_SUBMITTED'
+  const closed = raw.request.status === 'CLOSED'
+  const allKeys = raw.fields.map((f) => f.fieldKey)
+  const editableFieldKeys =
+    closed || isDone(status) ? [] : status === 'REVISION_REQUIRED' ? (raw.revision?.fieldKeys ?? []) : allKeys
+  return {
+    request: {
+      id: raw.request.id,
+      title: raw.request.title,
+      description: raw.request.description,
+      dueAt: raw.request.requestDueAt,
+      closed,
+    },
+    fields: raw.fields,
+    submissionId: raw.submission?.id ?? null,
+    status,
+    answers: raw.submission?.answers ?? {},
+    files: raw.files.filter((f) => f.uploadStatus === 'UPLOADED'),
+    editableFieldKeys,
+    revision: raw.revision ? { reason: raw.revision.reason } : null,
+    version: raw.submission?.version ?? 0,
+  }
 }
 
 export const submissionKey = (requestId: number) => ['me', 'submissions', requestId] as const
@@ -43,11 +78,11 @@ export const submissionKey = (requestId: number) => ['me', 'submissions', reques
 export function useSubmissionForm(requestId: number) {
   return useQuery({
     queryKey: submissionKey(requestId),
-    queryFn: () => api<SubmissionForm>(`/me/submissions/${requestId}`),
+    queryFn: async () => toForm(await api<RawSubmissionForm>(`/me/submissions/${requestId}`)),
   })
 }
 
-// PUT /me/submissions/{requestId}/draft · 담당 정윤 · FE 연동: Mock
+// PUT /me/submissions/{requestId}/draft · 담당 정윤 · 백엔드 구현 없음(명세서 기준 임시, 확인 필요)
 export type DraftResult = { submissionId: number; status: SubmissionStatus; savedAt: string; version: number }
 
 export function useSaveDraft(requestId: number) {

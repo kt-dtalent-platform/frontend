@@ -40,11 +40,12 @@ export const handlers = [
 
   http.get(`${BASE}/me/tasks`, ({ request }) => {
     if (!roleOf(request)) return unauthorized('/api/v1/me/tasks')
-    const status = new URL(request.url).searchParams.get('status') ?? 'TODO'
-    const done = (s: string) => s === 'SUBMITTED' || s === 'CONFIRMED'
+    // 백엔드 필터: TODO(미제출·작성 중·보완 필요) / ALL
+    const filter = new URL(request.url).searchParams.get('status') ?? 'TODO'
+    const todo = (s: string) => s === 'NOT_SUBMITTED' || s === 'DRAFT' || s === 'REVISION_REQUIRED'
     const items = taskList()
-      .filter((t) => status === 'ALL' || (status === 'DONE' ? done(t.status) : !done(t.status)))
-      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+      .filter((t) => filter === 'ALL' || todo(t.status))
+      .sort((a, b) => a.requestDueAt.localeCompare(b.requestDueAt))
     return ok('/api/v1/me/tasks', { items })
   }),
 
@@ -52,7 +53,7 @@ export const handlers = [
     const path = `/api/v1/me/submissions/${params.requestId}`
     if (!roleOf(request)) return unauthorized(path)
     const form = getForm(Number(params.requestId))
-    return form ? ok(path, form) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다')
+    return form ? ok(path, form) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다.')
   }),
 
   http.put(`${BASE}/me/submissions/:requestId/draft`, async ({ params, request }) => {
@@ -62,13 +63,14 @@ export const handlers = [
     const form = getForm(id)
     if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
     const body = (await request.json()) as { answers: Answers; version: number }
-    if (form.editableFieldKeys.length === 0) {
+    const status = form.submission?.status ?? 'NOT_SUBMITTED'
+    if (form.request.status === 'CLOSED' || ['SUBMITTED', 'RESUBMITTED', 'CONFIRMED'].includes(status)) {
       return fail(path, 422, 'SUBMISSION_LOCKED', '이미 제출했거나 마감된 요청입니다')
     }
-    if (body.version !== form.version) {
+    if (body.version !== (form.submission?.version ?? 0)) {
       return fail(path, 409, 'VERSION_CONFLICT', '다른 탭에서 수정되었습니다')
     }
     const saved = saveDraft(id, body.answers)
-    return ok(path, { submissionId: saved.submissionId, status: saved.status, savedAt: now(), version: saved.version })
+    return ok(path, { submissionId: saved.id, status: saved.status, savedAt: now(), version: saved.version })
   }),
 ]
