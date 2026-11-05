@@ -4,7 +4,7 @@
 
 ## 시작하기
 
-Node 22 이상이 필요합니다.
+Node 22.22.0 이상이 필요합니다(react-router 기준). 팀은 Node 24를 씁니다.
 
 ```bash
 npm install

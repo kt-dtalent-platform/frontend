@@ -1,3 +1,4 @@
+import { tokenStore } from './token'
 import type { ApiEnvelope, ApiErrorBody } from './types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
@@ -20,15 +21,15 @@ type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
 // 공통 응답을 풀어서 data만 돌려준다. 실패면 ApiError를 던진다.
 export async function api<T>(path: string, { body, headers, ...init }: RequestOptions = {}): Promise<T> {
-  const token = localStorage.getItem('accessToken')
+  const token = tokenStore.get()
+  // 호출하는 쪽이 넘긴 헤더가 먼저다. 없을 때만 기본값을 채운다.
+  const merged = new Headers(headers)
+  if (body !== undefined && !merged.has('Content-Type')) merged.set('Content-Type', 'application/json')
+  if (token && !merged.has('Authorization')) merged.set('Authorization', `Bearer ${token}`)
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: {
-      ...(body !== undefined && { 'Content-Type': 'application/json' }),
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...headers,
-    },
+    headers: merged,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
