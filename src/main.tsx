@@ -10,10 +10,15 @@ async function enableMocking() {
   await worker.start({ onUnhandledFrame: 'bypass' })
 }
 
-enableMocking().then(() => {
+function render() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
     </StrictMode>,
   )
-})
+}
+
+// 목업을 못 켜도 화면은 띄운다(이때 API 호출은 실제 주소로 간다).
+enableMocking()
+  .catch((error: unknown) => console.error('목업을 켜지 못했습니다.', error))
+  .finally(render)
