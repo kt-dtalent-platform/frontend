@@ -1,49 +1,102 @@
-import { ChevronRight } from 'lucide-react'
-import { useMyTasks } from '../../api/tasks'
+import { ChevronRight, Inbox } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router'
+import { useMyTasks, type MyTask } from '../../api/tasks'
 import { PageTitle } from '../../components/ui/PageTitle'
+import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Tag } from '../../components/ui/Tag'
+import { cn } from '../../lib/cn'
+import { dDayText, formatDue } from '../../lib/format'
 
-const dateFmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+const views = [
+  { key: 'TODO', label: '해야 할 일' },
+  { key: 'DONE', label: '끝난 일' },
+] as const
 
-// S01 내 할 일. 지금은 목록이 목업과 연결되는지만 확인하는 단계.
+// S01 내 할 일
 export function MyTasksPage() {
-  const { data, isPending, isError, refetch } = useMyTasks('ALL')
+  const [params, setParams] = useSearchParams()
+  const view = params.get('view') === 'done' ? 'DONE' : 'TODO'
+  const { data, isPending, isError, error, refetch } = useMyTasks(view)
 
   return (
     <div className="flex flex-col gap-8">
       <PageTitle>내 할 일</PageTitle>
 
-      {isPending && <p className="text-caption text-ink-3">불러오는 중</p>}
-      {isError && (
-        <button type="button" onClick={() => refetch()} className="self-start text-label underline">
-          목록을 불러오지 못했어요. 다시 시도
-        </button>
-      )}
+      <div role="tablist" aria-label="할 일 나누기" className="flex gap-2">
+        {views.map((v) => (
+          <button
+            key={v.key}
+            type="button"
+            role="tab"
+            aria-selected={view === v.key}
+            onClick={() => setParams(v.key === 'DONE' ? { view: 'done' } : {}, { replace: true })}
+            className={cn(
+              'h-control-compact rounded-full border px-3 text-label',
+              view === v.key
+                ? 'border-gray-900 bg-gray-900 text-gray-0'
+                : 'border-line-control bg-surface text-ink hover:bg-gray-50 active:bg-gray-150',
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
 
-      {data && (
+      {isPending && <LoadingCards />}
+      {isError && <ErrorState error={error} onRetry={() => refetch()} />}
+      {data && data.items.length === 0 && (
+        <EmptyState title={view === 'TODO' ? '지금 해야 할 일이 없어요' : '아직 끝낸 일이 없어요'} icon={<Inbox size={24} strokeWidth={1.75} />}>
+          {view === 'TODO' ? '새 요청이 열리면 여기에 보여요.' : '제출하면 여기에서 결과를 볼 수 있어요.'}
+        </EmptyState>
+      )}
+      {data && data.items.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {data.items.map((task) => (
-            <li key={task.requestId} className="rounded-lg bg-surface px-6 py-6 md:px-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 flex-col gap-2">
-                  <StatusBadge status={task.status} className="self-start" />
-                  <h2 className="m-0 text-title-2">{task.title}</h2>
-                  <p className="m-0 text-caption text-ink-3 tabular-nums">
-                    마감 {dateFmt.format(new Date(task.dueAt))}
-                    {task.dDay >= 0 && ` · D-${task.dDay}`}
-                  </p>
-                </div>
-                <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3" aria-hidden />
-              </div>
-              {task.revisionReason && (
-                <p className="m-0 mt-4 rounded-md bg-warning-bg px-4 py-3 text-label font-normal text-warning-text">
-                  {task.revisionReason}
-                </p>
-              )}
+            <li key={task.requestId}>
+              <TaskCard task={task} />
             </li>
           ))}
         </ul>
       )}
     </div>
+  )
+}
+
+function TaskCard({ task }: { task: MyTask }) {
+  const done = task.status === 'SUBMITTED' || task.status === 'CONFIRMED'
+  const late = !done && task.dDay < 0
+  const soon = !done && task.dDay >= 0 && task.dDay <= 3
+
+  return (
+    <Link
+      to={`/tasks/${task.requestId}`}
+      className="group block rounded-lg bg-surface px-6 py-6 text-ink no-underline hover:bg-surface-hover md:px-8"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={task.status} />
+            {late && <Tag tone="danger">마감 지남</Tag>}
+          </div>
+          <h2 className="m-0 text-title-2">{task.title}</h2>
+          <p className="m-0 text-caption text-ink-3 tabular-nums">
+            마감 {formatDue(task.dueAt)}
+            {!done && (
+              <>
+                {' · '}
+                <span className={cn((late || soon) && 'font-semibold text-danger-text')}>{dDayText(task.dDay)}</span>
+              </>
+            )}
+          </p>
+        </div>
+        <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
+      </div>
+      {task.revisionReason && (
+        <div className="mt-4 rounded-md bg-warning-bg px-4 py-3 text-warning-text">
+          <span className="font-semibold">보완 사유</span> · {task.revisionReason}
+        </div>
+      )}
+    </Link>
   )
 }
