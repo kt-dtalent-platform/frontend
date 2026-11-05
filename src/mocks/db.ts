@@ -168,7 +168,7 @@ function forms(): Record<number, RawSubmissionForm> {
       request: {
         id: 35,
         title: '2학기 지속심사 서류 제출',
-        description: '직전 학기 성적을 입력하고 성적증명서를 올려 주세요. 평점은 F 과목을 포함한 전체 평균입니다.',
+        description: '직전 학기 성적을 입력하고 성적증명서를 올려 주세요. 평점은 성적증명서에 적힌 값을 그대로 입력하면 돼요.',
         requestDueAt: dueIn(10),
         status: 'IN_PROGRESS',
       },
@@ -180,7 +180,7 @@ function forms(): Record<number, RawSubmissionForm> {
           fieldType: 'NUMBER',
           required: true,
           validation: { min: 0, max: 4.5 },
-          helpText: 'F 과목을 포함한 평균을 소수 둘째 자리까지 입력하세요.',
+          helpText: '성적증명서에 적힌 평균 평점을 그대로 입력하세요. 직접 다시 계산하지 않아도 돼요.',
         },
         {
           fieldKey: 'gpa_scale',
@@ -191,6 +191,15 @@ function forms(): Record<number, RawSubmissionForm> {
           helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
         },
         { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
+        // A안(11/5, 재단·백엔드 확인 필요): F 포함 평균은 장학생이 계산하지 않고, F 학점 수만 받아 시스템·담당자가 계산한다
+        {
+          fieldKey: 'f_credits',
+          label: 'F 받은 과목의 학점 합',
+          fieldType: 'NUMBER',
+          required: false,
+          validation: { min: 0, max: 30 },
+          helpText: 'F 과목이 없으면 비워 두세요. 예: 3학점 과목 하나가 F면 3',
+        },
         { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true, validation: { allowedExtensions: ['pdf'], maxSizeMb: 10 } },
         { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA', required: false, validation: { maxLength: 500 } },
       ],
