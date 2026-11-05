@@ -14,7 +14,7 @@ export function StatusBadge({ status, className }: { status: SubmissionStatus; c
   const s = styles[status]
   return (
     <span
-      className={cn('inline-flex h-6 items-center gap-1.5 rounded-sm px-2 text-overline tracking-normal', s.box, className)}
+      className={cn('inline-flex h-badge-h items-center gap-1.5 rounded-sm px-2 text-overline tracking-normal', s.box, className)}
     >
       <span aria-hidden className={cn('size-1.5 rounded-full', s.dot)} />
       {s.label}
