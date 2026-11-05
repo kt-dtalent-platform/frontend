@@ -45,7 +45,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   const maxFiles = rule?.maxFiles ?? 1
   const busy = pending.some((p) => !p.error)
   const full = files.length + pending.length >= maxFiles
-  const accept = rule?.allowedExtensions?.map((e) => `.${e}`).join(',')
+  const accept = rule?.allowedExtensions?.flatMap((e) => (e.toLowerCase() === 'jpg' ? ['.jpg', '.jpeg'] : [`.${e}`])).join(',')
   const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(' · ')
 
   // 올리는 중이면 제출을 막도록 부모에게 알린다
@@ -229,7 +229,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
             e.preventDefault()
             setDragOver(true)
           }}
-          onDragLeave={() => setDragOver(false)}
+          // 안쪽 버튼 위로 지나갈 때는 영역을 벗어난 게 아니므로 테두리를 유지한다
+          onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setDragOver(false)}
           onDrop={onDrop}
           // 카드 안에 또 상자를 두지 않는다. 끌어 놓는 동안에만 테두리를 보여 준다
           className={cn('flex flex-wrap items-center gap-3 rounded-md', dragOver && 'outline-2 outline-offset-4 outline-line-control outline-dashed')}
