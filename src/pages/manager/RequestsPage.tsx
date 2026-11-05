@@ -21,7 +21,7 @@ const tabs: { status: RequestStatus | null; label: string; empty: string }[] = [
 ]
 
 // 요청 유형 코드 → 화면 이름. 모르는 코드는 표시하지 않는다(유형 목록은 백엔드 KT-15 템플릿 API 확인 필요).
-const templateName: Record<string, string> = { GRADE_REPORT: '성적 증빙', TRANSPORT_CLAIM: '교통비' }
+const templateName: Record<string, string> = { GRADE_CERTIFICATE: '성적 증빙', TRANSPORT_CLAIM: '교통비' }
 
 // A04 요청 관리: 상태별 목록. 행을 누르면 그 요청의 제출 현황으로.
 export function RequestsPage() {

@@ -3,6 +3,7 @@ import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { managerDashboard, requestList } from './manager'
 import { fail, ok } from './respond'
+import { exportCsv, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/api/v1'
 
@@ -205,6 +206,59 @@ export const handlers = [
     const q = new URL(request.url).searchParams
     return ok(path, requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
   }),
+
+  // 담당자: 요청별 제출 현황, 내보내기, 제출 상세, 확인 완료·보완 요청
+  http.get(`${BASE}/requests/:requestId/submissions`, async ({ params, request }) => {
+    const path = `/api/v1/requests/${params.requestId}/submissions`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
+    await delay(200)
+    const q = new URL(request.url).searchParams
+    const data = submissionList(Number(params.requestId), q.get('status'), q.get('keyword') ?? '', Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    return data ? ok(path, data) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+  }),
+
+  http.get(`${BASE}/requests/:requestId/export`, ({ params, request }) => {
+    const path = `/api/v1/requests/${params.requestId}/export`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
+    const csv = exportCsv(Number(params.requestId), new URL(request.url).searchParams.get('status'))
+    if (!csv) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+    return new HttpResponse(csv, {
+      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="request_${params.requestId}.csv"` },
+    })
+  }),
+
+  http.get(`${BASE}/submissions/:submissionId`, async ({ params, request }) => {
+    const path = `/api/v1/submissions/${params.submissionId}`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 제출입니다')
+    await delay(200)
+    const d = submissionDetail(Number(params.submissionId))
+    return d ? ok(path, d) : fail(path, 404, 'SUBMISSION_NOT_FOUND', '제출을 찾을 수 없습니다')
+  }),
+
+  ...(['confirm', 'revision'] as const).map((action) =>
+    http.post(`${BASE}/submissions/:submissionId/${action}`, async ({ params, request }) => {
+      const path = `/api/v1/submissions/${params.submissionId}/${action}`
+      if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 제출입니다')
+      const body = (await request.json()) as { version: number; fieldKeys?: string[]; reason?: string; dueAt?: string | null }
+      if (action === 'revision' && (!body.fieldKeys?.length || !body.reason?.trim())) {
+        return fail(
+          path,
+          400,
+          'INVALID_REQUEST',
+          '입력값을 확인해주세요.',
+          [!body.fieldKeys?.length && 'fieldKeys', !body.reason?.trim() && 'reason'].filter(Boolean),
+        )
+      }
+      await delay(300)
+      const r = review(Number(params.submissionId), action, body)
+      if ('error' in r) {
+        if (r.error === 'NOT_FOUND') return fail(path, 404, 'SUBMISSION_NOT_FOUND', '제출을 찾을 수 없습니다')
+        if (r.error === 'VERSION_CONFLICT') return fail(path, 409, 'VERSION_CONFLICT', '제출 내용이 변경되었습니다')
+        return fail(path, 422, 'INVALID_STATE_TRANSITION', '검토 대기 상태에서만 처리할 수 있습니다')
+      }
+      return ok(path, r)
+    }),
+  ),
 ]
 
 // 발급만 하고 아직 완료 처리 안 된 파일(서버의 PENDING 행 역할)

@@ -5,7 +5,7 @@ import { dueIn } from './db'
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
 // 진행 중 6, 작성 중 2, 마감 17 → 전체 25건(페이지 넘김 확인용)
-function rows(): RequestRow[] {
+export function rows(): RequestRow[] {
   const live: RequestRow[] = [
     {
       id: 31,
@@ -22,7 +22,7 @@ function rows(): RequestRow[] {
     {
       id: 35,
       title: '2학기 지속심사 서류 제출',
-      templateCode: 'GRADE_REPORT',
+      templateCode: 'GRADE_CERTIFICATE',
       cohortName: '6기',
       status: 'IN_PROGRESS',
       opensAt: opened(3),
@@ -34,7 +34,7 @@ function rows(): RequestRow[] {
     {
       id: 36,
       title: '2학기 지속심사 서류 제출',
-      templateCode: 'GRADE_REPORT',
+      templateCode: 'GRADE_CERTIFICATE',
       cohortName: '5기',
       status: 'IN_PROGRESS',
       opensAt: opened(3),
