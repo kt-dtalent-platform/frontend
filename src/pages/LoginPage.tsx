@@ -16,6 +16,9 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
+// 개발 서버에서 목업을 쓸 때만 보이는 안내
+const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
+
 // C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
   const navigate = useNavigate()
@@ -45,7 +48,7 @@ export function LoginPage() {
             KT그룹희망나눔재단
           </p>
           <h1 className="m-0 mt-4 text-display-sm md:text-display">KT 디지털인재장학생</h1>
-          <p className="m-0 mt-3 text-ink-2">제출부터 검토까지, 장학 운영을 한곳에서.</p>
+          <p className="m-0 mt-3 text-ink-2">장학 활동에 필요한 일을 한곳에서.</p>
         </div>
 
         <form
@@ -84,6 +87,9 @@ export function LoginPage() {
             {login.isPending ? '확인하는 중' : '로그인'}
           </Button>
           <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
+          {isMock && (
+            <p className="m-0 text-caption text-ink-3">목업: admin으로 시작하는 이메일은 담당자 화면으로 갑니다.</p>
+          )}
         </form>
       </div>
     </main>
