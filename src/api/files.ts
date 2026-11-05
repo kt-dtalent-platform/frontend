@@ -75,8 +75,10 @@ export function useFileActions(requestId: number) {
 
 // 올리기 전에 화면에서 먼저 확인한다(서버도 다시 확인함).
 export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxSizeMb?: number } | null | undefined) {
-  const ext = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : ''
-  const allowed = rule?.allowedExtensions?.map((e) => e.toLowerCase())
+  // jpg와 jpeg는 같은 형식으로 본다
+  const norm = (e: string) => (e.toLowerCase() === 'jpeg' ? 'jpg' : e.toLowerCase())
+  const ext = file.name.includes('.') ? norm(file.name.split('.').pop()!) : ''
+  const allowed = rule?.allowedExtensions?.map(norm)
   if (allowed?.length && !allowed.includes(ext)) {
     return `${allowed.map((e) => e.toUpperCase()).join(', ')} 파일만 올릴 수 있어요.`
   }

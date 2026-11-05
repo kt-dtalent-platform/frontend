@@ -168,7 +168,7 @@ function forms(): Record<number, RawSubmissionForm> {
       request: {
         id: 35,
         title: '2학기 지속심사 서류 제출',
-        description: '직전 학기 성적을 입력하고 성적증명서를 올려 주세요. 평점은 F 과목을 포함한 전체 평균입니다.',
+        description: '직전 학기 성적을 입력하고 성적증명서를 올려 주세요.',
         requestDueAt: dueIn(10),
         status: 'IN_PROGRESS',
       },
@@ -180,7 +180,6 @@ function forms(): Record<number, RawSubmissionForm> {
           fieldType: 'NUMBER',
           required: true,
           validation: { min: 0, max: 4.5 },
-          helpText: 'F 과목을 포함한 평균을 소수 둘째 자리까지 입력하세요.',
         },
         {
           fieldKey: 'gpa_scale',
@@ -191,8 +190,13 @@ function forms(): Record<number, RawSubmissionForm> {
           helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
         },
         { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
-        { fieldKey: 'has_f', label: 'F 과목이 있어요', fieldType: 'CHECKBOX', required: false },
-        { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true, validation: { allowedExtensions: ['pdf'], maxSizeMb: 10 } },
+        {
+          fieldKey: 'transcript',
+          label: '성적증명서',
+          fieldType: 'FILE',
+          required: true,
+          validation: { allowedExtensions: ['pdf', 'jpg', 'png'], maxSizeMb: 10 },
+        },
         { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA', required: false, validation: { maxLength: 500 } },
       ],
       submission: null,

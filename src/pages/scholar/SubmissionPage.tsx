@@ -353,9 +353,9 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       )}
 
       {!locked && (
-        // 모바일: 화면 아래에 고정(디자인 시스템 › 레이아웃 › 고정 영역). PC: 폼 끝 오른쪽
-        <div className="sticky bottom-0 z-(--z-sticky) -mx-4 flex items-center gap-3 border-t border-line-subtle bg-surface px-4 pt-3 pb-safe-bar md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-          <p className="m-0 inline-flex flex-1 items-center gap-1.5 text-caption text-ink-3" aria-live="polite">
+        // 폼 끝에 둔다(화면에 고정하지 않음). 모바일은 두 버튼이 반씩 전체 폭, PC는 오른쪽 정렬
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <p className="m-0 inline-flex items-center gap-1.5 text-caption text-ink-3" aria-live="polite">
             {savedAt && !formState.isDirty && (
               <>
                 <Check size={16} strokeWidth={2} aria-hidden />
@@ -364,12 +364,14 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
             )}
             {formState.isDirty && '저장 안 됨'}
           </p>
-          <Button type="submit" size="cta" className="md:h-control-h" disabled={save.isPending || submit.isPending}>
-            {save.isPending ? '저장하는 중' : '임시 저장'}
-          </Button>
-          <Button variant="primary" size="cta" className="md:h-control-h" disabled={save.isPending || submit.isPending} onClick={() => void onSubmitClick()}>
-            {submit.isPending ? '제출하는 중' : submitLabel}
-          </Button>
+          <div className="grid grid-cols-2 gap-3 md:ml-auto md:flex">
+            <Button type="submit" disabled={save.isPending || submit.isPending}>
+              {save.isPending ? '저장하는 중' : '임시 저장'}
+            </Button>
+            <Button variant="primary" disabled={save.isPending || submit.isPending} onClick={() => void onSubmitClick()}>
+              {submit.isPending ? '제출하는 중' : submitLabel}
+            </Button>
+          </div>
         </div>
       )}
       <ConfirmDialog open={confirming} title={submitLabel} confirmLabel={submitLabel} onConfirm={doSubmit} onCancel={() => setConfirming(false)}>
