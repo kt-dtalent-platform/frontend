@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router'
 import { LoginPage } from '../pages/LoginPage'
+import { LogoutPage } from '../pages/LogoutPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
@@ -13,6 +14,7 @@ import { RequireAuth, RootRedirect } from './RequireAuth'
 export const router = createBrowserRouter([
   { path: '/', element: <RootRedirect /> },
   { path: '/login', element: <LoginPage /> }, // C01
+  { path: '/logout', element: <LogoutPage /> },
   {
     element: (
       <RequireAuth role="SCHOLAR">

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ComponentProps } from 'react'
 import { cn } from '../../lib/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost'
@@ -19,7 +19,7 @@ const sizes: Record<Size, string> = {
   cta: 'h-control-cta px-6 text-label',
 }
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
+type Props = ComponentProps<'button'> & { variant?: Variant; size?: Size }
 
 export function Button({ variant = 'secondary', size = 'md', className, type = 'button', ...props }: Props) {
   return (

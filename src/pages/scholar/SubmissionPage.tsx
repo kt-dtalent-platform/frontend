@@ -1,18 +1,19 @@
 import { Check, ChevronLeft } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useParams } from 'react-router'
+import { Link, useBlocker, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useSaveDraft, useSubmissionForm, type Answers, type FormField as Field, type SubmissionForm } from '../../api/submissions'
 import { fieldErrorsOf } from '../../api/types'
 import { FormField, type FormValues } from '../../components/form/FormField'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
-import { daysUntil } from '../../api/tasks'
+import { daysUntil, isPastDue } from '../../api/tasks'
 import { dDayText, formatDue, formatTime } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 
@@ -21,8 +22,6 @@ export function SubmissionPage() {
   const requestId = Number(useParams().requestId)
   const query = useSubmissionForm(requestId)
   usePageTitle(query.data?.request.title ?? '제출')
-  // 저장하면 버전이 바뀌어 폼이 새로 그려지므로, 저장 시각은 바깥에 둔다
-  const [savedAt, setSavedAt] = useState<string | null>(null)
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,17 +30,9 @@ export function SubmissionPage() {
       </Link>
       {query.isPending && <LoadingCards count={2} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {/* key: 다시 불러온 내용(버전)이 바뀌면 폼을 새로 채운다 */}
-      {query.data && (
-        <SubmissionEditor
-          key={query.data.version}
-          requestId={requestId}
-          form={query.data}
-          savedAt={savedAt}
-          onSaved={setSavedAt}
-          onReload={() => query.refetch()}
-        />
-      )}
+      {/* key: 다른 요청으로 옮겨 가면 폼과 저장 시각을 새로 시작한다.
+          저장으로 버전이 바뀌어도 폼은 그대로 둔다(저장 중에 입력한 내용을 지키기 위해). */}
+      {query.data && <SubmissionEditor key={requestId} requestId={requestId} form={query.data} onReload={() => query.refetch()} />}
     </div>
   )
 }
@@ -49,57 +40,72 @@ export function SubmissionPage() {
 type EditorProps = {
   requestId: number
   form: SubmissionForm
-  savedAt: string | null
-  onSaved: (at: string) => void
-  onReload: () => void
+  onReload: () => Promise<{ data?: SubmissionForm }>
 }
 
-function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: EditorProps) {
+function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   const save = useSaveDraft(requestId)
+  const [savedAt, setSavedAt] = useState<string | null>(null)
   const defaults = useMemo(() => toFormValues(form.fields, form.answers), [form.fields, form.answers])
   const { register, handleSubmit, watch, setError, reset, formState } = useForm<FormValues>({ defaultValues: defaults, mode: 'onBlur' })
 
   const locked = form.editableFieldKeys.length === 0
   const isRevision = form.status === 'REVISION_REQUIRED'
   const dDay = daysUntil(form.request.dueAt)
-  const late = !locked && dDay < 0
+  const late = !locked && isPastDue(form.request.dueAt)
 
-  // 저장하지 않은 내용이 있을 때 창을 닫으면 한 번 묻는다
+  const onSave = handleSubmit((values) => {
+    if (save.isPending) return
+    const answers = toAnswers(form.fields, values, form.answers)
+    save.mutate(
+      { answers, version: form.version },
+      {
+        onSuccess: (result) => {
+          // 보낸 값을 "저장된 상태"로 삼되, 저장 중에 더 입력한 내용은 그대로 둔다
+          reset(values, { keepValues: true })
+          setSavedAt(result.savedAt)
+        },
+        onError: (error) => {
+          if (!(error instanceof ApiError)) return
+          fieldErrorsOf(error.details).forEach((fe, i) => setError(fe.key, { message: fe.message }, { shouldFocus: i === 0 }))
+        },
+      },
+    )
+  })
+
+  // 409(다른 곳에서 먼저 저장)일 때만 서버 내용으로 다시 채운다
+  const reload = async () => {
+    const { data } = await onReload()
+    if (!data) return
+    save.reset()
+    reset(toFormValues(data.fields, data.answers))
+  }
+
+  // 저장하지 않은 내용이 있을 때 창을 닫거나 새로고침하면 한 번 묻는다
   useEffect(() => {
     if (!formState.isDirty) return
-    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault()
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = '' // 예전 Safari·Chrome용
+    }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [formState.isDirty])
 
-  // Cmd/Ctrl + S로도 임시 저장
+  // 화면 안에서 다른 곳으로 옮겨 갈 때도 묻는다(내 할 일, 로고, 로그아웃)
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => formState.isDirty && currentLocation.pathname !== nextLocation.pathname)
+
+  // Cmd/Ctrl + S로도 임시 저장. 한글 자판에서도 되도록 글자 대신 키 위치(code)로 확인한다.
   useEffect(() => {
     if (locked) return
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      if ((e.metaKey || e.ctrlKey) && e.code === 'KeyS') {
         e.preventDefault()
         void onSave()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
-
-  const onSave = handleSubmit((values) => {
-    const answers = toAnswers(form.fields, values, form.answers)
-    save.mutate(
-      { answers, version: form.version },
-      {
-        onSuccess: (result) => {
-          reset(values) // 지금 값을 "저장된 상태"로
-          onSaved(result.savedAt)
-        },
-        onError: (error) => {
-          if (!(error instanceof ApiError)) return
-          for (const fe of fieldErrorsOf(error.details)) setError(fe.key, { message: fe.message })
-        },
-      },
-    )
   })
 
   const saveError = save.error instanceof ApiError ? save.error : save.error ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' }) : null
@@ -114,7 +120,7 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
         <PageTitle>{form.request.title}</PageTitle>
         <p className="m-0 pl-5 text-caption text-ink-3 tabular-nums">
           마감 {formatDue(form.request.dueAt)}
-          {!locked && ` · ${dDayText(dDay)}`}
+          {!locked && ` · ${dDayText(dDay, late)}`}
         </p>
       </header>
 
@@ -169,7 +175,7 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
           title={saveErrorTitle(saveError.code)}
           action={
             saveError.code === 'VERSION_CONFLICT' ? (
-              <Button size="compact" onClick={onReload}>
+              <Button size="compact" onClick={() => void reload()}>
                 새로 불러오기
               </Button>
             ) : undefined
@@ -181,7 +187,7 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
 
       {!locked && (
         // 모바일: 화면 아래에 고정(디자인 시스템 › 레이아웃 › 고정 영역). PC: 폼 끝 오른쪽
-        <div className="sticky bottom-0 z-(--z-sticky) -mx-4 flex items-center gap-3 border-t border-line-subtle bg-surface px-4 pt-3 pb-[max(var(--space-3),env(safe-area-inset-bottom))] md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+        <div className="sticky bottom-0 z-(--z-sticky) -mx-4 flex items-center gap-3 border-t border-line-subtle bg-surface px-4 pt-3 pb-safe-bar md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
           <p className="m-0 inline-flex flex-1 items-center gap-1.5 text-caption text-ink-3" aria-live="polite">
             {savedAt && !formState.isDirty && (
               <>
@@ -197,6 +203,15 @@ function SubmissionEditor({ requestId, form, savedAt, onSaved, onReload }: Edito
           </Button>
         </div>
       )}
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        title="저장하지 않고 나가기"
+        confirmLabel="저장하지 않고 나가기"
+        onConfirm={() => blocker.proceed?.()}
+        onCancel={() => blocker.reset?.()}
+      >
+        저장하지 않은 내용은 사라져요. 남기려면 취소한 뒤 임시 저장을 누르세요.
+      </ConfirmDialog>
     </form>
   )
 }

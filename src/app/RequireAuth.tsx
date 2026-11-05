@@ -29,7 +29,14 @@ export function RequireAuth({ role, children }: { role: Role; children: ReactNod
 // 주소 / 로 오면 로그인 여부에 따라 보낸다.
 export function RootRedirect() {
   const me = useMe()
-  if (tokenStore.access() === null || me.isError) return <Navigate to="/login" replace />
+  if (tokenStore.access() === null || (me.error instanceof ApiError && me.error.status === 401)) return <Navigate to="/login" replace />
   if (me.isPending) return <FullPageLoading />
+  if (me.isError) {
+    return (
+      <div className="mx-auto max-w-page-form px-4 py-12">
+        <ErrorState error={me.error} onRetry={() => me.refetch()} />
+      </div>
+    )
+  }
   return <Navigate to={roleHome(me.data.role)} replace />
 }
