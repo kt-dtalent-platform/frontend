@@ -231,9 +231,10 @@ export const handlers = [
     return ok(path, createRequest(body))
   }),
 
-  http.get(`${BASE}/requests/:requestId`, ({ params, request }) => {
+  http.get(`${BASE}/requests/:requestId`, async ({ params, request }) => {
     const path = `/api/v1/requests/${params.requestId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    await delay(250)
     const d = requestDetail(Number(params.requestId))
     return d ? ok(path, d) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
   }),

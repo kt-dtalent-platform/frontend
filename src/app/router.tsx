@@ -39,8 +39,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ManagerHomePage /> },
       { path: 'requests', element: <RequestsPage /> }, // A04
-      { path: 'requests/new', element: <RequestCreatePage /> }, // A05
-      { path: 'requests/:requestId/edit', element: <RequestEditPage /> }, // A05 작성 중 요청
+      { path: 'requests/new', element: <RequestCreatePage /> }, // A03·A04
+      { path: 'requests/:requestId/edit', element: <RequestEditPage /> }, // A03·A04 작성 중 요청
       { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
       { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
       { path: 'scholars', element: <PlaceholderPage title="장학생" when="11/9 주" /> },

@@ -68,8 +68,19 @@ function defaults(): Values {
 }
 
 // 저장된 작성 중 요청을 입력칸 값으로
+// 서버 마감 시각 → 화면 시각(YYYY-MM-DD, HH:mm:ss). 시간대가 붙어 오면 이 기기 시각으로 바꾼다(형식 확인 필요)
+function splitClose(closesAt: string | null) {
+  if (!closesAt) return { date: '', time: '' }
+  if (/(?:[zZ]|[+-]\d\d:?\d\d)$/.test(closesAt)) {
+    const t = new Date(closesAt)
+    if (!Number.isNaN(t.getTime())) return { date: ymd(t), time: `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}` }
+  }
+  const [date = '', time = ''] = closesAt.split('T')
+  return { date, time: time.slice(0, 8) }
+}
+
 function fromDetail(d: RequestDetail): Values {
-  const [date = '', time = ''] = (d.closesAt ?? '').split('T')
+  const { date, time } = splitClose(d.closesAt)
   return {
     templateId: d.templateId ? String(d.templateId) : '',
     title: d.title,
@@ -83,7 +94,7 @@ function fromDetail(d: RequestDetail): Values {
   }
 }
 
-// A05 요청 만들기: 유형 고르기 → 요청 정보 → 작성 중으로 저장 또는 공개
+// A03·A04 요청 만들기: 유형 고르기 → 요청 정보 → 작성 중으로 저장 또는 공개
 export function RequestCreatePage() {
   usePageTitle('요청 만들기')
   return <RequestFormShell title="요청 만들기">{(props) => <CreateForm {...props} />}</RequestFormShell>
@@ -174,6 +185,11 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const targetCount = cohort ? cohort.scholarCount : cohorts.reduce((n, c) => n + c.scholarCount, 0)
   const busy = formState.isSubmitting || create.isPending || update.isPending || publish.isPending
 
+  // 날짜·시각을 그대로 두면 서버 값의 초(예: 23:59:59)를 지킨다
+  const original = existing ? splitClose(existing.closesAt) : null
+  const seconds = (v: Values) =>
+    original && original.date === v.closeDate && original.time.slice(0, 5) === v.closeTime ? original.time.slice(6, 8) || '00' : '00'
+
   const toBody = (v: Values) => ({
     programId,
     cohortId: v.cohortId ? Number(v.cohortId) : null,
@@ -182,7 +198,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
     description: v.description.trim() || null,
     academicYear: Number(v.academicYear),
     semester: v.semester,
-    closesAt: `${v.closeDate}T${v.closeTime}:00`,
+    closesAt: `${v.closeDate}T${v.closeTime}:${seconds(v)}`,
     completionMessage: v.completionMessage.trim() || null,
   })
 
