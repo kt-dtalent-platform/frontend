@@ -54,10 +54,10 @@ export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel
           {children}
         </p>
         <div className="mt-3 flex justify-end gap-2">
-          <Button ref={cancelRef} onClick={onCancel}>
+          <Button ref={cancelRef} size="default" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="primary" onClick={onConfirm}>
+          <Button variant="primary" size="default" onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>
