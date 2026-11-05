@@ -36,6 +36,8 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
     <dialog
       ref={ref}
       aria-labelledby={titleId}
+      // 브라우저가 다른 이유로 닫아도(예: 폼 method=dialog) 열림 상태를 맞춘다
+      onClose={() => open && onCancel()}
       onCancel={(e) => {
         e.preventDefault()
         if (!busy) onCancel()

@@ -30,33 +30,49 @@ export type SubmissionPage = {
 // 화면의 상태 칩. 검토 대기는 SUBMITTED·RESUBMITTED를 함께 센다
 export type StatusFilter = 'NOT_SUBMITTED' | 'WAITING' | 'REVISION_REQUIRED' | 'CONFIRMED'
 
-export function useRequestSubmissions(requestId: number, q: { status: StatusFilter | null; keyword: string; page: number }) {
-  const params = new URLSearchParams({ page: String(q.page), page_size: '20' })
+export function useRequestSubmissions(requestId: number, q: { status: StatusFilter | null; keyword: string; page: number; pageSize?: number }) {
+  const pageSize = q.pageSize ?? 20
+  const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
   return useQuery({
-    queryKey: ['manager', 'submissions', requestId, q.status, q.keyword, q.page],
+    queryKey: ['manager', 'submissions', requestId, q.status, q.keyword, q.page, pageSize],
     queryFn: () => api<SubmissionPage>(`/requests/${requestId}/submissions?${params}`),
     placeholderData: keepPreviousData,
   })
 }
 
-// GET /requests/{requestId}/export?status=&format=csv → 파일 내려받기
+// GET /requests/{requestId}/export?status=&format=csv → 파일 내려받기(형식 csv·xlsx 중 무엇인지 확인 필요)
 export async function downloadExport(requestId: number, status: StatusFilter | null) {
-  const params = new URLSearchParams({ format: 'xlsx' })
+  const params = new URLSearchParams({ format: 'csv' })
   if (status) params.set('status', status)
   const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
   const res = await fetch(`${base}/requests/${requestId}/export?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
   })
   if (!res.ok) throw new ApiError(res.status, { code: 'EXPORT_FAILED', message: '파일을 만들지 못했습니다.' })
-  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `request_${requestId}.xlsx`
+  const name = fileNameOf(res.headers.get('Content-Disposition')) ?? `request_${requestId}.csv`
   const url = URL.createObjectURL(await res.blob())
   const a = Object.assign(document.createElement('a'), { href: url, download: name })
   document.body.append(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // Safari는 내려받기 시작이 늦을 수 있어 넉넉히 기다린 뒤 푼다
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+// Content-Disposition에서 파일 이름. 한글 이름은 filename*=UTF-8''... 로 온다
+function fileNameOf(header: string | null) {
+  if (!header) return null
+  const star = /filename\*=(?:UTF-8|utf-8)''([^;]+)/.exec(header)?.[1]
+  if (star) {
+    try {
+      return decodeURIComponent(star.trim())
+    } catch {
+      /* 아래 filename으로 */
+    }
+  }
+  return /filename="?([^";]+)"?/.exec(header)?.[1] ?? null
 }
 
 // GET /submissions/{submissionId}
@@ -93,6 +109,13 @@ function useReviewAction<T>(submissionId: number, path: string) {
       void queryClient.invalidateQueries({ queryKey: ['manager', 'submissions'] })
       void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
       void queryClient.invalidateQueries({ queryKey: detailKey(submissionId) })
+    },
+    // 그사이 바뀌었으면(409 버전 충돌, 422 상태 전이 불가) 최신 내용을 다시 불러온다
+    onError: (e) => {
+      if (e instanceof ApiError && (e.status === 409 || e.status === 422)) {
+        void queryClient.invalidateQueries({ queryKey: detailKey(submissionId) })
+        void queryClient.invalidateQueries({ queryKey: ['manager', 'submissions'] })
+      }
     },
   })
 }

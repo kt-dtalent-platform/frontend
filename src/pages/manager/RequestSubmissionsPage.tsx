@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { downloadExport, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
@@ -33,9 +33,23 @@ export function RequestSubmissionsPage() {
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const keyword = params.get('q') ?? ''
   const [typed, setTyped] = useState(keyword)
+  // 뒤로 가기 등으로 주소의 검색어가 바뀌면 입력칸도 맞춘다
+  const [seen, setSeen] = useState(keyword)
+  if (seen !== keyword) {
+    setSeen(keyword)
+    setTyped(keyword)
+  }
   const query = useRequestSubmissions(requestId, { status, keyword, page })
   const data = query.data
   usePageTitle(data ? `${data.request.title} 제출 현황` : '제출 현황')
+
+  // 마지막 검토를 마치고 넘어왔으면 결과를 한 번 보여 준다
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [notice] = useState(() => (location.state as { notice?: { title: string; body: string } } | null)?.notice)
+  useEffect(() => {
+    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [location, navigate])
 
   const go = (next: { status?: StatusFilter | null; page?: number; q?: string }) => {
     const p = new URLSearchParams()
@@ -83,6 +97,15 @@ export function RequestSubmissionsPage() {
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
   const loadingNext = query.isPlaceholderData
 
+  // 없는 쪽(예: 마지막 쪽에서 모두 처리됨)이면 마지막 쪽으로
+  useEffect(() => {
+    if (!data || query.isPlaceholderData || page <= lastPage) return
+    const p = new URLSearchParams(params)
+    if (lastPage > 1) p.set('page', String(lastPage))
+    else p.delete('page')
+    setParams(p, { replace: true })
+  }, [data, query.isPlaceholderData, page, lastPage, params, setParams])
+
   return (
     <div className="flex flex-col gap-6">
       <Link to="/manager/requests" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
@@ -90,13 +113,19 @@ export function RequestSubmissionsPage() {
         요청 관리
       </Link>
 
+      {notice && (
+        <Banner tone="success" title={notice.title}>
+          {notice.body}
+        </Banner>
+      )}
+
       {query.isPending && <LoadingCards count={3} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {data && (
         <>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <PageTitle description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} />}>{data.request.title}</PageTitle>
-            <Button size="default" disabled={exporting || data.total === 0} onClick={() => void onExport()}>
+            <Button size="default" disabled={exporting || (status ? data.total : data.summary.target) === 0} onClick={() => void onExport()}>
               <Download size={16} strokeWidth={2} aria-hidden />
               {exporting ? '만드는 중' : exportLabel}
             </Button>

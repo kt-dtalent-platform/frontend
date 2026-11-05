@@ -223,7 +223,10 @@ export const handlers = [
     const csv = exportCsv(Number(params.requestId), new URL(request.url).searchParams.get('status'))
     if (!csv) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
     return new HttpResponse(csv, {
-      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="request_${params.requestId}.csv"` },
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="request_${params.requestId}.csv"; filename*=UTF-8''${encodeURIComponent(`제출현황_${params.requestId}.csv`)}`,
+      },
     })
   }),
 

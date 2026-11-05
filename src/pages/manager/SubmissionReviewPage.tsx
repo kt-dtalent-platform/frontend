@@ -44,8 +44,8 @@ function Review({ d }: { d: SubmissionDetail }) {
     if ((location.state as { notice?: Notice } | null)?.notice) navigate(location.pathname, { replace: true, state: null })
   }, [location, navigate])
 
-  // 검토 순서: 같은 요청의 검토 대기 목록(이전·다음)
-  const queue = useRequestSubmissions(d.requestId, { status: 'WAITING', keyword: '', page: 1 })
+  // 검토 순서: 같은 요청의 검토 대기 전체(이전·다음). 한 요청 대상은 수백 명 안이라 한 번에 받는다
+  const queue = useRequestSubmissions(d.requestId, { status: 'WAITING', keyword: '', page: 1, pageSize: 500 })
   const ids = (queue.data?.items ?? []).map((r) => r.submissionId!).filter(Boolean)
   const pos = ids.indexOf(d.id)
   const prev = pos > 0 ? ids[pos - 1] : null
@@ -55,6 +55,7 @@ function Review({ d }: { d: SubmissionDetail }) {
   const revision = useRequestRevision(d.id)
   const [confirming, setConfirming] = useState(false)
   const [revising, setRevising] = useState(false)
+  const [revisionRound, setRevisionRound] = useState(0)
   const waiting = d.status === 'SUBMITTED' || d.status === 'RESUBMITTED'
   const mismatched = (d.analysis?.comparisons ?? []).filter((c) => c.result !== 'MATCH')
 
@@ -62,7 +63,11 @@ function Review({ d }: { d: SubmissionDetail }) {
   const afterAction = (notice: Notice) => {
     const nextId = next ?? (prev && ids.length > 1 ? ids.find((id) => id !== d.id) : null)
     if (nextId) navigate(`/manager/submissions/${nextId}`, { replace: true, state: { notice } })
-    else navigate(`/manager/requests/${d.requestId}?status=WAITING`, { replace: true })
+    else
+      navigate(`/manager/requests/${d.requestId}?status=WAITING`, {
+        replace: true,
+        state: { notice: { ...notice, body: `${notice.body} 남은 검토 대기가 없어요.` } },
+      })
   }
 
   const onConfirm = () =>
@@ -172,14 +177,14 @@ function Review({ d }: { d: SubmissionDetail }) {
       {actionError && (
         <Banner tone="danger" title={actionError.code === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
           {actionError.code === 'VERSION_CONFLICT' || actionError.code === 'INVALID_STATE_TRANSITION'
-            ? '화면을 새로 불러와 내용을 다시 확인하세요.'
+            ? '최신 내용을 다시 불러왔어요. 내용을 확인한 뒤 다시 처리하세요.'
             : '잠시 후 다시 시도하세요.'}
         </Banner>
       )}
 
       {waiting && (
         <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
-          <Button disabled={confirm.isPending || revision.isPending} onClick={() => setRevising(true)}>
+          <Button disabled={confirm.isPending || revision.isPending} onClick={() => (setRevisionRound((n) => n + 1), setRevising(true))}>
             보완 요청
           </Button>
           <Button variant="primary" disabled={confirm.isPending || revision.isPending} onClick={() => setConfirming(true)}>
@@ -188,13 +193,22 @@ function Review({ d }: { d: SubmissionDetail }) {
         </div>
       )}
 
-      <ConfirmDialog open={confirming} title="확인 완료" confirmLabel="확인 완료" onConfirm={onConfirm} onCancel={() => setConfirming(false)}>
+      <ConfirmDialog
+        open={confirming}
+        busy={confirm.isPending}
+        title="확인 완료"
+        confirmLabel="확인 완료"
+        onConfirm={onConfirm}
+        onCancel={() => setConfirming(false)}
+      >
         {mismatched.length > 0
           ? `문서 값과 다른 항목이 있어요(${mismatched.map((c) => c.label).join(', ')}). 확인 완료하면 장학생이 입력한 값으로 기록돼요.`
           : '확인 완료하면 장학생에게 결과가 보이고 더 고칠 수 없어요.'}
       </ConfirmDialog>
 
       <RevisionDialog
+        // 다시 열 때마다 고른 항목·사유·오류 표시를 처음부터
+        key={revisionRound}
         open={revising}
         d={d}
         preselect={mismatched.map((c) => c.field)}
@@ -257,9 +271,11 @@ function CompareCard({ d }: { d: SubmissionDetail }) {
                       {c.label}
                     </th>
                     <td className="px-3 text-right tabular-nums">{c.entered}</td>
-                    <td className={cn('pr-6 text-right tabular-nums md:pr-8', off && 'bg-danger-bg font-bold text-danger-text')}>
-                      {c.extracted ?? '–'}
-                      {off && <span className="sr-only"> ({result[c.result]})</span>}
+                    <td className={cn('pr-6 text-right tabular-nums md:pr-8', off && 'font-bold text-danger-text')}>
+                      <span className="inline-flex items-center justify-end gap-2">
+                        {c.extracted ?? '–'}
+                        {off && <Tag tone="danger">{result[c.result]}</Tag>}
+                      </span>
                     </td>
                   </tr>
                 )
