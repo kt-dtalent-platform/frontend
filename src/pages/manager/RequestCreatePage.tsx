@@ -1,0 +1,411 @@
+import { ChevronDown, ChevronLeft } from 'lucide-react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { Link, useNavigate } from 'react-router'
+import { useMe } from '../../api/auth'
+import { ApiError } from '../../api/client'
+import { useCohorts, useCreateRequest, usePublishRequest, useRequestTemplates, type RequestStatus, type Semester } from '../../api/manager'
+import { fieldErrorsOf } from '../../api/types'
+import { fieldBase, fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
+import { Banner } from '../../components/ui/Banner'
+import { Button } from '../../components/ui/Button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { PageTitle } from '../../components/ui/PageTitle'
+import { ErrorState, LoadingCards } from '../../components/ui/StateView'
+import { cn } from '../../lib/cn'
+import { usePageTitle } from '../../lib/usePageTitle'
+
+type Values = {
+  templateId: string
+  title: string
+  cohortId: string // '' = 전체 기수
+  academicYear: string
+  semester: Semester
+  closeDate: string // YYYY-MM-DD
+  closeTime: string // HH:mm
+  description: string
+  completionMessage: string
+}
+
+const semesters: { value: Semester; label: string }[] = [
+  { value: '1', label: '1학기' },
+  { value: '2', label: '2학기' },
+  { value: 'SUMMER', label: '여름학기' },
+  { value: 'WINTER', label: '겨울학기' },
+]
+
+const pad = (n: number) => String(n).padStart(2, '0')
+const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+function defaults(): Values {
+  const now = new Date()
+  const due = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+  const month = now.getMonth() + 1
+  return {
+    templateId: '',
+    title: '',
+    cohortId: '',
+    academicYear: String(now.getFullYear()),
+    semester: month >= 3 && month <= 8 ? '1' : '2',
+    closeDate: ymd(due),
+    closeTime: '23:59',
+    description: '',
+    completionMessage: '',
+  }
+}
+
+// A05 요청 만들기: 유형 고르기 → 요청 정보 → 작성 중으로 저장 또는 공개
+export function RequestCreatePage() {
+  usePageTitle('요청 만들기')
+  const me = useMe()
+  const programId = me.data?.accessiblePrograms?.[0]?.id
+  const templates = useRequestTemplates()
+  const cohorts = useCohorts(programId)
+
+  const loading = me.isPending || templates.isPending || (programId !== undefined && cohorts.isPending)
+  const error = templates.error ?? cohorts.error
+
+  return (
+    <div className="mx-auto flex max-w-page-form flex-col gap-6">
+      <Link to="/manager/requests" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
+        <ChevronLeft size={16} strokeWidth={2} aria-hidden />
+        요청 관리
+      </Link>
+      <PageTitle>요청 만들기</PageTitle>
+      {loading && <LoadingCards count={2} />}
+      {error && <ErrorState error={error} onRetry={() => (templates.error ? templates.refetch() : cohorts.refetch())} />}
+      {!loading && !error && programId === undefined && (
+        <Banner tone="danger" title="담당 프로그램이 없어요">
+          재단 관리자에게 담당 프로그램 지정을 요청하세요.
+        </Banner>
+      )}
+      {!loading && !error && programId !== undefined && templates.data && cohorts.data && (
+        <CreateForm programId={programId} templates={templates.data} cohorts={cohorts.data} />
+      )}
+    </div>
+  )
+}
+
+type FormProps = {
+  programId: number
+  templates: NonNullable<ReturnType<typeof useRequestTemplates>['data']>
+  cohorts: NonNullable<ReturnType<typeof useCohorts>['data']>
+}
+
+function CreateForm({ programId, templates, cohorts }: FormProps) {
+  const navigate = useNavigate()
+  const create = useCreateRequest()
+  const publish = usePublishRequest()
+  const [confirming, setConfirming] = useState(false)
+  // 저장이 끝나 이동할 곳. 이동 확인 창이 뜨지 않도록 렌더 뒤에 이동한다
+  const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: { title: string; body: string } } | null>(null)
+  const [publishFailedId, setPublishFailedId] = useState<number | null>(null)
+  const { register, handleSubmit, control, setError, formState } = useForm<Values>({ defaultValues: defaults(), mode: 'onBlur' })
+  const errors = formState.errors
+
+  useEffect(() => {
+    if (leaving) navigate(`/manager/requests?status=${leaving.status}`, { state: { notice: leaving.notice } })
+  }, [leaving, navigate])
+
+  const [templateId, cohortId] = useWatch({ control, name: ['templateId', 'cohortId'] })
+  const template = templates.find((t) => String(t.id) === templateId)
+  const cohort = cohorts.find((c) => String(c.id) === cohortId)
+  const targetCount = cohort ? cohort.scholarCount : cohorts.reduce((n, c) => n + c.scholarCount, 0)
+  const busy = create.isPending || publish.isPending
+
+  const toBody = (v: Values) => ({
+    programId,
+    cohortId: v.cohortId ? Number(v.cohortId) : null,
+    templateId: Number(v.templateId),
+    title: v.title.trim(),
+    description: v.description.trim() || null,
+    academicYear: Number(v.academicYear),
+    semester: v.semester,
+    closesAt: `${v.closeDate}T${v.closeTime}:00`,
+    completionMessage: v.completionMessage.trim() || null,
+  })
+
+  const showServerErrors = (error: unknown) => {
+    if (!(error instanceof ApiError)) return
+    const map: Record<string, keyof Values> = { closesAt: 'closeDate', templateId: 'templateId', title: 'title' }
+    fieldErrorsOf(error.details).forEach((fe, i) => {
+      const key = map[fe.key] ?? (fe.key as keyof Values)
+      setError(key, { message: fe.message }, { shouldFocus: i === 0 })
+    })
+  }
+
+  const onSaveDraft = handleSubmit((v) => {
+    create.mutate(toBody(v), {
+      onSuccess: () =>
+        setLeaving({
+          status: 'DRAFT',
+          notice: { title: '작성 중으로 저장했어요', body: `"${v.title.trim()}" 요청은 공개하기 전까지 장학생에게 보이지 않아요.` },
+        }),
+      onError: showServerErrors,
+    })
+  })
+
+  const onPublishClick = handleSubmit(() => setConfirming(true))
+
+  const doPublish = handleSubmit(async (v) => {
+    setConfirming(false)
+    try {
+      // 이미 만들어 두었는데 공개만 실패한 경우에는 다시 만들지 않는다
+      const id = publishFailedId ?? (await create.mutateAsync(toBody(v))).id
+      try {
+        const result = await publish.mutateAsync(id)
+        setLeaving({
+          status: 'IN_PROGRESS',
+          notice: { title: '요청을 공개했어요', body: `"${v.title.trim()}" 요청이 장학생 ${result.targetCount}명의 내 할 일에 보여요.` },
+        })
+      } catch {
+        setPublishFailedId(id)
+      }
+    } catch (error) {
+      showServerErrors(error)
+    }
+  })
+
+  const actionError = publishFailedId
+    ? null
+    : create.error instanceof ApiError
+      ? create.error
+      : create.error
+        ? new ApiError(0, { code: 'NETWORK_ERROR', message: '' })
+        : null
+
+  return (
+    <form onSubmit={(e) => e.preventDefault()} noValidate className="flex flex-col gap-6">
+      <UnsavedChangesGuard when={formState.isDirty && !leaving} />
+
+      <section className="flex flex-col gap-4 rounded-lg bg-surface px-6 py-8 md:px-8">
+        <h2 className="m-0 text-title-2">무엇을 받을지</h2>
+        <fieldset className="m-0 flex flex-col border-0 p-0" aria-describedby={errors.templateId ? 'templateId-error' : undefined}>
+          <legend className="mb-2 p-0 text-label">
+            요청 유형
+            <Required />
+          </legend>
+          {templates.map((t) => (
+            <label key={t.id} className="flex cursor-pointer items-start gap-3 border-b border-line-subtle py-3 last:border-b-0">
+              <input
+                type="radio"
+                value={String(t.id)}
+                className="mt-0.5 size-5 shrink-0 accent-action"
+                {...register('templateId', { required: '요청 유형을 고르세요.' })}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-body-strong">{t.name}</span>
+                <span className="text-caption text-ink-3">{t.fields.map((f) => f.label).join(' · ') || '입력 항목 없음'}</span>
+              </span>
+            </label>
+          ))}
+          {errors.templateId && <ErrorText id="templateId-error">{errors.templateId.message}</ErrorText>}
+        </fieldset>
+      </section>
+
+      <section className="flex flex-col gap-6 rounded-lg bg-surface px-6 py-8 md:px-8">
+        <h2 className="m-0 text-title-2">요청 정보</h2>
+
+        <Field label="제목" required error={errors.title?.message}>
+          {(p) => (
+            <input
+              {...p}
+              placeholder={template ? `예: 2학기 ${template.name}` : undefined}
+              className={cn(fieldControl, fieldBorder(!!errors.title))}
+              {...register('title', {
+                validate: (s) => (s.trim() ? true : '제목을 입력하세요.'),
+                maxLength: { value: 200, message: '200자 안으로 입력하세요.' },
+              })}
+            />
+          )}
+        </Field>
+
+        <Field label="대상" required hint={`장학생 ${targetCount}명`}>
+          {(p) => (
+            <SelectBox>
+              <select {...p} className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(false))} {...register('cohortId')}>
+                <option value="">전체 기수</option>
+                {cohorts.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </SelectBox>
+          )}
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="대상 연도" required>
+            {(p) => (
+              <SelectBox>
+                <select {...p} className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(false))} {...register('academicYear')}>
+                  {yearOptions().map((y) => (
+                    <option key={y} value={String(y)}>
+                      {y}년
+                    </option>
+                  ))}
+                </select>
+              </SelectBox>
+            )}
+          </Field>
+          <Field label="대상 학기" required>
+            {(p) => (
+              <SelectBox>
+                <select {...p} className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(false))} {...register('semester')}>
+                  {semesters.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </SelectBox>
+            )}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="마감일" required error={errors.closeDate?.message}>
+            {(p) => (
+              <input
+                {...p}
+                type="date"
+                className={cn(fieldControl, fieldBorder(!!errors.closeDate))}
+                {...register('closeDate', {
+                  required: '마감일을 고르세요.',
+                  validate: (d, all) => (new Date(`${d}T${all.closeTime}:00`).getTime() > Date.now() ? true : '마감은 지금보다 뒤여야 해요.'),
+                })}
+              />
+            )}
+          </Field>
+          <Field label="마감 시각" required>
+            {(p) => <input {...p} type="time" className={cn(fieldControl, fieldBorder(false))} {...register('closeTime', { required: true })} />}
+          </Field>
+        </div>
+
+        <Field label="제출 안내" hint="장학생 제출 화면 맨 위에 보여요.">
+          {(p) => (
+            <textarea
+              {...p}
+              rows={4}
+              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(false))}
+              {...register('description')}
+            />
+          )}
+        </Field>
+
+        <Field label="제출 완료 안내" hint="제출한 직후 장학생에게 보여요.">
+          {(p) => (
+            <textarea
+              {...p}
+              rows={2}
+              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(false))}
+              {...register('completionMessage')}
+            />
+          )}
+        </Field>
+      </section>
+
+      {publishFailedId && (
+        <Banner tone="danger" title="작성 중으로는 저장됐지만 공개하지 못했어요">
+          다시 공개하기를 누르거나, 요청 관리의 작성 중 목록에서 확인하세요.
+        </Banner>
+      )}
+      {actionError && (
+        <Banner
+          tone="danger"
+          title={actionError.code === 'INVALID_REQUEST' || actionError.code === 'VALIDATION_ERROR' ? '확인이 필요한 항목이 있어요' : '저장하지 못했어요'}
+        >
+          {actionError.code === 'INVALID_REQUEST' || actionError.code === 'VALIDATION_ERROR'
+            ? '빨간색으로 표시된 항목을 고친 뒤 다시 시도하세요.'
+            : '입력한 내용은 그대로 있어요. 잠시 후 다시 시도하세요.'}
+        </Banner>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
+        <Button disabled={busy || publishFailedId !== null} onClick={() => void onSaveDraft()}>
+          {create.isPending && !confirming ? '저장하는 중' : '작성 중으로 저장'}
+        </Button>
+        <Button variant="primary" disabled={busy} onClick={() => void onPublishClick()}>
+          {publish.isPending ? '공개하는 중' : '공개하기'}
+        </Button>
+      </div>
+
+      <ConfirmDialog open={confirming} title="공개하기" confirmLabel="공개하기" onConfirm={() => void doPublish()} onCancel={() => setConfirming(false)}>
+        {cohort ? cohort.name : '전체 기수'} 장학생 {targetCount}명의 내 할 일에 이 요청이 바로 보여요. 공개한 뒤에는 입력 항목을 바꿀 수 없어요.
+      </ConfirmDialog>
+    </form>
+  )
+}
+
+// 올해 기준 앞뒤 1년
+function yearOptions() {
+  const y = new Date().getFullYear()
+  return [y - 1, y, y + 1]
+}
+
+function Required() {
+  return (
+    <>
+      <span className="ml-0.5 text-kt-red-text" aria-hidden>
+        *
+      </span>
+      <span className="sr-only">(필수)</span>
+    </>
+  )
+}
+
+function ErrorText({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="m-0 mt-2 text-caption text-danger-text">
+      {children}
+    </p>
+  )
+}
+
+function SelectBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown size={20} strokeWidth={1.75} className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-3" aria-hidden />
+    </div>
+  )
+}
+
+// 라벨 + 입력칸 + 도움말/오류. 입력칸에 id·aria 속성을 넘겨준다.
+function Field({
+  label,
+  required,
+  hint,
+  error,
+  children,
+}: {
+  label: string
+  required?: boolean
+  hint?: string
+  error?: string
+  children: (props: { id: string; 'aria-invalid': boolean; 'aria-required'?: boolean; 'aria-describedby'?: string }) => ReactNode
+}) {
+  const id = useId()
+  const describedBy = [hint && !error && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={id} className="text-label text-ink">
+        {label}
+        {required && <Required />}
+      </label>
+      {children({ id, 'aria-invalid': !!error, 'aria-required': required || undefined, 'aria-describedby': describedBy })}
+      {hint && !error && (
+        <p id={`${id}-hint`} className="m-0 text-caption text-ink-3">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={`${id}-error`} className="m-0 text-caption text-danger-text">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}

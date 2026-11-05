@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useLocation, useSearchParams } from 'react-router'
 import { PAGE_SIZE, useRequests, type RequestRow, type RequestStatus } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
+import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { buttonClass } from '../../components/ui/buttonClass'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -21,7 +22,7 @@ const tabs: { status: RequestStatus | null; label: string; empty: string }[] = [
 ]
 
 // 요청 유형 코드 → 화면 이름. 모르는 코드는 표시하지 않는다(유형 목록은 백엔드 KT-15 템플릿 API 확인 필요).
-const templateName: Record<string, string> = { GRADE_REPORT: '성적 증빙', TRANSPORT_CLAIM: '교통비' }
+const templateName: Record<string, string> = { GRADE_CERTIFICATE: '성적 증빙', TRANSPORT_CLAIM: '교통비' }
 
 // A04 요청 관리: 상태별 목록. 행을 누르면 그 요청의 제출 현황으로.
 export function RequestsPage() {
@@ -30,6 +31,8 @@ export function RequestsPage() {
   const status = (tabs.find((t) => t.status === params.get('status'))?.status ?? null) as RequestStatus | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const query = useRequests({ status, page })
+  // 요청 만들기에서 넘어온 결과 안내(작성 중으로 저장, 공개)
+  const notice = (useLocation().state as { notice?: { title: string; body: string } } | null)?.notice
   const tab = tabs.find((t) => t.status === status)!
 
   const go = (next: { status?: RequestStatus | null; page?: number }) => {
@@ -66,6 +69,12 @@ export function RequestsPage() {
           요청 만들기
         </Link>
       </div>
+
+      {notice && (
+        <Banner tone="success" title={notice.title}>
+          {notice.body}
+        </Banner>
+      )}
 
       <FilterChips label="요청 상태" items={tabs.map((t) => ({ value: t.status, label: t.label }))} value={status} onChange={(s) => go({ status: s })} />
 
