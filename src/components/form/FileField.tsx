@@ -30,7 +30,7 @@ type Props = {
   handlers?: FileHandlers
 }
 
-// 첨부 파일 항목: 올린 파일 목록 + 올리는 중(진행률) + 실패(다시 시도) + 파일 고르기/끌어 놓기
+// 첨부 파일 항목: 올린 파일 목록 + 올리는 중(진행률) + 실패(다시 시도) + 파일 첨부/끌어 놓기
 export function FileField({ id, field, files, editable, invalid, describedBy, handlers }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLButtonElement>(null)
@@ -61,7 +61,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   }, [pending])
   useEffect(() => () => pendingRef.current.forEach((p) => p.controller.abort()), [])
 
-  // 누른 버튼이 사라지면 포커스를 잃으므로 "파일 고르기"(없으면 항목 전체)로 옮긴다
+  // 누른 버튼이 사라지면 포커스를 잃으므로 "파일 첨부"(없으면 항목 전체)로 옮긴다
   const refocus = () => requestAnimationFrame(() => (pickerRef.current ?? rootRef.current)?.focus())
 
   // 영역 밖에 파일을 놓으면 브라우저가 그 파일을 열어 버리므로 막는다
@@ -250,15 +250,16 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
           <Button
             ref={pickerRef}
             id={id}
-            size="default"
-            className={cn(invalid && 'border-danger-line')}
-            aria-label={`${field.label} 파일 고르기`}
+            size="compact"
+            // 점선: 아직 채우지 않은 자리라는 뜻. 입력칸(44px)보다 낮게 해 입력칸으로 보이지 않게 한다
+            className={cn('border-dashed', invalid && 'border-danger-line')}
+            aria-label={`${field.label} 파일 첨부`}
             aria-invalid={invalid}
             aria-describedby={describedBy}
             onClick={() => inputRef.current?.click()}
           >
             <Paperclip size={16} strokeWidth={2} aria-hidden />
-            파일 고르기
+            파일 첨부
           </Button>
           <span className="text-caption text-ink-3">
             <span className="hidden md:inline">여기에 끌어 놓아도 돼요. </span>
