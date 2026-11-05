@@ -1,0 +1,174 @@
+import { ChevronLeft } from 'lucide-react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { Link, useParams } from 'react-router'
+import { ApiError } from '../../api/client'
+import { PHONE, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
+import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { LabeledField } from '../../components/form/LabeledField'
+import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
+import { Banner } from '../../components/ui/Banner'
+import { Button } from '../../components/ui/Button'
+import { PageTitle } from '../../components/ui/PageTitle'
+import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
+import { ErrorState, LoadingCards } from '../../components/ui/StateView'
+import { cn } from '../../lib/cn'
+import { usePageTitle } from '../../lib/usePageTitle'
+
+// A07 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
+export function ScholarDetailPage() {
+  const id = Number(useParams().scholarId)
+  const query = useScholar(id)
+  usePageTitle(query.data?.name ?? '장학생')
+  return (
+    <div className="mx-auto flex max-w-page-form flex-col gap-6">
+      <Link to="/manager/scholars" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
+        <ChevronLeft size={16} strokeWidth={2} aria-hidden />
+        장학생
+      </Link>
+      {query.isPending && <LoadingCards count={1} />}
+      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
+      {query.data && <Detail key={query.data.id} s={query.data} />}
+    </div>
+  )
+}
+
+function Detail({ s }: { s: ScholarDetail }) {
+  const [editing, setEditing] = useState(false)
+  const [saved, setSaved] = useState(false)
+  return (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <ScholarStatusBadge status={s.status} />
+          <PageTitle description={[s.cohort.name, s.university].filter(Boolean).join(' · ')}>{s.name}</PageTitle>
+        </div>
+        {!editing && (
+          <Button size="default" onClick={() => (setSaved(false), setEditing(true))}>
+            정보 수정
+          </Button>
+        )}
+      </div>
+      {saved && (
+        <Banner tone="success" title="정보를 고쳤어요">
+          바뀐 내용이 명단에도 반영됐어요.
+        </Banner>
+      )}
+      {editing ? (
+        <EditForm s={s} onDone={(ok) => (setEditing(false), setSaved(ok))} />
+      ) : (
+        <section className="rounded-lg bg-surface px-6 py-6 md:px-8">
+          <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            <Item label="이메일" value={s.email} />
+            <Item label="연락처" value={s.maskedPhone} />
+            <Item label="기수" value={s.cohort.name} />
+            <Item label="학교" value={s.university} />
+            <Item label="전공" value={s.major} />
+          </dl>
+        </section>
+      )}
+    </>
+  )
+}
+
+function Item({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-caption text-ink-3">{label}</dt>
+      <dd className={cn('m-0 break-all', !value && 'text-ink-3')}>{value || '없음'}</dd>
+    </div>
+  )
+}
+
+type Values = { name: string; phone: string; university: string; major: string }
+
+function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (saved: boolean) => void }) {
+  const update = useUpdateScholar(s.id)
+  const { register, handleSubmit, formState, setError } = useForm<Values>({
+    defaultValues: { name: s.name, phone: '', university: s.university, major: s.major ?? '' },
+    mode: 'onBlur',
+  })
+  const e = formState.errors
+
+  const onSubmit = handleSubmit(async (v) => {
+    // 백엔드는 보낸 문자열 항목만 바꾼다. 바뀐 항목만 보낸다(빈 값으로 지우기는 아직 지원 안 함)
+    const body: ScholarUpdate = {}
+    if (v.name.trim() !== s.name) body.name = v.name.trim()
+    if (v.phone.trim()) body.phone = v.phone.trim()
+    if (v.university.trim() && v.university.trim() !== s.university) body.university = v.university.trim()
+    if (v.major.trim() && v.major.trim() !== (s.major ?? '')) body.major = v.major.trim()
+    if (Object.keys(body).length === 0) return onDone(false)
+    try {
+      await update.mutateAsync(body)
+      onDone(true)
+    } catch (err) {
+      if (err instanceof ApiError) setError('root', { message: err.message })
+    }
+  })
+
+  return (
+    <form onSubmit={(ev) => void onSubmit(ev)} noValidate className="flex flex-col gap-6">
+      <UnsavedChangesGuard when={formState.isDirty && !formState.isSubmitSuccessful} />
+      <section className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-8 md:px-8">
+        <LabeledField label="이름" required error={e.name?.message}>
+          {(p) => (
+            <input
+              {...p}
+              autoComplete="off"
+              className={cn(fieldControl, fieldBorder(!!e.name))}
+              {...register('name', { validate: (x) => (x.trim() ? true : '이름을 입력하세요.'), maxLength: { value: 50, message: '50자 안으로 입력하세요.' } })}
+            />
+          )}
+        </LabeledField>
+        <LabeledField label="연락처" hint="바꿀 때만 입력하세요." error={e.phone?.message}>
+          {(p) => (
+            <input
+              {...p}
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              placeholder={s.maskedPhone ?? '010-0000-0000'}
+              className={cn(fieldControl, fieldBorder(!!e.phone))}
+              {...register('phone', { pattern: { value: PHONE, message: '숫자와 - 만 입력하세요.' } })}
+            />
+          )}
+        </LabeledField>
+        <LabeledField label="학교" error={e.university?.message}>
+          {(p) => (
+            <input
+              {...p}
+              autoComplete="off"
+              className={cn(fieldControl, fieldBorder(!!e.university))}
+              {...register('university', {
+                maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
+              })}
+            />
+          )}
+        </LabeledField>
+        <LabeledField label="전공" error={e.major?.message}>
+          {(p) => (
+            <input
+              {...p}
+              autoComplete="off"
+              className={cn(fieldControl, fieldBorder(!!e.major))}
+              {...register('major', { maxLength: { value: 100, message: '100자 안으로 입력하세요.' } })}
+            />
+          )}
+        </LabeledField>
+      </section>
+      {e.root && (
+        <Banner tone="danger" title="고치지 못했어요">
+          {e.root.message}
+        </Banner>
+      )}
+      <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
+        <Button disabled={update.isPending} onClick={() => onDone(false)}>
+          취소
+        </Button>
+        <Button type="submit" variant="primary" disabled={update.isPending}>
+          {update.isPending ? '저장하는 중' : '저장하기'}
+        </Button>
+      </div>
+    </form>
+  )
+}
