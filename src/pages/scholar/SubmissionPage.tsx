@@ -116,17 +116,24 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   )
 
   // 파일은 제출 ID가 있어야 올릴 수 있다. 처음 들어온 요청이면 지금 값으로 임시 저장부터 한다.
-  const ensureSubmissionId = useCallback(async () => {
-    if (inflight.current) await inflight.current.catch(() => undefined)
-    const id = latest().submissionId
-    if (id) return id
-    if (!(await trigger())) throw new UploadError('FORM_INVALID')
-    try {
-      return await runSave(getValues())
-    } catch (error) {
-      showFieldErrors(error)
-      throw error
-    }
+  // 여러 파일을 한꺼번에 올려도 확인과 저장은 한 번만 하도록 진행 중인 작업을 공유한다
+  const creating = useRef<Promise<number> | null>(null)
+  const ensureSubmissionId = useCallback(() => {
+    creating.current ??= (async () => {
+      if (inflight.current) await inflight.current.catch(() => undefined)
+      const id = latest().submissionId
+      if (id) return id
+      if (!(await trigger())) throw new UploadError('FORM_INVALID')
+      try {
+        return await runSave(getValues())
+      } catch (error) {
+        showFieldErrors(error)
+        throw error
+      }
+    })().finally(() => {
+      creating.current = null
+    })
+    return creating.current
   }, [latest, trigger, runSave, getValues, showFieldErrors])
 
   const onBusyChange = useCallback(
@@ -149,6 +156,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     clearUnregistered()
     return handleSubmit((values) => {
       if (inflight.current || submit.isPending) return
+      submit.reset() // 이전 제출 오류가 저장 결과를 가리지 않게
       runSave(values).catch(showFieldErrors)
     })(e)
   }
@@ -220,6 +228,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
 
   const doSubmit = () => {
     setConfirming(false)
+    save.reset() // 이전 저장 오류가 제출 결과를 가리지 않게
     if (uploading) {
       setNotice({ title: '파일을 올리는 중이에요', body: '다 올라간 뒤 제출하세요.' })
       return

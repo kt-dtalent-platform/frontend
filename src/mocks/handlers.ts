@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { Answers } from '../api/submissions'
-import { addFile, fieldOf, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
+import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { fail, ok } from './respond'
 
 const BASE = '/api/v1'
@@ -119,6 +119,7 @@ export const handlers = [
     const p = pendingUploads.get(fileId)
     if (!p) return fail(path, 400, 'UPLOAD_NOT_FOUND', 'S3에 파일이 존재하지 않습니다')
     pendingUploads.delete(fileId)
+    if (!canChangeFile(p.requestId, p.fieldKey)) return fail(path, 422, 'FILE_LOCKED', '확인 중이거나 보완 요청되지 않은 항목의 파일은 바꿀 수 없습니다')
     addFile(p.requestId, {
       id: fileId,
       fieldKey: p.fieldKey,
@@ -131,6 +132,10 @@ export const handlers = [
   http.delete(`${BASE}/files/:fileId`, ({ params, request }) => {
     const path = `/api/v1/files/${params.fileId}`
     if (!roleOf(request)) return unauthorized(path)
+    const owner = fileOwner(Number(params.fileId))
+    if (!owner) return fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
+    if (!canChangeFile(owner.requestId, owner.fieldKey))
+      return fail(path, 422, 'FILE_LOCKED', '확인 중이거나 보완 요청되지 않은 항목의 파일은 삭제할 수 없습니다')
     return removeFile(Number(params.fileId)) ? ok(path, null) : fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
   }),
 

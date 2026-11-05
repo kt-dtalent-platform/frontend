@@ -90,6 +90,23 @@ export function addFile(requestId: number, file: MockFile) {
   write(requestId, { ...prev, files: [...prev.files, file] })
 }
 
+// 파일을 바꿀 수 있는지: 검토 대기·확인 완료·마감이면 안 되고, 보완 필요면 보완 요청된 항목만
+export function canChangeFile(requestId: number, fieldKey: string) {
+  const form = getForm(requestId)
+  if (!form || form.request.status === 'CLOSED') return false
+  const status = form.submission?.status ?? 'NOT_SUBMITTED'
+  if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'CONFIRMED') return false
+  return status !== 'REVISION_REQUIRED' || !!form.revision?.fieldKeys.includes(fieldKey)
+}
+
+export function fileOwner(fileId: number) {
+  for (const id of [31, 35, 28]) {
+    const file = current(id).files.find((f) => f.id === fileId)
+    if (file) return { requestId: id, fieldKey: file.fieldKey }
+  }
+  return undefined
+}
+
 export function removeFile(fileId: number) {
   for (const id of [31, 35, 28]) {
     const prev = current(id)
