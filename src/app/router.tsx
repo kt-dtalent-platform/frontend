@@ -45,9 +45,9 @@ export const router = createBrowserRouter([
       { path: 'requests/new', element: <PlaceholderPage title="요청 만들기" when="11/10~12" /> },
       { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
       { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
-      { path: 'scholars', element: <ScholarsPage /> }, // A06
-      { path: 'scholars/new', element: <ScholarCreatePage /> }, // A08
-      { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A07
+      { path: 'scholars', element: <ScholarsPage /> }, // A05
+      { path: 'scholars/new', element: <ScholarCreatePage /> }, // A06
+      { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A05 상세
     ],
   },
   { path: '*', element: <NotFoundPage /> },
