@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
 
 // 담당자 화면 API. 둘 다 백엔드 구현 없음(담당 승완). 노션 명세서 모양을 임시로 쓰고,
@@ -45,5 +45,73 @@ export function useRequests({ status, page }: { status: RequestStatus | null; pa
     queryKey: ['manager', 'requests', status, page],
     queryFn: () => api<RequestPage>(`/requests?${params}`),
     placeholderData: keepPreviousData, // 탭·페이지를 바꿀 때 표가 비었다가 다시 차지 않게
+  })
+}
+
+// ── 요청 만들기 ──────────────────────────────────────────
+
+// GET /v1/request-templates · 담당 정윤 · 백엔드 PR #21(KT-15) 기준: items[{id, code, name, fields}]
+// fields는 DB default_fields(JSON) 그대로라 모양이 정해지지 않았다. 화면에서는 label·fieldType만 쓴다(확인 필요).
+export type TemplateField = { fieldKey: string; label: string; fieldType: string; required?: boolean }
+export type RequestTemplate = { id: number; code: string; name: string; fields: TemplateField[] }
+
+export function useRequestTemplates() {
+  return useQuery({
+    queryKey: ['manager', 'templates'],
+    queryFn: async () => (await api<{ items: RequestTemplate[] }>('/request-templates')).items,
+    staleTime: 10 * 60_000, // 시스템 프리셋이라 자주 바뀌지 않는다
+  })
+}
+
+// GET /v1/programs/{programId}/cohorts · 백엔드 PR #11(KT-9) 기준: items[{id, name, startedOn, endedOn, scholarCount}]
+export type Cohort = { id: number; name: string; startedOn: string | null; endedOn: string | null; scholarCount: number }
+
+export function useCohorts(programId: number | undefined) {
+  return useQuery({
+    queryKey: ['manager', 'cohorts', programId],
+    queryFn: async () => (await api<{ items: Cohort[] }>(`/programs/${programId}/cohorts`)).items,
+    enabled: programId !== undefined,
+    staleTime: 10 * 60_000,
+  })
+}
+
+// POST /requests(작성 중으로 만들기), POST /requests/{id}/publish(공개) · 담당 승완 · 백엔드 구현 없음
+// 요청 본문은 실제 DB(requests) 열을 따른다: 공개 일시·개인정보 안내·보관 기간 열은 DB에 없어 보내지 않는다(확인 필요).
+export type Semester = '1' | '2' | 'SUMMER' | 'WINTER'
+export type CreateRequestBody = {
+  programId: number
+  cohortId: number | null
+  templateId: number
+  title: string
+  description: string | null
+  academicYear: number
+  semester: Semester
+  closesAt: string // 서버 형식(시간대 없음) 2026-11-20T23:59:00
+  completionMessage: string | null
+}
+export type CreatedRequest = { id: number; status: RequestStatus }
+export type PublishResult = { status: RequestStatus; targetCount: number; publishedAt: string }
+
+export function useCreateRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateRequestBody) => api<CreatedRequest>('/requests', { method: 'POST', body }),
+    // 바뀌는 것은 요청 목록·대시보드뿐. 기다리지 않아야 화면 이동이 늦어지지 않는다
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
+    },
+  })
+}
+
+export function usePublishRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: number) => api<PublishResult>(`/requests/${requestId}/publish`, { method: 'POST', body: {} }),
+    // 바뀌는 것은 요청 목록·대시보드뿐. 기다리지 않아야 화면 이동이 늦어지지 않는다
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
+    },
   })
 }

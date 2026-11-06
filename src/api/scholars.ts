@@ -83,13 +83,3 @@ export function useCreateScholar() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] }),
   })
 }
-
-// 기수 목록(KT-9). 요청 만들기(KT-24)의 useCohorts와 같은 API·같은 캐시 키. 두 PR이 합쳐지면 하나로 정리한다
-export function useCohortOptions(programId: number | undefined) {
-  return useQuery({
-    queryKey: ['manager', 'cohorts', programId],
-    queryFn: async () => (await api<{ items: { id: number; name: string; scholarCount: number }[] }>(`/programs/${programId}/cohorts`)).items,
-    enabled: programId !== undefined,
-    staleTime: 10 * 60_000,
-  })
-}

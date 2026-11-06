@@ -5,6 +5,7 @@ import { PasswordChangePage } from '../pages/PasswordChangePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
+import { RequestCreatePage } from '../pages/manager/RequestCreatePage'
 import { RequestsPage } from '../pages/manager/RequestsPage'
 import { ScholarCreatePage } from '../pages/manager/ScholarCreatePage'
 import { ScholarDetailPage } from '../pages/manager/ScholarDetailPage'
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ManagerHomePage /> },
       { path: 'requests', element: <RequestsPage /> }, // A04
-      { path: 'requests/new', element: <PlaceholderPage title="요청 만들기" when="11/10~12" /> },
+      { path: 'requests/new', element: <RequestCreatePage /> }, // A05
       { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
       { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
       { path: 'scholars', element: <ScholarsPage /> }, // A05
