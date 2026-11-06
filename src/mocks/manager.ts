@@ -1,5 +1,5 @@
 // 담당자 화면 목업. 모양은 노션 명세서(옛 자료)에서 MVP 범위만 가져왔다(확인 필요).
-import type { ManagerDashboard, RequestRow } from '../api/manager'
+import type { Cohort, CreateRequestBody, ManagerDashboard, RequestRow, RequestTemplate } from '../api/manager'
 import { dueIn } from './db'
 
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
@@ -116,7 +116,7 @@ export function rows(): RequestRow[] {
     submittedCount: 47 - (i % 4),
     revisionCount: 0,
   }))
-  return [...live, ...closed]
+  return [...created(), ...live, ...closed]
 }
 
 export function requestList(status: string | null, page: number, pageSize: number) {
@@ -150,4 +150,94 @@ export function managerDashboard(): ManagerDashboard {
       inProgressRequests: live.length,
     },
   }
+}
+
+// ── 요청 만들기 목업 ──
+
+export const templates: RequestTemplate[] = [
+  {
+    id: 1,
+    code: 'GRADE_CERTIFICATE',
+    name: '성적 증빙',
+    fields: [
+      { fieldKey: 'semester', label: '학기', fieldType: 'SELECT_ONE', required: true },
+      { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER', required: true },
+      { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE', required: true },
+      { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true },
+      { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true },
+    ],
+  },
+  {
+    id: 3,
+    code: 'TRANSPORT_CLAIM',
+    name: '교통비 증빙',
+    fields: [
+      { fieldKey: 'used_on', label: '이용일자', fieldType: 'DATE', required: true },
+      { fieldKey: 'method', label: '교통수단', fieldType: 'SELECT_ONE', required: true },
+      { fieldKey: 'amount', label: '금액', fieldType: 'NUMBER', required: true },
+      { fieldKey: 'receipt', label: '영수증', fieldType: 'FILE', required: true },
+    ],
+  },
+  {
+    id: 4,
+    code: 'ENROLLMENT_CERT',
+    name: '재학증명서',
+    fields: [{ fieldKey: 'certificate', label: '재학증명서', fieldType: 'FILE', required: true }],
+  },
+]
+
+export const cohorts: Cohort[] = [
+  { id: 5, name: '5기', startedOn: '2025-03-01', endedOn: null, scholarCount: 47 },
+  { id: 6, name: '6기', startedOn: '2026-03-01', endedOn: null, scholarCount: 47 },
+]
+
+const KEY = 'kt-dtalent:mock-created-requests'
+
+function created(): RequestRow[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(KEY) ?? '[]') as RequestRow[]
+  } catch {
+    return []
+  }
+}
+
+function saveCreated(list: RequestRow[]) {
+  try {
+    sessionStorage.setItem(KEY, JSON.stringify(list))
+  } catch {
+    // 저장소를 못 쓰면 이번 화면에서만 보인다
+  }
+}
+
+export function createRequest(body: CreateRequestBody) {
+  const list = created()
+  const id = 100 + list.length
+  const cohort = cohorts.find((c) => c.id === body.cohortId)
+  const row: RequestRow = {
+    id,
+    title: body.title,
+    templateCode: templates.find((t) => t.id === body.templateId)?.code ?? null,
+    cohortName: cohort?.name ?? null,
+    status: 'DRAFT',
+    opensAt: null,
+    closesAt: body.closesAt,
+    targetCount: 0,
+    submittedCount: 0,
+    revisionCount: 0,
+  }
+  saveCreated([row, ...list])
+  return { id, status: row.status, fields: templates.find((t) => t.id === body.templateId)?.fields ?? [] }
+}
+
+export function publishRequest(id: number) {
+  const list = created()
+  const row = list.find((r) => r.id === id)
+  if (!row) return { error: 'NOT_FOUND' as const }
+  if (row.status !== 'DRAFT') return { error: 'INVALID_STATE_TRANSITION' as const }
+  const targetCount = row.cohortName ? (cohorts.find((c) => c.name === row.cohortName)?.scholarCount ?? 0) : cohorts.reduce((n, c) => n + c.scholarCount, 0)
+  row.status = 'IN_PROGRESS'
+  row.targetCount = targetCount
+  row.opensAt = new Date().toISOString().slice(0, 19)
+  saveCreated(list)
+  return { status: row.status, targetCount, publishedAt: row.opensAt }
 }

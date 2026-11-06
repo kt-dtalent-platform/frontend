@@ -4,6 +4,7 @@ import { LogoutPage } from '../pages/LogoutPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
+import { RequestCreatePage } from '../pages/manager/RequestCreatePage'
 import { RequestsPage } from '../pages/manager/RequestsPage'
 import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
 import { SubmissionReviewPage } from '../pages/manager/SubmissionReviewPage'
@@ -40,7 +41,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <ManagerHomePage /> },
       { path: 'requests', element: <RequestsPage /> }, // A04
-      { path: 'requests/new', element: <PlaceholderPage title="요청 만들기" when="11/10~12" /> },
+      { path: 'requests/new', element: <RequestCreatePage /> }, // A05
       { path: 'requests/:requestId', element: <RequestSubmissionsPage /> }, // A01 제출 현황
       { path: 'submissions/:submissionId', element: <SubmissionReviewPage /> }, // A02 개별 검토
       { path: 'submissions', element: <SubmissionsHubPage /> },
