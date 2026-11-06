@@ -1,7 +1,8 @@
 import { delay, http, HttpResponse } from 'msw'
+import type { CreateRequestBody } from '../api/manager'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
-import { managerDashboard, requestList } from './manager'
+import { cohorts, createRequest, managerDashboard, publishRequest, requestList, templates } from './manager'
 import { fail, ok } from './respond'
 
 const BASE = '/api/v1'
@@ -204,6 +205,43 @@ export const handlers = [
     await delay(250)
     const q = new URL(request.url).searchParams
     return ok(path, requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
+  }),
+
+  // 요청 만들기: 템플릿, 기수, 만들기, 공개
+  http.get(`${BASE}/request-templates`, ({ request }) => {
+    const path = '/api/v1/request-templates'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    return ok(path, { items: templates })
+  }),
+
+  http.get(`${BASE}/programs/:programId/cohorts`, ({ params, request }) => {
+    const path = `/api/v1/programs/${params.programId}/cohorts`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    if (Number(params.programId) !== 1) return fail(path, 404, 'PROGRAM_NOT_FOUND', '프로그램을 찾을 수 없습니다.')
+    return ok(path, { items: cohorts })
+  }),
+
+  http.post(`${BASE}/requests`, async ({ request }) => {
+    const path = '/api/v1/requests'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const body = (await request.json()) as CreateRequestBody
+    const bad = [!body.title?.trim() && 'title', !body.templateId && 'templateId', !body.closesAt && 'closesAt'].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', bad)
+    await delay(300)
+    return ok(path, createRequest(body))
+  }),
+
+  http.post(`${BASE}/requests/:requestId/publish`, async ({ params, request }) => {
+    const path = `/api/v1/requests/${params.requestId}/publish`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    await delay(300)
+    const result = publishRequest(Number(params.requestId))
+    if ('error' in result) {
+      return result.error === 'NOT_FOUND'
+        ? fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+        : fail(path, 422, 'INVALID_STATE_TRANSITION', '작성 중인 요청만 공개할 수 있습니다')
+    }
+    return ok(path, result)
   }),
 ]
 
