@@ -1,5 +1,6 @@
 // 장학생 목업. 응답 모양은 백엔드 KT-10~13 기준. 등록·수정은 sessionStorage에 남긴다.
 import type { AccountStatus, ScholarCreate, ScholarDetail, ScholarItem, ScholarStatus, ScholarUpdate } from '../api/scholars'
+import { cohorts } from './manager'
 
 const SURNAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황']
 const GIVEN = ['민서', '서준', '하은', '도윤', '지우', '시우', '서연', '예준', '하린', '주원', '지호', '수아', '건우', '유나', '현우', '채원']
@@ -8,15 +9,11 @@ const MAJORS = ['컴퓨터공학과', '전자공학과', '산업공학과', '데
 
 type Row = ScholarDetail & { accountStatus: AccountStatus; phone: string | null }
 const KEY = 'kt-dtalent:mock-scholars'
-
-export const cohortList = [
-  { id: 5, name: '5기', startedOn: '2025-03-01', endedOn: null, scholarCount: 47 },
-  { id: 6, name: '6기', startedOn: '2026-03-01', endedOn: null, scholarCount: 47 },
-]
+// 기수는 요청 만들기 목업과 같은 목록을 쓴다
 
 function base(): Row[] {
   return Array.from({ length: 94 }, (_, i) => {
-    const cohort = i < 47 ? cohortList[0] : cohortList[1]
+    const cohort = i < 47 ? cohorts[0] : cohorts[1]
     const status: ScholarStatus = i % 23 === 5 ? 'LEAVE' : i % 31 === 7 ? 'WITHDRAWN' : cohort.id === 5 && i % 17 === 3 ? 'GRADUATED' : 'ENROLLED'
     return {
       id: 1000 + i,
@@ -99,7 +96,7 @@ export function updateScholar(id: number, body: ScholarUpdate) {
 
 export function createScholar(body: ScholarCreate) {
   if (all().some((r) => r.email === body.email)) return { error: 'DUPLICATE_EMAIL' as const }
-  const cohort = cohortList.find((c) => c.id === body.cohortId)
+  const cohort = cohorts.find((c) => c.id === body.cohortId)
   if (!cohort) return { error: 'COHORT_NOT_FOUND' as const }
   const s = load()
   const id = 5000 + s.created.length

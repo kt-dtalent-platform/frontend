@@ -2,7 +2,8 @@ import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-rea
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
-import { useCohortOptions, useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
+import { useCohorts } from '../../api/manager'
+import { useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -41,7 +42,7 @@ export function ScholarsPage() {
     setTyped(keyword)
   }
   const me = useMe()
-  const cohorts = useCohortOptions(me.data?.accessiblePrograms?.[0]?.id)
+  const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
   const query = useScholars({ cohortId, status, keyword, page })
   const data = query.data
 

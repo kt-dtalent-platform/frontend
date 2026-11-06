@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../api/auth'
+import { useCohorts } from '../../api/manager'
 import { ApiError } from '../../api/client'
-import { PHONE, useCohortOptions, useCreateScholar } from '../../api/scholars'
+import { PHONE, useCreateScholar } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField, SelectBox } from '../../components/form/LabeledField'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
@@ -24,7 +25,7 @@ export function ScholarCreatePage() {
   usePageTitle('장학생 등록')
   const navigate = useNavigate()
   const me = useMe()
-  const cohorts = useCohortOptions(me.data?.accessiblePrograms?.[0]?.id)
+  const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
   const create = useCreateScholar()
   // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
   const [done, setDone] = useState<string | null>(null)
