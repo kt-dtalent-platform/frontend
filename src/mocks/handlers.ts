@@ -1,9 +1,11 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { CreateRequestBody } from '../api/manager'
+import type { ScholarCreate, ScholarUpdate } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { cohorts, createRequest, managerDashboard, publishRequest, requestList, templates } from './manager'
 import { fail, ok } from './respond'
+import { createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
 
 const BASE = '/api/v1'
 
@@ -242,6 +244,51 @@ export const handlers = [
         : fail(path, 422, 'INVALID_STATE_TRANSITION', '작성 중인 요청만 공개할 수 있습니다')
     }
     return ok(path, result)
+  }),
+
+  // 담당자: 장학생 명단·상세·수정·등록, 기수 목록
+  http.get(`${BASE}/scholars`, async ({ request }) => {
+    const path = '/api/v1/scholars'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    await delay(200)
+    return ok(path, scholarList(new URL(request.url).searchParams))
+  }),
+
+  http.get(`${BASE}/scholars/:scholarId`, ({ params, request }) => {
+    const path = `/api/v1/scholars/${params.scholarId}`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const d = scholarDetail(Number(params.scholarId))
+    return d ? ok(path, d) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
+  }),
+
+  http.patch(`${BASE}/scholars/:scholarId`, async ({ params, request }) => {
+    const path = `/api/v1/scholars/${params.scholarId}`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const body = (await request.json()) as ScholarUpdate
+    if (!Object.keys(body).length) return fail(path, 400, 'INVALID_REQUEST', '수정할 필드의 문자열 값을 전달해야 합니다.')
+    await delay(250)
+    const r = updateScholar(Number(params.scholarId), body)
+    return r ? ok(path, r) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
+  }),
+
+  http.post(`${BASE}/scholars`, async ({ request }) => {
+    const path = '/api/v1/scholars'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const body = (await request.json()) as ScholarCreate
+    const bad = [
+      !body.cohortId && 'cohortId',
+      !body.name?.trim() && 'name',
+      !/^[^@\s]+@[^@\s]+$/.test(body.email ?? '') && 'email',
+      !body.birthDate && 'birthDate',
+    ].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', bad)
+    await delay(300)
+    const r = createScholar(body)
+    if ('error' in r)
+      return r.error === 'DUPLICATE_EMAIL'
+        ? fail(path, 409, 'DUPLICATE_EMAIL', '이미 등록된 이메일입니다.')
+        : fail(path, 404, 'COHORT_NOT_FOUND', '기수를 찾을 수 없습니다.')
+    return ok(path, r)
   }),
 ]
 

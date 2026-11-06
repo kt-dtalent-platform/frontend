@@ -8,8 +8,5 @@ export function ok<T>(path: string, data: T) {
 }
 
 export function fail(path: string, status: number, code: string, message: string, details?: unknown) {
-  return HttpResponse.json(
-    { resultType: 'FAIL', success: null, error: { code, message, details: details ?? null }, meta: meta(path) },
-    { status },
-  )
+  return HttpResponse.json({ resultType: 'FAIL', success: null, error: { code, message, details: details ?? null }, meta: meta(path) }, { status })
 }
