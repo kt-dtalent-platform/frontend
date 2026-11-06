@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import { LoginPage } from '../pages/LoginPage'
 import { LogoutPage } from '../pages/LogoutPage'
+import { PasswordChangePage } from '../pages/PasswordChangePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <RootRedirect /> },
   { path: '/login', element: <LoginPage /> }, // C01
   { path: '/logout', element: <LogoutPage /> },
+  { path: '/password', element: <PasswordChangePage /> }, // C01 첫 로그인
   {
     element: (
       <RequireAuth role="SCHOLAR">

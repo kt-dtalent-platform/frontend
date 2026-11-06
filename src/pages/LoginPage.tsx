@@ -64,13 +64,7 @@ export function LoginPage() {
           <h2 className="m-0 text-title-1">로그인</h2>
 
           <Field label="이메일" error={errors.email?.message}>
-            <input
-              type="email"
-              autoComplete="username"
-              className={inputClass(!!errors.email)}
-              aria-invalid={!!errors.email}
-              {...register('email')}
-            />
+            <input type="email" autoComplete="username" className={inputClass(!!errors.email)} aria-invalid={!!errors.email} {...register('email')} />
           </Field>
           <Field label="비밀번호" error={errors.password?.message}>
             <input
@@ -93,7 +87,9 @@ export function LoginPage() {
           </Button>
           <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
           {isMock && (
-            <p className="m-0 text-caption text-ink-3">목업: admin으로 시작하는 이메일은 담당자 화면으로 갑니다.</p>
+            <p className="m-0 text-caption text-ink-3">
+              목업: admin으로 시작하는 이메일은 담당자 화면, new로 시작하는 이메일은 첫 로그인(임시 비밀번호는 temp로 시작)입니다.
+            </p>
           )}
         </form>
       </div>
