@@ -104,6 +104,32 @@ export function useCreateRequest() {
   })
 }
 
+// GET /requests/{id}: 작성 중 요청 열기. 백엔드 구현 없음, 응답 모양 확인 필요
+export type RequestDetail = Omit<CreateRequestBody, 'templateId'> & { id: number; status: RequestStatus; templateId: number | null }
+
+export function useRequestDetail(id: number) {
+  return useQuery({
+    queryKey: ['manager', 'request', id],
+    queryFn: () => api<RequestDetail>(`/requests/${id}`),
+    enabled: Number.isInteger(id) && id > 0,
+    // 고치는 중에 다시 불러와 공개 상태로 바뀌면 폼이 사라진다
+    refetchOnWindowFocus: false,
+  })
+}
+
+// PATCH /requests/{id}: 작성 중일 때만 고칠 수 있다. 백엔드 구현 없음, 확인 필요
+export function useUpdateRequest(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CreateRequestBody) => api<CreatedRequest>(`/requests/${id}`, { method: 'PATCH', body }),
+    onSuccess: (_data, body) => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
+      // 상세는 다시 부르지 않고 보낸 값으로 맞춘다. 다시 부르면 공개 직후 응답이 와서 폼이 "이미 공개함"으로 바뀔 수 있다
+      queryClient.setQueryData<RequestDetail>(['manager', 'request', id], (old) => (old ? { ...old, ...body } : old))
+    },
+  })
+}
+
 export function usePublishRequest() {
   const queryClient = useQueryClient()
   return useMutation({
