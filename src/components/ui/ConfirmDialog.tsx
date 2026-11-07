@@ -7,13 +7,14 @@ type Props = {
   children: ReactNode // 무엇이 바뀌는지 한두 줄
   confirmLabel: string // 제목과 같은 동사
   cancelLabel?: string
+  busy?: boolean // 처리 중이면 버튼·Esc·바깥 누르기를 막는다
   onConfirm: () => void
   onCancel: () => void
 }
 
 // 디자인 시스템 › Dialog. 브라우저 기본 <dialog>를 써서 포커스 가두기와 Esc 닫기를 맡긴다.
 // 열리면 취소 버튼에 포커스(입력칸이 없을 때), 닫히면 브라우저가 이전 포커스로 돌려준다.
-export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel = '취소', onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel = '취소', busy, onConfirm, onCancel }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
@@ -38,11 +39,11 @@ export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel
       // Esc로 닫으면 취소로 처리
       onCancel={(e) => {
         e.preventDefault()
-        onCancel()
+        if (!busy) onCancel()
       }}
       // 바깥(뒤 배경)을 누르면 취소
       onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel()
+        if (e.target === e.currentTarget && !busy) onCancel()
       }}
       className="mx-4 my-auto w-auto max-w-dialog-w rounded-lg md:mx-auto md:w-full bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim"
     >
@@ -54,10 +55,10 @@ export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel
           {children}
         </p>
         <div className="mt-3 flex justify-end gap-2">
-          <Button ref={cancelRef} size="default" onClick={onCancel}>
+          <Button ref={cancelRef} size="default" disabled={busy} onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="primary" size="default" onClick={onConfirm}>
+          <Button variant="primary" size="default" disabled={busy} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>
