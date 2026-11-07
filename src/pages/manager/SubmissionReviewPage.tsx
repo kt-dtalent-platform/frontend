@@ -61,12 +61,14 @@ function Review({ d }: { d: SubmissionDetail }) {
 
   // 처리한 뒤: 남은 검토 대기가 있으면 다음 사람으로, 없으면 제출 현황으로
   const afterAction = (notice: Notice) => {
-    const nextId = next ?? (prev && ids.length > 1 ? ids.find((id) => id !== d.id) : null)
+    // 다음이 없으면 남은 검토 대기 중 아무나(순서 목록을 못 받았거나 지금 건이 목록에 없을 때도)
+    const nextId = next ?? ids.find((id) => id !== d.id) ?? null
     if (nextId) navigate(`/manager/submissions/${nextId}`, { replace: true, state: { notice } })
     else
       navigate(`/manager/requests/${d.requestId}?status=WAITING`, {
         replace: true,
-        state: { notice: { ...notice, body: `${notice.body} 남은 검토 대기가 없어요.` } },
+        // 순서 목록을 받았을 때만 '남은 게 없다'고 말한다
+        state: { notice: queue.isSuccess ? { ...notice, body: `${notice.body} 남은 검토 대기가 없어요.` } : notice },
       })
   }
 
