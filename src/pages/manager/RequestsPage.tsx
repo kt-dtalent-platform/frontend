@@ -23,7 +23,7 @@ const tabs: { status: RequestStatus | null; label: string; empty: string }[] = [
 ]
 
 // 요청 유형 코드 → 화면 이름. 모르는 코드는 표시하지 않는다(유형 목록은 백엔드 KT-15 템플릿 API 확인 필요).
-const templateName: Record<string, string> = { GRADE_CERTIFICATE: '성적 증빙', TRANSPORT_CLAIM: '교통비' }
+const templateName: Record<string, string> = { GRADE_CERTIFICATE: '성적 증빙', TRANSPORT_CLAIM: '교통비', ENROLLMENT_CERT: '재학증명서' }
 
 // A04 요청 관리: 상태별 목록. 행을 누르면 그 요청의 제출 현황으로.
 export function RequestsPage() {
@@ -136,7 +136,8 @@ function Row({ row }: { row: RequestRow }) {
   return (
     <li className="border-b border-line-subtle last:border-b-0">
       <Link
-        to={`/manager/requests/${row.id}`}
+        // 작성 중이면 열어서 고치고, 공개한 요청은 제출 현황으로
+        to={row.status === 'DRAFT' ? `/manager/requests/${row.id}/edit` : `/manager/requests/${row.id}`}
         className="group flex flex-col gap-2 px-6 py-4 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-3"
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
