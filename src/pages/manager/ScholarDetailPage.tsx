@@ -14,6 +14,7 @@ import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 // A05 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
 export function ScholarDetailPage() {
@@ -43,7 +44,7 @@ function Detail({ s }: { s: ScholarDetail }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-3">
           <ScholarStatusBadge status={s.status} />
-          <PageTitle description={[s.cohort.name, s.university].filter(Boolean).join(' · ')}>{s.name}</PageTitle>
+          <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
         </div>
         {!editing && (
           <Button size="default" onClick={() => (setResult(null), setEditing(true))}>

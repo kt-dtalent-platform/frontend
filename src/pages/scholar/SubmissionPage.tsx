@@ -28,6 +28,7 @@ import { Tag } from '../../components/ui/Tag'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { dDayText, formatDue, formatTime } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 // S02 제출 입력 · 임시 저장
 export function SubmissionPage() {
@@ -265,8 +266,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         </div>
         <PageTitle>{form.request.title}</PageTitle>
         <p className="m-0 pl-5 text-caption text-ink-3 tabular-nums">
-          마감 {formatDue(form.request.dueAt)}
-          {!locked && ` · ${dDayText(dDay, late)}`}
+          <MetaList items={[`마감 ${formatDue(form.request.dueAt)}`, !locked && dDayText(dDay, late)]} />
         </p>
       </header>
 

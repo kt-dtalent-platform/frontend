@@ -15,6 +15,7 @@ import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateV
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: null, label: '전체' },
@@ -130,8 +131,8 @@ export function ScholarsPage() {
             <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
             <input
               type="search"
-              aria-label="이름·이메일로 찾기"
-              placeholder="이름·이메일"
+              aria-label="이름 또는 이메일로 찾기"
+              placeholder="이름 또는 이메일"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
@@ -194,7 +195,9 @@ function Row({ s }: { s: ScholarItem }) {
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-body-strong">{s.name}</span>
-          <span className="truncate text-caption text-ink-3">{[s.cohortName, s.university].filter(Boolean).join(' · ')}</span>
+          <span className="truncate text-caption text-ink-3">
+            <MetaList items={[s.cohortName, s.university]} />
+          </span>
         </span>
         <span className="truncate text-caption text-ink-3 md:w-56 md:text-body md:text-ink-2">{s.email}</span>
         <span className="flex flex-wrap items-center gap-2 md:w-40">
