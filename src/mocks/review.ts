@@ -9,7 +9,6 @@ const templates = [
   {
     code: 'GRADE_CERTIFICATE',
     fields: [
-      { fieldKey: 'semester', label: '학기', fieldType: 'SELECT_ONE' },
       { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER' },
       { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE' },
       { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER' },
@@ -83,7 +82,7 @@ function baseRows(requestId: number): (SubmissionRow & { index: number })[] {
       index: i,
       scholarId: 1000 + i,
       scholarName: name(i + requestId),
-      cohortName: req.cohortName ?? (i % 2 ? '5기' : '6기'),
+      cohortName: req.cohortName ?? (i % 2 ? '2025년 선발' : '2026년 선발'),
       submissionId: status === 'NOT_SUBMITTED' ? null : requestId * 1000 + i,
       status,
       submittedAt: submitted ? minutesAgo(60 * (i + 1) + requestId) : null,
@@ -171,7 +170,6 @@ function sample(code: string, i: number) {
     const gpa = (3 + ((i * 37) % 150) / 100).toFixed(2)
     const read = i % 4 === 1 ? (Number(gpa) - 0.2).toFixed(2) : gpa
     answers = {
-      semester: '2026-1학기',
       gpa: Number(gpa),
       gpa_scale: '4.5',
       credits: 15 + (i % 7),

@@ -11,7 +11,7 @@ import { exportCsv, review, submissionDetail, submissionList } from './review'
 const BASE = '/api/v1'
 
 const ME = {
-  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '6기' }, accessiblePrograms: null },
+  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '2026년 선발' }, accessiblePrograms: null },
   MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT 디지털인재장학' }] },
 } as const
 

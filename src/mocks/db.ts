@@ -173,7 +173,6 @@ function forms(): Record<number, RawSubmissionForm> {
         status: 'IN_PROGRESS',
       },
       fields: [
-        { fieldKey: 'semester', label: '학기', fieldType: 'SELECT_ONE', required: true, options: ['2026-1학기', '2025-2학기'] },
         {
           fieldKey: 'gpa',
           label: '직전 학기 평점',
