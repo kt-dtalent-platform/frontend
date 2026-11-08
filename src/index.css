@@ -17,6 +17,15 @@
     letter-spacing: var(--text-body--letter-spacing);
   }
 
+  /* iOS Safari: 날짜·시각 칸이 고유 최소 폭 때문에 칸 밖으로 넘치고 글자가 가운데로 가는 것을 막는다 */
+  input[type='date'],
+  input[type='time'] {
+    min-width: 0;
+  }
+  ::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
