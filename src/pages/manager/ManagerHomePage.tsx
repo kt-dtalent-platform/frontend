@@ -37,8 +37,8 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           오늘 처리할 일
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard to="/manager/submissions?status=SUBMITTED" label="검토 대기" value={t.unreviewedSubmissions} empty="검토할 제출이 없어요" />
-          <StatCard to="/manager/submissions?status=RESUBMITTED" label="보완 후 다시 제출" value={t.resubmitted} empty="다시 제출된 건이 없어요" />
+          <StatCard to="/manager/submissions" label="검토 대기" value={t.unreviewedSubmissions} empty="검토할 제출이 없어요" />
+          <StatCard to="/manager/submissions" label="보완 후 다시 제출" value={t.resubmitted} empty="다시 제출된 건이 없어요" />
         </div>
       </section>
 
