@@ -9,9 +9,5 @@ const tones = {
 }
 
 export function Tag({ tone = 'neutral', children }: { tone?: keyof typeof tones; children: ReactNode }) {
-  return (
-    <span className={cn('inline-flex h-tag-h items-center rounded-sm px-2 text-overline tracking-normal', tones[tone])}>
-      {children}
-    </span>
-  )
+  return <span className={cn('inline-flex h-tag-h items-center rounded-sm px-2 text-overline tracking-normal', tones[tone])}>{children}</span>
 }

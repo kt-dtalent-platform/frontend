@@ -6,6 +6,9 @@ import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
 import { RequestCreatePage } from '../pages/manager/RequestCreatePage'
 import { RequestsPage } from '../pages/manager/RequestsPage'
+import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
+import { SubmissionReviewPage } from '../pages/manager/SubmissionReviewPage'
+import { SubmissionsHubPage } from '../pages/manager/SubmissionsHubPage'
 import { MyTasksPage } from '../pages/scholar/MyTasksPage'
 import { SubmissionPage } from '../pages/scholar/SubmissionPage'
 import { ManagerLayout } from './layouts/ManagerLayout'
@@ -39,8 +42,9 @@ export const router = createBrowserRouter([
       { index: true, element: <ManagerHomePage /> },
       { path: 'requests', element: <RequestsPage /> }, // A04
       { path: 'requests/new', element: <RequestCreatePage /> }, // A05
-      { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
-      { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
+      { path: 'requests/:requestId', element: <RequestSubmissionsPage /> }, // A01 제출 현황
+      { path: 'submissions/:submissionId', element: <SubmissionReviewPage /> }, // A02 개별 검토
+      { path: 'submissions', element: <SubmissionsHubPage /> },
       { path: 'scholars', element: <PlaceholderPage title="장학생" when="11/9 주" /> },
     ],
   },
