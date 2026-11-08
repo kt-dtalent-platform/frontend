@@ -2,11 +2,16 @@ import { createBrowserRouter } from 'react-router'
 import { LoginPage } from '../pages/LoginPage'
 import { LogoutPage } from '../pages/LogoutPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { ManagerHomePage } from '../pages/manager/ManagerHomePage'
 import { RequestCreatePage } from '../pages/manager/RequestCreatePage'
 import { RequestEditPage } from '../pages/manager/RequestEditPage'
 import { RequestsPage } from '../pages/manager/RequestsPage'
+import { ScholarCreatePage } from '../pages/manager/ScholarCreatePage'
+import { ScholarDetailPage } from '../pages/manager/ScholarDetailPage'
+import { ScholarsPage } from '../pages/manager/ScholarsPage'
+import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
+import { SubmissionReviewPage } from '../pages/manager/SubmissionReviewPage'
+import { SubmissionsHubPage } from '../pages/manager/SubmissionsHubPage'
 import { MyTasksPage } from '../pages/scholar/MyTasksPage'
 import { SubmissionPage } from '../pages/scholar/SubmissionPage'
 import { ManagerLayout } from './layouts/ManagerLayout'
@@ -41,9 +46,12 @@ export const router = createBrowserRouter([
       { path: 'requests', element: <RequestsPage /> }, // A04
       { path: 'requests/new', element: <RequestCreatePage /> }, // A03·A04
       { path: 'requests/:requestId/edit', element: <RequestEditPage /> }, // A03·A04 작성 중 요청
-      { path: 'requests/:requestId', element: <PlaceholderPage title="제출 현황" when="11/13~15" /> }, // A01
-      { path: 'submissions', element: <PlaceholderPage title="제출 현황" when="11/9 주" /> },
-      { path: 'scholars', element: <PlaceholderPage title="장학생" when="11/9 주" /> },
+      { path: 'requests/:requestId', element: <RequestSubmissionsPage /> }, // A01 제출 현황
+      { path: 'submissions/:submissionId', element: <SubmissionReviewPage /> }, // A02 개별 검토
+      { path: 'submissions', element: <SubmissionsHubPage /> },
+      { path: 'scholars', element: <ScholarsPage /> }, // A05
+      { path: 'scholars/new', element: <ScholarCreatePage /> }, // A06
+      { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A05 상세
     ],
   },
   { path: '*', element: <NotFoundPage /> },
