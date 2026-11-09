@@ -1,5 +1,7 @@
 # KT 디지털인재장학생 통합 운영 플랫폼 · Frontend
 
+미리보기: https://kt-dtalent-platform.github.io/frontend/ (main에 머지할 때마다 자동으로 올라가는 목업 화면)
+
 장학생은 서류를 내고, 담당자는 제출물을 검토하는 웹 서비스의 프론트엔드입니다.
 
 ## 시작하기
