@@ -284,7 +284,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
               />
               <span className="flex flex-col gap-0.5">
                 <span className="text-body-strong">{t.name}</span>
-                <span className="text-caption text-ink-3">{t.fields.map((f) => f.label).join(' · ') || '입력 항목 없음'}</span>
+                <span className="text-caption text-ink-3">{t.fields.map((f) => f.label).join(', ') || '입력 항목 없음'}</span>
               </span>
             </label>
           ))}

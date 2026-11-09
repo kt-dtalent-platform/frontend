@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateV
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 const tabs: { status: RequestStatus | null; label: string; empty: string }[] = [
   { status: null, label: '전체', empty: '아직 만든 요청이 없어요. 요청을 만들어 장학생에게 서류를 받아 보세요.' },
@@ -23,7 +24,6 @@ const tabs: { status: RequestStatus | null; label: string; empty: string }[] = [
 ]
 
 // 요청 유형 코드 → 화면 이름. 모르는 코드는 표시하지 않는다(유형 목록은 백엔드 KT-15 템플릿 API 확인 필요).
-const templateName: Record<string, string> = { GRADE_CERTIFICATE: '성적 증빙', TRANSPORT_CLAIM: '교통비', ENROLLMENT_CERT: '재학증명서' }
 
 // A04 요청 관리: 상태별 목록. 행을 누르면 그 요청의 제출 현황으로.
 export function RequestsPage() {
@@ -131,7 +131,8 @@ function Row({ row }: { row: RequestRow }) {
   const overdue = due ? isPastDue(due) : false
   const dDay = due ? daysUntil(due) : null
   const urgent = row.status === 'IN_PROGRESS' && dDay !== null && dDay <= 3
-  const meta = [row.cohortName, row.templateCode ? templateName[row.templateCode] : null].filter(Boolean).join(' · ')
+  // MVP는 요청 유형이 성적증명서 하나라 유형은 따로 적지 않는다
+  const meta = [row.cohortName ?? '전체 기수']
 
   return (
     <li className="border-b border-line-subtle last:border-b-0">
@@ -142,7 +143,7 @@ function Row({ row }: { row: RequestRow }) {
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-body-strong">{row.title}</span>
-          {meta && <span className="text-caption text-ink-3">{meta}</span>}
+          {meta.length > 0 && <MetaList items={meta} className="text-caption text-ink-3" />}
         </span>
         <span className="md:w-24">
           <RequestStatusBadge status={row.status} />

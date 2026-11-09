@@ -8,11 +8,11 @@ import { fail, ok } from './respond'
 import { createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
 import { exportCsv, review, submissionDetail, submissionList } from './review'
 
-const BASE = '/api/v1'
+const BASE = '/v1'
 
 const ME = {
-  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '6기' }, accessiblePrograms: null },
-  MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT 디지털인재장학' }] },
+  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '2026년 선발' }, accessiblePrograms: null },
+  MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }] },
 } as const
 
 // 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다
@@ -27,12 +27,12 @@ export const handlers = [
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const { email, password } = (await request.json()) as { email: string; password: string }
     if (password.length < 8) {
-      return fail('/api/v1/auth/login', 401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 올바르지 않습니다')
+      return fail('/v1/auth/login', 401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 올바르지 않습니다')
     }
     // 목업: admin 또는 newadmin으로 시작하면 담당자, new로 시작하면 임시 비밀번호로 처음 로그인한 계정
     const role = /^(new)?admin/.test(email) ? 'MANAGER' : 'SCHOLAR'
     const first = email.startsWith('new') && !passwordChanged()
-    return ok('/api/v1/auth/login', {
+    return ok('/v1/auth/login', {
       accessToken: `mock-access-${role.toLowerCase()}${first ? '-first' : ''}`,
       refreshToken: `mock-refresh-${role.toLowerCase()}`,
       role,
@@ -43,18 +43,18 @@ export const handlers = [
   http.post(`${BASE}/auth/logout`, () => {
     // 목업: 로그아웃하면 첫 로그인을 다시 확인할 수 있게 비밀번호 변경 기록을 지운다
     sessionStorage.removeItem('mock-password-changed')
-    return ok('/api/v1/auth/logout', null)
+    return ok('/v1/auth/logout', null)
   }),
 
   http.get(`${BASE}/me`, ({ request }) => {
     const role = roleOf(request)
-    if (!role) return unauthorized('/api/v1/me')
+    if (!role) return unauthorized('/v1/me')
     const first = request.headers.get('Authorization')?.includes('-first') && !passwordChanged()
-    return ok('/api/v1/me', { ...ME[role], passwordChangeRequired: !!first })
+    return ok('/v1/me', { ...ME[role], passwordChangeRequired: !!first })
   }),
 
   http.patch(`${BASE}/me/password`, async ({ request }) => {
-    const path = '/api/v1/me/password'
+    const path = '/v1/me/password'
     if (!roleOf(request)) return unauthorized(path)
     const { currentPassword, newPassword } = (await request.json()) as { currentPassword: string; newPassword: string }
     await delay(300)
@@ -66,18 +66,18 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/me/tasks`, ({ request }) => {
-    if (!roleOf(request)) return unauthorized('/api/v1/me/tasks')
+    if (!roleOf(request)) return unauthorized('/v1/me/tasks')
     // 백엔드 필터: TODO(미제출·작성 중·보완 필요) / ALL
     const filter = new URL(request.url).searchParams.get('status') ?? 'TODO'
     const todo = (s: string) => s === 'NOT_SUBMITTED' || s === 'DRAFT' || s === 'REVISION_REQUIRED'
     const items = taskList()
       .filter((t) => filter === 'ALL' || todo(t.status))
       .sort((a, b) => a.requestDueAt.localeCompare(b.requestDueAt))
-    return ok('/api/v1/me/tasks', { items })
+    return ok('/v1/me/tasks', { items })
   }),
 
   http.get(`${BASE}/me/submissions/:requestId`, ({ params, request }) => {
-    const path = `/api/v1/me/submissions/${params.requestId}`
+    const path = `/v1/me/submissions/${params.requestId}`
     if (!roleOf(request)) return unauthorized(path)
     const form = getForm(Number(params.requestId))
     return form ? ok(path, form) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다.')
@@ -85,7 +85,7 @@ export const handlers = [
 
   http.put(`${BASE}/me/submissions/:requestId/draft`, async ({ params, request }) => {
     const id = Number(params.requestId)
-    const path = `/api/v1/me/submissions/${id}/draft`
+    const path = `/v1/me/submissions/${id}/draft`
     if (!roleOf(request)) return unauthorized(path)
     const form = getForm(id)
     if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
@@ -104,7 +104,7 @@ export const handlers = [
   // 파일 1단계: 업로드 주소 발급. 진짜 S3 대신 목업 주소(/mock-s3/{fileId})를 준다.
   http.post(`${BASE}/submissions/:submissionId/files/presign`, async ({ params, request }) => {
     const sid = Number(params.submissionId)
-    const path = `/api/v1/submissions/${sid}/files/presign`
+    const path = `/v1/submissions/${sid}/files/presign`
     if (!roleOf(request)) return unauthorized(path)
     const requestId = requestOfSubmission(sid)
     if (!requestId) return fail(path, 404, 'RESOURCE_NOT_FOUND', '제출을 찾을 수 없습니다')
@@ -142,7 +142,7 @@ export const handlers = [
   // 파일 3단계: 업로드 완료 처리
   http.post(`${BASE}/submissions/:submissionId/files/:fileId/complete`, ({ params, request }) => {
     const fileId = Number(params.fileId)
-    const path = `/api/v1/submissions/${params.submissionId}/files/${fileId}/complete`
+    const path = `/v1/submissions/${params.submissionId}/files/${fileId}/complete`
     if (!roleOf(request)) return unauthorized(path)
     const p = pendingUploads.get(fileId)
     if (!p) return fail(path, 400, 'UPLOAD_NOT_FOUND', 'S3에 파일이 존재하지 않습니다')
@@ -158,7 +158,7 @@ export const handlers = [
   }),
 
   http.delete(`${BASE}/files/:fileId`, ({ params, request }) => {
-    const path = `/api/v1/files/${params.fileId}`
+    const path = `/v1/files/${params.fileId}`
     if (!roleOf(request)) return unauthorized(path)
     const owner = fileOwner(Number(params.fileId))
     if (!owner) return fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
@@ -171,7 +171,7 @@ export const handlers = [
   ...(['submit', 'resubmit'] as const).map((kind) =>
     http.post(`${BASE}/me/submissions/:requestId/${kind}`, async ({ params, request }) => {
       const id = Number(params.requestId)
-      const path = `/api/v1/me/submissions/${id}/${kind}`
+      const path = `/v1/me/submissions/${id}/${kind}`
       if (!roleOf(request)) return unauthorized(path)
       const form = getForm(id)
       if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
@@ -215,7 +215,7 @@ export const handlers = [
 
   // 담당자: 대시보드, 요청 목록
   http.get(`${BASE}/dashboard/manager`, ({ request }) => {
-    const path = '/api/v1/dashboard/manager'
+    const path = '/v1/dashboard/manager'
     const role = roleOf(request)
     if (!role) return unauthorized(path)
     if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
@@ -223,7 +223,7 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/requests`, async ({ request }) => {
-    const path = '/api/v1/requests'
+    const path = '/v1/requests'
     const role = roleOf(request)
     if (!role) return unauthorized(path)
     if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 프로그램입니다')
@@ -234,7 +234,7 @@ export const handlers = [
 
   // 담당자: 요청별 제출 현황, 내보내기, 제출 상세, 확인 완료·보완 요청
   http.get(`${BASE}/requests/:requestId/submissions`, async ({ params, request }) => {
-    const path = `/api/v1/requests/${params.requestId}/submissions`
+    const path = `/v1/requests/${params.requestId}/submissions`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
     await delay(200)
     const q = new URL(request.url).searchParams
@@ -243,7 +243,7 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/requests/:requestId/export`, ({ params, request }) => {
-    const path = `/api/v1/requests/${params.requestId}/export`
+    const path = `/v1/requests/${params.requestId}/export`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
     const csv = exportCsv(Number(params.requestId), new URL(request.url).searchParams.get('status'))
     if (!csv) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
@@ -256,7 +256,7 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/submissions/:submissionId`, async ({ params, request }) => {
-    const path = `/api/v1/submissions/${params.submissionId}`
+    const path = `/v1/submissions/${params.submissionId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 제출입니다')
     await delay(200)
     const d = submissionDetail(Number(params.submissionId))
@@ -265,7 +265,7 @@ export const handlers = [
 
   ...(['confirm', 'revision'] as const).map((action) =>
     http.post(`${BASE}/submissions/:submissionId/${action}`, async ({ params, request }) => {
-      const path = `/api/v1/submissions/${params.submissionId}/${action}`
+      const path = `/v1/submissions/${params.submissionId}/${action}`
       if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 제출입니다')
       const body = (await request.json()) as { version: number; fieldKeys?: string[]; reason?: string; dueAt?: string | null }
       if (action === 'revision' && (!body.fieldKeys?.length || !body.reason?.trim())) {
@@ -290,20 +290,20 @@ export const handlers = [
 
   // 요청 만들기: 템플릿, 기수, 만들기, 공개
   http.get(`${BASE}/request-templates`, ({ request }) => {
-    const path = '/api/v1/request-templates'
+    const path = '/v1/request-templates'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     return ok(path, { items: templates })
   }),
 
   http.get(`${BASE}/programs/:programId/cohorts`, ({ params, request }) => {
-    const path = `/api/v1/programs/${params.programId}/cohorts`
+    const path = `/v1/programs/${params.programId}/cohorts`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     if (Number(params.programId) !== 1) return fail(path, 404, 'PROGRAM_NOT_FOUND', '프로그램을 찾을 수 없습니다.')
     return ok(path, { items: cohorts })
   }),
 
   http.post(`${BASE}/requests`, async ({ request }) => {
-    const path = '/api/v1/requests'
+    const path = '/v1/requests'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as CreateRequestBody
     const bad = [!body.title?.trim() && 'title', !body.templateId && 'templateId', !body.closesAt && 'closesAt'].filter(Boolean)
@@ -313,7 +313,7 @@ export const handlers = [
   }),
 
   http.get(`${BASE}/requests/:requestId`, async ({ params, request }) => {
-    const path = `/api/v1/requests/${params.requestId}`
+    const path = `/v1/requests/${params.requestId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     await delay(250)
     const d = requestDetail(Number(params.requestId))
@@ -321,7 +321,7 @@ export const handlers = [
   }),
 
   http.patch(`${BASE}/requests/:requestId`, async ({ params, request }) => {
-    const path = `/api/v1/requests/${params.requestId}`
+    const path = `/v1/requests/${params.requestId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as CreateRequestBody
     const bad = [!body.title?.trim() && 'title', !body.templateId && 'templateId', !body.closesAt && 'closesAt'].filter(Boolean)
@@ -337,7 +337,7 @@ export const handlers = [
   }),
 
   http.post(`${BASE}/requests/:requestId/publish`, async ({ params, request }) => {
-    const path = `/api/v1/requests/${params.requestId}/publish`
+    const path = `/v1/requests/${params.requestId}/publish`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     await delay(300)
     const result = publishRequest(Number(params.requestId))
@@ -351,21 +351,21 @@ export const handlers = [
 
   // 담당자: 장학생 명단·상세·수정·등록, 기수 목록
   http.get(`${BASE}/scholars`, async ({ request }) => {
-    const path = '/api/v1/scholars'
+    const path = '/v1/scholars'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     await delay(200)
     return ok(path, scholarList(new URL(request.url).searchParams))
   }),
 
   http.get(`${BASE}/scholars/:scholarId`, ({ params, request }) => {
-    const path = `/api/v1/scholars/${params.scholarId}`
+    const path = `/v1/scholars/${params.scholarId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const d = scholarDetail(Number(params.scholarId))
     return d ? ok(path, d) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
   }),
 
   http.patch(`${BASE}/scholars/:scholarId`, async ({ params, request }) => {
-    const path = `/api/v1/scholars/${params.scholarId}`
+    const path = `/v1/scholars/${params.scholarId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as ScholarUpdate
     if (!Object.keys(body).length) return fail(path, 400, 'INVALID_REQUEST', '수정할 필드의 문자열 값을 전달해야 합니다.')
@@ -375,7 +375,7 @@ export const handlers = [
   }),
 
   http.post(`${BASE}/scholars`, async ({ request }) => {
-    const path = '/api/v1/scholars'
+    const path = '/v1/scholars'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as ScholarCreate
     const bad = [

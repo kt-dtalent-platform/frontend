@@ -2,13 +2,15 @@ import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-qu
 import { useState, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { tokenStore } from '../api/token'
+import { appUrl } from '../lib/env'
 
 // 401(로그인 만료)이면 토큰을 지우고 로그인 화면으로 보낸다.
 function onAuthExpired(error: unknown) {
   if (!(error instanceof ApiError) || error.status !== 401) return
   if (tokenStore.access() === null) return
   tokenStore.set(null)
-  if (window.location.pathname !== '/login') window.location.replace('/login')
+  const login = appUrl('/login')
+  if (window.location.pathname !== login) window.location.replace(login)
 }
 
 export function Providers({ children }: { children: ReactNode }) {

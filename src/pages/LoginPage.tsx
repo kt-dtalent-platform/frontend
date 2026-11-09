@@ -9,6 +9,7 @@ import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
 import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
+import { mockOn } from '../lib/env'
 
 const schema = z.object({
   email: z.email('이메일 형식을 확인하세요.'),
@@ -17,7 +18,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 // 개발 서버에서 목업을 쓸 때만 보이는 안내
-const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
+const isMock = mockOn
 
 // C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
@@ -52,7 +53,7 @@ export function LoginPage() {
             <KtSquare />
             KT그룹희망나눔재단
           </p>
-          <h1 className="m-0 mt-4 text-display-sm md:text-display">KT 디지털인재장학생</h1>
+          <h1 className="m-0 mt-4 text-display-sm md:text-display">KT디지털인재장학생</h1>
           <p className="m-0 mt-3 text-ink-2">장학 활동에 필요한 일을 한곳에서.</p>
         </div>
 
@@ -88,7 +89,7 @@ export function LoginPage() {
           <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
           {isMock && (
             <p className="m-0 text-caption text-ink-3">
-              목업: admin으로 시작하는 이메일은 담당자 화면, new로 시작하는 이메일은 첫 로그인(담당자는 newadmin, 임시 비밀번호는 temp로 시작)입니다.
+              목업: admin으로 시작하는 이메일은 담당자 화면으로 갑니다. new로 시작하는 이메일은 첫 로그인(담당자는 newadmin, 임시 비밀번호는 temp로 시작)입니다.
             </p>
           )}
         </form>

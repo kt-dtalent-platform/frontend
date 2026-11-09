@@ -14,6 +14,7 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 const filters: { value: StatusFilter | null; label: string; empty: string }[] = [
   { value: null, label: '전체', empty: '대상 장학생이 없어요.' },
@@ -204,8 +205,15 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
   const dDay = daysUntil(closesAt)
   return (
     <>
-      {cohortName ?? '전체 기수'} · 마감 {formatDue(closesAt)} ·{' '}
-      <span className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>
+      <MetaList
+        items={[
+          cohortName ?? '전체 기수',
+          `마감 ${formatDue(closesAt)}`,
+          <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>
+            {dDayText(dDay, overdue)}
+          </span>,
+        ]}
+      />
     </>
   )
 }
