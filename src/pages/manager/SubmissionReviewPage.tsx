@@ -326,10 +326,12 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
   // 확대하면 가로 가운데를 보여 준다. 마우스로 끌어서 옮길 수 있다
   const boxRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
-  useEffect(() => {
+  const center = () => {
     const box = boxRef.current
     if (box) box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2
-  }, [zoomStep])
+  }
+  // 확대 단계나 보는 파일이 바뀌면 가운데로. 그림이 늦게 뜨면 onLoad에서 한 번 더
+  useEffect(center, [zoomStep, url.data?.url])
   const isImage = !!file?.contentType.startsWith('image/')
   const isPdf = file?.contentType === 'application/pdf'
   const label = file ? (d.fields.find((f) => f.fieldKey === file.fieldKey)?.label ?? '제출 서류') : '제출 서류'
@@ -425,6 +427,7 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
               src={url.data.url}
               alt={`${d.scholar.name} ${label}`}
               draggable={false}
+              onLoad={center}
               className="mx-auto block max-w-none shrink-0 self-start select-none"
               style={{ width: `${zoom.width * 100}%` }}
             />

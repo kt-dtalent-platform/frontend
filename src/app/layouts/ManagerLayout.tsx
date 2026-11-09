@@ -53,15 +53,15 @@ function useCompactNav() {
       return false
     }
   })
-  const toggle = () =>
-    setCompact((c) => {
-      try {
-        localStorage.setItem(NAV_KEY, c ? '0' : '1')
-      } catch {
-        // 저장소를 못 쓰면 기억하지 않는다
-      }
-      return !c
-    })
+  const toggle = () => {
+    const next = !compact
+    setCompact(next)
+    try {
+      localStorage.setItem(NAV_KEY, next ? '1' : '0')
+    } catch {
+      // 저장소를 못 쓰면 기억하지 않는다
+    }
+  }
   return [compact, toggle] as const
 }
 
