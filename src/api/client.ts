@@ -1,7 +1,17 @@
 import { tokenStore } from './token'
 import type { ApiEnvelope, ApiErrorBody } from './types'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/v1'
+// 백엔드 API 경로. 예전 .env의 /api/v1이 남아 있으면 목업과 프록시가 모두 어긋나므로 /v1로 바꾸고 알린다.
+function apiBase() {
+  const value = import.meta.env.VITE_API_BASE_URL || '/v1'
+  if (/\/api\/v1\/?$/.test(value)) {
+    console.warn('.env의 VITE_API_BASE_URL이 예전 값(/api/v1)입니다. /v1로 바꿔 주세요. 지금은 /v1로 보냅니다.')
+    return '/v1'
+  }
+  return value.replace(/\/$/, '')
+}
+
+export const BASE_URL = apiBase()
 
 export class ApiError extends Error {
   readonly status: number

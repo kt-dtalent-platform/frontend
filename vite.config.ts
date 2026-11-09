@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
       // 개발 서버가 /v1 요청을 로컬 백엔드로 넘긴다. 브라우저는 같은 주소로 보내는 셈이라 CORS가 필요 없다.
       // 목업이 켜져 있으면 브라우저 안에서 MSW가 먼저 답하므로 여기까지 오지 않는다.
       proxy: {
-        '/v1': { target: env.VITE_BACKEND_ORIGIN || 'http://localhost:8080', changeOrigin: true },
+        // /v1로 시작하는 API 요청만 넘긴다(/v1abc 같은 화면 주소는 넘기지 않게)
+        '^/v1/': { target: env.VITE_BACKEND_ORIGIN || 'http://localhost:8080', changeOrigin: true },
       },
     },
   }

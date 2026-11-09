@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError } from './client'
+import { ApiError, BASE_URL, api } from './client'
 import { tokenStore } from './token'
 import type { SubmissionStatus } from './types'
 
@@ -46,8 +46,7 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
 export async function downloadExport(requestId: number, status: StatusFilter | null) {
   const params = new URLSearchParams({ format: 'csv' })
   if (status) params.set('status', status)
-  const base = import.meta.env.VITE_API_BASE_URL ?? '/v1'
-  const res = await fetch(`${base}/requests/${requestId}/export?${params}`, {
+  const res = await fetch(`${BASE_URL}/requests/${requestId}/export?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
   })
   if (!res.ok) throw new ApiError(res.status, { code: 'EXPORT_FAILED', message: '파일을 만들지 못했습니다.' })
