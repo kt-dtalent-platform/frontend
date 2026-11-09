@@ -4,14 +4,32 @@ import { dueIn } from './db'
 
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
-// 진행 중 6, 작성 중 2, 마감 17 → 전체 25건(페이지 넘김 확인용)
+// 진행 중 4, 작성 중 2, 마감 17 → 전체 23건(쪽 넘김 확인용). MVP는 성적증명서 제출만 다룬다.
+// 마감된 요청: 선발 연도별로 그 해부터 들은 학기만 만든다(같은 기수에 같은 학기 요청이 두 번 나오지 않게)
+const TERMS = ['1학기', '여름학기', '2학기', '겨울학기']
+function pastRequests(count: number) {
+  const out: { title: string; cohortName: string }[] = []
+  // 2025학년도 2학기부터 거꾸로
+  for (let k = 0; out.length < count && k < 40; k++) {
+    const idx = 2025 * 4 + 2 - k
+    const year = Math.floor(idx / 4)
+    const term = TERMS[idx % 4]
+    for (const sel of [2026, 2025, 2024, 2023]) {
+      // 선발 전 해 2학기 성적까지는 받는다고 본다
+      if (year < sel - 1 || (year === sel - 1 && idx % 4 < 2)) continue
+      if (out.length < count) out.push({ title: `${year}학년도 ${term} 성적증명서 제출`, cohortName: `${sel}년 선발` })
+    }
+  }
+  return out
+}
+
 export function rows(): RequestRow[] {
   const live: RequestRow[] = [
     {
       id: 31,
-      title: '10월 행사 교통비 증빙',
-      templateCode: 'TRANSPORT_CLAIM',
-      cohortName: '6기',
+      title: '2026학년도 1학기 성적증명서 제출',
+      templateCode: 'GRADE_CERTIFICATE',
+      cohortName: '2026년 선발',
       status: 'IN_PROGRESS',
       opensAt: opened(5),
       closesAt: dueIn(2),
@@ -20,34 +38,10 @@ export function rows(): RequestRow[] {
       revisionCount: 3,
     },
     {
-      id: 35,
-      title: '2학기 지속심사 서류 제출',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '6기',
-      status: 'IN_PROGRESS',
-      opensAt: opened(3),
-      closesAt: dueIn(10),
-      targetCount: 47,
-      submittedCount: 12,
-      revisionCount: 0,
-    },
-    {
       id: 36,
-      title: '2학기 지속심사 서류 제출',
+      title: '2026학년도 1학기 성적증명서 제출 (2025년 선발)',
       templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '5기',
-      status: 'IN_PROGRESS',
-      opensAt: opened(3),
-      closesAt: dueIn(10),
-      targetCount: 47,
-      submittedCount: 20,
-      revisionCount: 1,
-    },
-    {
-      id: 37,
-      title: '멘토링 활동 보고서',
-      templateCode: null,
-      cohortName: '5기',
+      cohortName: '2025년 선발',
       status: 'IN_PROGRESS',
       opensAt: opened(8),
       closesAt: dueIn(0),
@@ -56,34 +50,34 @@ export function rows(): RequestRow[] {
       revisionCount: 2,
     },
     {
-      id: 38,
-      title: '11월 정기 모임 참석 확인',
-      templateCode: null,
+      id: 35,
+      title: '2026학년도 여름학기 성적증명서 제출',
+      templateCode: 'GRADE_CERTIFICATE',
       cohortName: null,
       status: 'IN_PROGRESS',
-      opensAt: opened(1),
-      closesAt: dueIn(5),
+      opensAt: opened(3),
+      closesAt: dueIn(10),
       targetCount: 94,
-      submittedCount: 51,
-      revisionCount: 0,
+      submittedCount: 20,
+      revisionCount: 1,
     },
     {
       id: 39,
-      title: '재학증명서 제출',
-      templateCode: null,
-      cohortName: '6기',
+      title: '2025학년도 2학기 성적증명서 추가 제출',
+      templateCode: 'GRADE_CERTIFICATE',
+      cohortName: '2025년 선발',
       status: 'IN_PROGRESS',
       opensAt: opened(10),
       closesAt: dueIn(-1),
-      targetCount: 47,
-      submittedCount: 45,
+      targetCount: 12,
+      submittedCount: 10,
       revisionCount: 0,
     },
     {
       id: 40,
-      title: '12월 행사 교통비 증빙',
-      templateCode: 'TRANSPORT_CLAIM',
-      cohortName: '6기',
+      title: '2026학년도 2학기 성적증명서 제출',
+      templateCode: 'GRADE_CERTIFICATE',
+      cohortName: '2026년 선발',
       status: 'DRAFT',
       opensAt: null,
       closesAt: null,
@@ -93,9 +87,9 @@ export function rows(): RequestRow[] {
     },
     {
       id: 41,
-      title: '겨울방학 활동 계획서',
+      title: '2026학년도 겨울학기 성적증명서 제출',
       templateCode: null,
-      cohortName: '5기',
+      cohortName: '2025년 선발',
       status: 'DRAFT',
       opensAt: null,
       closesAt: dueIn(30),
@@ -104,11 +98,12 @@ export function rows(): RequestRow[] {
       revisionCount: 0,
     },
   ]
+  const past = pastRequests(17)
   const closed: RequestRow[] = Array.from({ length: 17 }, (_, i) => ({
     id: 27 - i,
-    title: i % 2 ? `${9 - Math.floor(i / 2)}월 행사 교통비 증빙` : `${i + 1}차 활동 보고서`,
-    templateCode: i % 2 ? 'TRANSPORT_CLAIM' : null,
-    cohortName: i % 3 ? '5기' : '6기',
+    title: past[i].title,
+    templateCode: 'GRADE_CERTIFICATE',
+    cohortName: past[i].cohortName,
     status: 'CLOSED',
     opensAt: opened(40 + i * 7),
     closesAt: dueIn(-(30 + i * 7)),
@@ -146,8 +141,8 @@ export function managerDashboard(): ManagerDashboard {
     overview: {
       scholarCount: 94,
       byCohort: [
-        { cohortName: '5기', count: 47 },
-        { cohortName: '6기', count: 47 },
+        { cohortName: '2025년 선발', count: 47 },
+        { cohortName: '2026년 선발', count: 47 },
       ],
       inProgressRequests: live.length,
     },
@@ -160,37 +155,19 @@ export const templates: RequestTemplate[] = [
   {
     id: 1,
     code: 'GRADE_CERTIFICATE',
-    name: '성적 증빙',
+    name: '성적증명서 제출',
     fields: [
-      { fieldKey: 'semester', label: '학기', fieldType: 'SELECT_ONE', required: true },
-      { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER', required: true },
+      { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true },
       { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE', required: true },
       { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true },
       { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true },
     ],
   },
-  {
-    id: 3,
-    code: 'TRANSPORT_CLAIM',
-    name: '교통비 증빙',
-    fields: [
-      { fieldKey: 'used_on', label: '이용일자', fieldType: 'DATE', required: true },
-      { fieldKey: 'method', label: '교통수단', fieldType: 'SELECT_ONE', required: true },
-      { fieldKey: 'amount', label: '금액', fieldType: 'NUMBER', required: true },
-      { fieldKey: 'receipt', label: '영수증', fieldType: 'FILE', required: true },
-    ],
-  },
-  {
-    id: 4,
-    code: 'ENROLLMENT_CERT',
-    name: '재학증명서',
-    fields: [{ fieldKey: 'certificate', label: '재학증명서', fieldType: 'FILE', required: true }],
-  },
 ]
 
 export const cohorts: Cohort[] = [
-  { id: 5, name: '5기', startedOn: '2025-03-01', endedOn: null, scholarCount: 47 },
-  { id: 6, name: '6기', startedOn: '2026-03-01', endedOn: null, scholarCount: 47 },
+  { id: 5, name: '2025년 선발', startedOn: '2025-03-01', endedOn: null, scholarCount: 47 },
+  { id: 6, name: '2026년 선발', startedOn: '2026-03-01', endedOn: null, scholarCount: 47 },
 ]
 
 const KEY = 'kt-dtalent:mock-created-requests'

@@ -13,8 +13,9 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-2">
       {/* 좁은 화면에서는 이름을 숨겨 로고·메뉴 버튼과 겹치지 않게 한다 */}
-      <span className="hidden text-caption whitespace-nowrap text-ink-3 sm:inline">
-        <span className="font-semibold text-ink-2">{me.name}</span> · {sub}
+      <span className="hidden gap-2 text-caption whitespace-nowrap text-ink-3 sm:inline-flex">
+        <span className="font-semibold text-ink-2">{me.name}</span>
+        <span>{sub}</span>
       </span>
       <Button
         size="compact"

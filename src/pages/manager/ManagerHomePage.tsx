@@ -8,6 +8,7 @@ import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 const today = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })
 
@@ -70,7 +71,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
                 <span className="ml-0.5 text-body text-ink-3">명</span>
               </dd>
               {overview.byCohort.length > 0 && (
-                <dd className="m-0 text-caption text-ink-3 tabular-nums">{overview.byCohort.map((c) => `${c.cohortName} ${c.count}명`).join(' · ')}</dd>
+                <dd className="m-0 text-caption text-ink-3 tabular-nums">{overview.byCohort.map((c) => `${c.cohortName} ${c.count}명`).join(', ')}</dd>
               )}
             </div>
             <div className="flex flex-col gap-1">
@@ -127,7 +128,14 @@ function ClosingRow({ row }: { row: ManagerDashboard['tasks']['closingSoon'][num
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-body-strong">{row.title}</span>
           <span className="text-caption text-ink-3 tabular-nums">
-            마감 {formatDue(row.closesAt)} · <span className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>
+            <MetaList
+              items={[
+                `마감 ${formatDue(row.closesAt)}`,
+                <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>
+                  {dDayText(dDay, overdue)}
+                </span>,
+              ]}
+            />
           </span>
         </span>
         <span className="shrink-0 text-right text-caption text-ink-3 tabular-nums">

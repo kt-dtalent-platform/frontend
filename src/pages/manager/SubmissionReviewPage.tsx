@@ -15,6 +15,7 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { formatBytes, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { MetaList } from '../../components/ui/MetaList'
 
 type Notice = { title: string; body: string }
 
@@ -105,7 +106,11 @@ function Review({ d }: { d: SubmissionDetail }) {
             <StatusBadge status={d.status} />
             {d.late && <Tag tone="danger">마감 후</Tag>}
           </div>
-          <PageTitle description={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`].filter(Boolean).join(' · ')}>
+          <PageTitle
+            description={
+              (d.scholar.cohortName || d.submittedAt) && <MetaList items={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`]} />
+            }
+          >
             {d.scholar.name}
           </PageTitle>
         </div>
@@ -166,7 +171,7 @@ function Review({ d }: { d: SubmissionDetail }) {
               {[...d.history].reverse().map((h, i) => (
                 <li key={i} className="flex items-baseline justify-between gap-4 text-body">
                   <span>
-                    {h.actorType === 'SCHOLAR' ? '장학생' : '담당자'} · {historyLabel(h.to)}
+                    <MetaList items={[h.actorType === 'SCHOLAR' ? '장학생' : '담당자', historyLabel(h.to)]} />
                   </span>
                   <span className="shrink-0 text-caption text-ink-3 tabular-nums">{formatDue(h.changedAt)}</span>
                 </li>

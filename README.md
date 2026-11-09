@@ -1,4 +1,4 @@
-# KT 디지털인재장학생 통합 운영 플랫폼 · Frontend
+# KT디지털인재장학생 통합 운영 플랫폼 Frontend
 
 장학생은 서류를 내고, 담당자는 제출물을 검토하는 웹 서비스의 프론트엔드입니다.
 
@@ -24,7 +24,7 @@ npm run dev            # http://localhost:5173
 
 ## 스택
 
-React 19 · TypeScript · Vite · React Router · Tailwind CSS 4 · TanStack Query · React Hook Form + Zod · MSW · Pretendard · lucide-react
+React 19, TypeScript, Vite, React Router, Tailwind CSS 4, TanStack Query, React Hook Form + Zod, MSW, Pretendard, lucide-react
 
 ## 폴더
 
