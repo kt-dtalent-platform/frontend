@@ -29,8 +29,8 @@ export const handlers = [
     if (password.length < 8) {
       return fail('/api/v1/auth/login', 401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 올바르지 않습니다')
     }
-    const role = email.startsWith('admin') ? 'MANAGER' : 'SCHOLAR'
-    // 목업: new로 시작하는 이메일은 임시 비밀번호로 처음 로그인한 계정
+    // 목업: admin 또는 newadmin으로 시작하면 담당자, new로 시작하면 임시 비밀번호로 처음 로그인한 계정
+    const role = /^(new)?admin/.test(email) ? 'MANAGER' : 'SCHOLAR'
     const first = email.startsWith('new') && !passwordChanged()
     return ok('/api/v1/auth/login', {
       accessToken: `mock-access-${role.toLowerCase()}${first ? '-first' : ''}`,
@@ -40,7 +40,11 @@ export const handlers = [
     })
   }),
 
-  http.post(`${BASE}/auth/logout`, () => ok('/api/v1/auth/logout', null)),
+  http.post(`${BASE}/auth/logout`, () => {
+    // 목업: 로그아웃하면 첫 로그인을 다시 확인할 수 있게 비밀번호 변경 기록을 지운다
+    sessionStorage.removeItem('mock-password-changed')
+    return ok('/api/v1/auth/logout', null)
+  }),
 
   http.get(`${BASE}/me`, ({ request }) => {
     const role = roleOf(request)

@@ -88,7 +88,7 @@ export function LoginPage() {
           <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
           {isMock && (
             <p className="m-0 text-caption text-ink-3">
-              목업: admin으로 시작하는 이메일은 담당자 화면, new로 시작하는 이메일은 첫 로그인(임시 비밀번호는 temp로 시작)입니다.
+              목업: admin으로 시작하는 이메일은 담당자 화면, new로 시작하는 이메일은 첫 로그인(담당자는 newadmin, 임시 비밀번호는 temp로 시작)입니다.
             </p>
           )}
         </form>

@@ -37,10 +37,10 @@ export function PasswordChangePage() {
     )
   }
   if (me.data && !me.data.passwordChangeRequired) return <Navigate to={roleHome(me.data.role)} replace />
-  return <ChangeForm />
+  return <ChangeForm email={me.data?.email ?? ''} />
 }
 
-function ChangeForm() {
+function ChangeForm({ email }: { email: string }) {
   const change = useChangePassword()
   const rulesId = useId()
   const { register, handleSubmit, control, formState, setError, getValues, trigger } = useForm<Values>({
@@ -71,6 +71,8 @@ function ChangeForm() {
           <Logo />
         </div>
         <form onSubmit={(ev) => void onSubmit(ev)} noValidate className="flex flex-col gap-6 rounded-xl bg-surface px-6 py-8 md:p-10">
+          {/* 비밀번호 관리자(Safari 키체인, Chrome)가 어느 계정의 새 비밀번호인지 알도록 아이디를 숨겨 둔다 */}
+          <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
           <div className="flex flex-col gap-2">
             <h1 className="m-0 text-title-1">비밀번호 변경</h1>
             <p className="m-0 text-ink-2">처음 로그인했어요. 받은 임시 비밀번호를 내 비밀번호로 바꿔 주세요.</p>
