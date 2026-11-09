@@ -63,10 +63,7 @@ function TaskCard({ task }: { task: MyTask }) {
   const soon = !done && !task.overdue && task.dDay <= 3
 
   return (
-    <Link
-      to={`/tasks/${task.requestId}`}
-      className="group block rounded-lg bg-surface px-6 py-6 text-ink no-underline hover:bg-surface-hover md:px-8"
-    >
+    <Link to={`/tasks/${task.requestId}`} className="group block rounded-lg bg-surface px-6 py-6 text-ink no-underline hover:bg-surface-hover md:px-8">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -74,21 +71,17 @@ function TaskCard({ task }: { task: MyTask }) {
             {late && <Tag tone="danger">마감 지남</Tag>}
           </div>
           <h2 className="m-0 text-title-2">{task.title}</h2>
-          <p className="m-0 text-caption text-ink-3 tabular-nums">
-            마감 {formatDue(task.requestDueAt)}
-            {!done && (
-              <>
-                {' · '}
-                <span className={cn((late || soon) && 'font-semibold text-danger-text')}>{dDayText(task.dDay, task.overdue)}</span>
-              </>
-            )}
+          <p className="m-0 flex gap-3 text-caption text-ink-3 tabular-nums">
+            <span>마감 {formatDue(task.requestDueAt)}</span>
+            {!done && <span className={cn((late || soon) && 'font-semibold text-danger-text')}>{dDayText(task.dDay, task.overdue)}</span>}
           </p>
         </div>
         <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
       </div>
       {task.revisionReason && (
-        <div className="mt-4 rounded-md bg-warning-bg px-4 py-3 text-warning-text">
-          <span className="font-semibold">보완 사유</span> · {task.revisionReason}
+        <div className="mt-4 flex flex-col gap-1 rounded-md bg-warning-bg px-4 py-3 text-warning-text">
+          <span className="font-semibold">보완 사유</span>
+          <span>{task.revisionReason}</span>
         </div>
       )}
     </Link>

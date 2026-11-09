@@ -1,4 +1,4 @@
-# KT 디지털인재장학생 통합 운영 플랫폼 · Frontend
+# KT디지털인재장학생 통합 운영 플랫폼 Frontend
 
 미리보기: https://kt-dtalent-platform.github.io/frontend/ (main에 머지할 때마다 자동으로 올라가는 목업 화면)
 
@@ -15,7 +15,7 @@ npm run dev            # http://localhost:5173
 ```
 
 개발 서버는 기본으로 목업 응답(MSW)을 씁니다. 백엔드 없이도 화면이 돌아갑니다.
-로컬 백엔드와 붙일 때는 `.env`에서 `VITE_USE_MOCK=false`, `VITE_API_BASE_URL=http://localhost:8080/api/v1`로 바꿉니다.
+로컬 백엔드와 붙일 때는 백엔드를 `localhost:8080`에 띄운 뒤 `.env`에서 `VITE_USE_MOCK=false`로 바꾸고 개발 서버를 다시 켭니다. 개발 서버가 `/v1` 요청을 백엔드로 넘겨 주므로(프록시) CORS 설정이 필요 없습니다. 백엔드 주소가 다르면 `VITE_BACKEND_ORIGIN`을 바꿉니다.
 
 | 명령 | 하는 일 |
 | --- | --- |
@@ -26,7 +26,7 @@ npm run dev            # http://localhost:5173
 
 ## 스택
 
-React 19 · TypeScript · Vite · React Router · Tailwind CSS 4 · TanStack Query · React Hook Form + Zod · MSW · Pretendard · lucide-react
+React 19, TypeScript, Vite, React Router, Tailwind CSS 4, TanStack Query, React Hook Form + Zod, MSW, Pretendard, lucide-react
 
 ## 폴더
 

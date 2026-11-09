@@ -46,7 +46,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   const busy = pending.some((p) => !p.error)
   const full = files.length + pending.length >= maxFiles
   const accept = rule?.allowedExtensions?.flatMap((e) => (e.toLowerCase() === 'jpg' ? ['.jpg', '.jpeg'] : [`.${e}`])).join(',')
-  const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(' · ')
+  const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(', ')
 
   // 올리는 중이면 제출을 막도록 부모에게 알린다
   const { onBusyChange } = handlers ?? {}

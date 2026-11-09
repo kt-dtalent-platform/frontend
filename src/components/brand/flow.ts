@@ -92,12 +92,7 @@ export function startBrandFlow({ haze, soft, edge }: Layers, { still = false } =
       const dx = 3 * u * u * (p1[0] - p0[0]) + 6 * u * t * (p2[0] - p1[0]) + 3 * t * t * (p3[0] - p2[0])
       const dy = 3 * u * u * (p1[1] - p0[1]) + 6 * u * t * (p2[1] - p1[1]) + 3 * t * t * (p3[1] - p2[1])
       const l = Math.hypot(dx, dy) || 1
-      const off =
-        S.tw *
-        Math.sin(Math.PI * Math.min(1, t * 1.05)) *
-        Math.cos(Math.PI * (t - S.fold) * 1.1) *
-        (1 + 0.18 * Math.sin(t * 7 - S.a * 1.1)) *
-        k
+      const off = S.tw * Math.sin(Math.PI * Math.min(1, t * 1.05)) * Math.cos(Math.PI * (t - S.fold) * 1.1) * (1 + 0.18 * Math.sin(t * 7 - S.a * 1.1)) * k
       out.push(x - (dy / l) * off, y + (dx / l) * off)
     }
     return out
