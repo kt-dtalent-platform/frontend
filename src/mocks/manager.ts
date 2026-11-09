@@ -5,7 +5,7 @@ import { dueIn } from './db'
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
 // 진행 중 6, 작성 중 2, 마감 17 → 전체 25건(페이지 넘김 확인용)
-function rows(): RequestRow[] {
+export function rows(): RequestRow[] {
   const live: RequestRow[] = [
     {
       id: 31,
@@ -116,7 +116,9 @@ function rows(): RequestRow[] {
     submittedCount: 47 - (i % 4),
     revisionCount: 0,
   }))
-  return [...created(), ...live, ...closed]
+  // 수정·공개한 내용을 미리 만든 행에도 덮어쓴다
+  const ed = edits()
+  return [...created(), ...live, ...closed].map((r) => (ed[r.id] ? { ...r, ...ed[r.id].row } : r))
 }
 
 export function requestList(status: string | null, page: number, pageSize: number) {
@@ -192,6 +194,23 @@ export const cohorts: Cohort[] = [
 ]
 
 const KEY = 'kt-dtalent:mock-created-requests'
+const BODIES = 'kt-dtalent:mock-created-request-bodies'
+
+function bodies(): Record<number, CreateRequestBody> {
+  try {
+    return JSON.parse(sessionStorage.getItem(BODIES) ?? '{}') as Record<number, CreateRequestBody>
+  } catch {
+    return {}
+  }
+}
+
+function saveBody(id: number, body: CreateRequestBody) {
+  try {
+    sessionStorage.setItem(BODIES, JSON.stringify({ ...bodies(), [id]: body }))
+  } catch {
+    // 저장소를 못 쓰면 이번 화면에서만
+  }
+}
 
 function created(): RequestRow[] {
   try {
@@ -226,18 +245,75 @@ export function createRequest(body: CreateRequestBody) {
     revisionCount: 0,
   }
   saveCreated([row, ...list])
+  saveBody(id, body)
   return { id, status: row.status, fields: templates.find((t) => t.id === body.templateId)?.fields ?? [] }
 }
 
 export function publishRequest(id: number) {
-  const list = created()
-  const row = list.find((r) => r.id === id)
+  const row = rows().find((r) => r.id === id)
   if (!row) return { error: 'NOT_FOUND' as const }
   if (row.status !== 'DRAFT') return { error: 'INVALID_STATE_TRANSITION' as const }
   const targetCount = row.cohortName ? (cohorts.find((c) => c.name === row.cohortName)?.scholarCount ?? 0) : cohorts.reduce((n, c) => n + c.scholarCount, 0)
-  row.status = 'IN_PROGRESS'
-  row.targetCount = targetCount
-  row.opensAt = new Date().toISOString().slice(0, 19)
-  saveCreated(list)
-  return { status: row.status, targetCount, publishedAt: row.opensAt }
+  const publishedAt = new Date().toISOString().slice(0, 19)
+  patch(id, { row: { status: 'IN_PROGRESS', targetCount, opensAt: publishedAt } })
+  return { status: 'IN_PROGRESS' as const, targetCount, publishedAt }
+}
+
+// ── 작성 중 요청 열기·고치기 목업 ──
+
+type Edit = { row: Partial<RequestRow>; body?: CreateRequestBody }
+const EDITS = 'kt-dtalent:mock-request-edits'
+
+function edits(): Record<number, Edit> {
+  try {
+    return JSON.parse(sessionStorage.getItem(EDITS) ?? '{}') as Record<number, Edit>
+  } catch {
+    return {}
+  }
+}
+
+function patch(id: number, e: Edit) {
+  const all = edits()
+  const prev = all[id] ?? { row: {} }
+  all[id] = { row: { ...prev.row, ...e.row }, body: e.body ?? prev.body }
+  try {
+    sessionStorage.setItem(EDITS, JSON.stringify(all))
+  } catch {
+    // 저장소를 못 쓰면 이번 화면에서만
+  }
+}
+
+export function requestDetail(id: number) {
+  const row = rows().find((r) => r.id === id)
+  if (!row) return null
+  // 고친 적이 없으면 목록 행에서 만들어 낸다
+  const body: CreateRequestBody = edits()[id]?.body ??
+    bodies()[id] ?? {
+      programId: 1,
+      cohortId: cohorts.find((c) => c.name === row.cohortName)?.id ?? null,
+      templateId: templates.find((t) => t.code === row.templateCode)?.id ?? 0,
+      title: row.title,
+      description: null,
+      academicYear: 2026,
+      semester: '2',
+      closesAt: row.closesAt?.slice(0, 19) ?? '',
+      completionMessage: null,
+    }
+  return { id, status: row.status, ...body, templateId: body.templateId || null }
+}
+
+export function updateRequest(id: number, body: CreateRequestBody) {
+  const row = rows().find((r) => r.id === id)
+  if (!row) return { error: 'NOT_FOUND' as const }
+  if (row.status !== 'DRAFT') return { error: 'INVALID_STATE_TRANSITION' as const }
+  patch(id, {
+    row: {
+      title: body.title,
+      templateCode: templates.find((t) => t.id === body.templateId)?.code ?? null,
+      cohortName: cohorts.find((c) => c.id === body.cohortId)?.name ?? null,
+      closesAt: body.closesAt,
+    },
+    body,
+  })
+  return { id, status: row.status }
 }
