@@ -1,11 +1,20 @@
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
-import { useConfirm, useRequestRevision, useRequestSubmissions, useSubmissionDetail, type Comparison, type SubmissionDetail } from '../../api/review'
+import {
+  useConfirm,
+  useFileUrl,
+  useRequestRevision,
+  useRequestSubmissions,
+  useSubmissionDetail,
+  type Comparison,
+  type SubmissionDetail,
+} from '../../api/review'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { buttonClass } from '../../components/ui/buttonClass'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { FormDialog } from '../../components/ui/FormDialog'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -19,7 +28,7 @@ import { MetaList } from '../../components/ui/MetaList'
 
 type Notice = { title: string; body: string }
 
-// A02 개별 검토: 제출 내용 + 문서 비교 → 확인 완료 또는 보완 요청. 끝나면 같은 요청의 다음 검토 대기로
+// A02 개별 검토: 왼쪽 서류 원본 + 오른쪽 입력값과 서류 비교 → 확인 완료 또는 보완 요청. 끝나면 같은 요청의 다음 검토 대기로
 export function SubmissionReviewPage() {
   const submissionId = Number(useParams().submissionId)
   const query = useSubmissionDetail(submissionId)
@@ -140,29 +149,36 @@ function Review({ d }: { d: SubmissionDetail }) {
         </Banner>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-labelledby="answers" className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-6 md:px-8">
-          <h2 id="answers" className="m-0 text-title-2">
-            제출 내용
-          </h2>
-          <dl className="m-0 flex flex-col gap-4">
-            {d.fields.map((f) => (
-              <div key={f.fieldKey} className="flex flex-col gap-1">
-                <dt className="text-caption text-ink-3">{f.label}</dt>
-                <dd className="m-0">
-                  {f.fieldType === 'FILE' ? (
-                    <FileList files={d.files.filter((x) => x.fieldKey === f.fieldKey)} />
-                  ) : (
-                    <span className={cn('text-body', isEmpty(d.answers[f.fieldKey]) && 'text-ink-3')}>{show(d.answers[f.fieldKey])}</span>
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        <div className="flex flex-col gap-6">
+      {/* 왼쪽: 올린 서류 원본, 오른쪽: 입력값과 서류 비교, 처리 버튼(PC에서는 스크롤을 따라온다) */}
+      {/* PC: 왼쪽 원본(7칸), 오른쪽 비교와 처리 버튼(5칸, 스크롤을 따라옴). 휴대폰: 원본 → 비교·버튼 → 처리 이력 */}
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+        <div className="min-w-0 lg:col-span-7">
+          <DocumentViewer d={d} />
+        </div>
+        <aside
+          aria-label="입력값 확인과 처리"
+          className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-header-h lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"
+        >
           <CompareCard d={d} />
+          {actionError && (
+            <Banner tone="danger" title={actionError.code === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
+              {actionError.code === 'VERSION_CONFLICT' || actionError.code === 'INVALID_STATE_TRANSITION'
+                ? '최신 내용을 다시 불러왔어요. 내용을 확인한 뒤 다시 처리하세요.'
+                : '잠시 후 다시 시도하세요.'}
+            </Banner>
+          )}
+          {waiting && (
+            <div className="grid grid-cols-2 gap-3">
+              <Button disabled={confirm.isPending || revision.isPending} onClick={() => (setRevisionRound((n) => n + 1), setRevising(true))}>
+                보완 요청
+              </Button>
+              <Button variant="primary" disabled={confirm.isPending || revision.isPending} onClick={() => setConfirming(true)}>
+                {confirm.isPending ? '처리하는 중' : '확인 완료'}
+              </Button>
+            </div>
+          )}
+        </aside>
+        <div className="min-w-0 lg:col-span-7">
           <section aria-labelledby="history" className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
             <h2 id="history" className="m-0 text-title-2">
               처리 이력
@@ -170,9 +186,7 @@ function Review({ d }: { d: SubmissionDetail }) {
             <ol className="m-0 flex list-none flex-col gap-2 p-0">
               {[...d.history].reverse().map((h, i) => (
                 <li key={i} className="flex items-baseline justify-between gap-4 text-body">
-                  <span>
-                    <MetaList items={[h.actorType === 'SCHOLAR' ? '장학생' : '담당자', historyLabel(h.to)]} />
-                  </span>
+                  <MetaList items={[h.actorType === 'SCHOLAR' ? '장학생' : '담당자', historyLabel(h.to)]} />
                   <span className="shrink-0 text-caption text-ink-3 tabular-nums">{formatDue(h.changedAt)}</span>
                 </li>
               ))}
@@ -180,25 +194,6 @@ function Review({ d }: { d: SubmissionDetail }) {
           </section>
         </div>
       </div>
-
-      {actionError && (
-        <Banner tone="danger" title={actionError.code === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
-          {actionError.code === 'VERSION_CONFLICT' || actionError.code === 'INVALID_STATE_TRANSITION'
-            ? '최신 내용을 다시 불러왔어요. 내용을 확인한 뒤 다시 처리하세요.'
-            : '잠시 후 다시 시도하세요.'}
-        </Banner>
-      )}
-
-      {waiting && (
-        <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
-          <Button disabled={confirm.isPending || revision.isPending} onClick={() => (setRevisionRound((n) => n + 1), setRevising(true))}>
-            보완 요청
-          </Button>
-          <Button variant="primary" disabled={confirm.isPending || revision.isPending} onClick={() => setConfirming(true)}>
-            {confirm.isPending ? '처리하는 중' : '확인 완료'}
-          </Button>
-        </div>
-      )}
 
       <ConfirmDialog
         open={confirming}
@@ -238,60 +233,168 @@ function Review({ d }: { d: SubmissionDetail }) {
   )
 }
 
-// 문서 비교: 장학생 입력값과 문서에서 읽은 값. 기록되는 값은 장학생 입력값(정책)
+// 입력값과 서류 비교. 기록되는 값은 장학생 입력값이고(정책), 서류에서 읽은 값은 확인용이다
 function CompareCard({ d }: { d: SubmissionDetail }) {
   const result: Record<Comparison['result'], string> = { MATCH: '일치', MISMATCH: '다름', UNREADABLE: '읽지 못함' }
+  const compared = new Set(d.analysis?.comparisons.map((c) => c.field))
+  // 비교하지 않은 입력(전달할 내용 등). 파일은 왼쪽 원본으로 본다
+  const others = d.fields.filter((f) => f.fieldType !== 'FILE' && !compared.has(f.fieldKey) && !isEmpty(d.answers[f.fieldKey]))
+  const verdict = !d.analysis
+    ? null
+    : d.analysis.overallResult === 'MATCH'
+      ? { tone: 'text-success-text', text: '모든 값이 서류와 같아요' }
+      : d.analysis.overallResult === 'UNREADABLE'
+        ? { tone: 'text-danger-text', text: '서류에서 읽지 못한 값이 있어요' }
+        : { tone: 'text-danger-text', text: '서류와 다른 값이 있어요' }
+
   return (
     <section aria-labelledby="compare" className="flex flex-col gap-3 rounded-lg bg-surface py-6">
-      <div className="flex items-center justify-between gap-3 px-6 md:px-8">
+      <div className="flex flex-col gap-1 px-6">
         <h2 id="compare" className="m-0 text-title-2">
-          문서 비교
+          입력값과 서류 비교
         </h2>
-        {d.analysis && d.analysis.overallResult !== 'MATCH' && (
-          <Tag tone="danger">{d.analysis.overallResult === 'UNREADABLE' ? '읽지 못한 값 있음' : '다른 값 있음'}</Tag>
-        )}
+        {verdict && <p className={cn('m-0 text-label', verdict.tone)}>{verdict.text}</p>}
       </div>
       {!d.analysis ? (
-        <p className="m-0 px-6 text-ink-3 md:px-8">이 요청은 문서 비교를 하지 않아요.</p>
+        <p className="m-0 px-6 text-ink-3">자동 비교를 하지 못했어요. 원본을 보고 입력값이 맞는지 확인하세요.</p>
       ) : (
-        <>
-          <table className="w-full border-collapse text-body">
-            <thead>
-              <tr className="h-control-default border-b border-line-subtle text-caption text-ink-3">
-                <th scope="col" className="pl-6 text-left font-normal md:pl-8">
-                  항목
-                </th>
-                <th scope="col" className="px-3 text-right font-normal">
-                  장학생 입력
-                </th>
-                <th scope="col" className="pr-6 text-right font-normal md:pr-8">
-                  문서 값
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.analysis.comparisons.map((c) => {
-                const off = c.result !== 'MATCH'
-                return (
-                  <tr key={c.field} className="h-row-h border-b border-line-subtle last:border-b-0">
-                    <th scope="row" className="pl-6 text-left font-normal md:pl-8">
-                      {c.label}
-                    </th>
-                    <td className="px-3 text-right tabular-nums">{c.entered}</td>
-                    <td className={cn('pr-6 text-right tabular-nums md:pr-8', off && 'font-bold text-danger-text')}>
-                      <span className="inline-flex items-center justify-end gap-2">
-                        {c.extracted ?? '–'}
-                        {off && <Tag tone="danger">{result[c.result]}</Tag>}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <p className="m-0 px-6 text-caption text-ink-3 md:px-8">기록되는 값은 장학생 입력값이에요. 문서 값은 확인용이에요.</p>
-        </>
+        <table className="w-full border-collapse text-body">
+          <thead>
+            <tr className="h-control-default border-b border-line-subtle text-caption text-ink-3">
+              <th scope="col" className="pl-6 text-left font-normal">
+                항목
+              </th>
+              <th scope="col" className="bg-surface-sunken px-3 text-right font-normal">
+                장학생 입력
+              </th>
+              <th scope="col" className="pr-6 pl-3 text-right font-normal">
+                서류에서 읽은 값
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.analysis.comparisons.map((c) => {
+              const off = c.result !== 'MATCH'
+              return (
+                <tr key={c.field} className="h-row-h border-b border-line-subtle last:border-b-0">
+                  <th scope="row" className="pl-6 text-left font-normal">
+                    {c.label}
+                  </th>
+                  <td className="bg-surface-sunken px-3 text-right text-title-2 tabular-nums">{c.entered}</td>
+                  <td className={cn('pr-6 pl-3 text-right tabular-nums', off && 'font-bold text-danger-text')}>
+                    <span className="inline-flex flex-col items-end gap-1">
+                      {c.extracted ?? '–'}
+                      {off && <Tag tone="danger">{result[c.result]}</Tag>}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       )}
+      <p className="m-0 px-6 text-caption text-ink-3">확인 완료하면 장학생 입력값으로 기록돼요.</p>
+      {others.length > 0 && (
+        <dl className="m-0 flex flex-col gap-3 border-t border-line-subtle px-6 pt-4">
+          {others.map((f) => (
+            <div key={f.fieldKey} className="flex flex-col gap-1">
+              <dt className="text-caption text-ink-3">{f.label}</dt>
+              <dd className="m-0 text-body whitespace-pre-wrap">{show(d.answers[f.fieldKey])}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  )
+}
+
+// 올린 서류 원본. 사진은 확대·축소, PDF는 브라우저 기본 보기. 새 탭에서 크게 볼 수 있다
+const ZOOM = [1, 1.25, 1.5, 2]
+
+function DocumentViewer({ d }: { d: SubmissionDetail }) {
+  const [activeId, setActiveId] = useState<number | null>(d.files[0]?.id ?? null)
+  const file = d.files.find((f) => f.id === activeId) ?? null
+  const url = useFileUrl(d.id, file?.id ?? null)
+  const [zoomStep, setZoomStep] = useState(0)
+  const isImage = !!file?.contentType.startsWith('image/')
+  const isPdf = file?.contentType === 'application/pdf'
+  const label = file ? (d.fields.find((f) => f.fieldKey === file.fieldKey)?.label ?? '제출 서류') : '제출 서류'
+
+  return (
+    <section aria-labelledby="doc" className="flex flex-col overflow-hidden rounded-lg bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-4">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 id="doc" className="m-0 text-title-2">
+            {label} 원본
+          </h2>
+          {file && <MetaList oneLine items={[formatBytes(file.sizeBytes), file.originalName]} className="flex text-caption text-ink-3 tabular-nums" />}
+        </div>
+        {file && url.data && (
+          <div className="flex items-center gap-1">
+            {isImage && (
+              <>
+                <Button size="compact" variant="ghost" aria-label="축소" disabled={zoomStep === 0} onClick={() => setZoomStep((z) => z - 1)}>
+                  <ZoomOut size={16} strokeWidth={2} aria-hidden />
+                </Button>
+                <span className="w-12 text-center text-caption text-ink-3 tabular-nums" aria-live="polite">
+                  {Math.round(ZOOM[zoomStep] * 100)}%
+                </span>
+                <Button size="compact" variant="ghost" aria-label="확대" disabled={zoomStep === ZOOM.length - 1} onClick={() => setZoomStep((z) => z + 1)}>
+                  <ZoomIn size={16} strokeWidth={2} aria-hidden />
+                </Button>
+              </>
+            )}
+            <a href={url.data.url} target="_blank" rel="noreferrer" className={buttonClass({ size: 'compact' })}>
+              <ExternalLink size={16} strokeWidth={2} aria-hidden />
+              크게 보기
+            </a>
+          </div>
+        )}
+      </div>
+
+      {d.files.length > 1 && (
+        <div role="tablist" aria-label="올린 파일" className="flex gap-2 overflow-x-auto px-6 pb-3">
+          {d.files.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={f.id === activeId}
+              onClick={() => (setActiveId(f.id), setZoomStep(0))}
+              className={cn(buttonClass({ size: 'compact', variant: f.id === activeId ? 'primary' : 'secondary' }), 'max-w-full truncate')}
+            >
+              {f.originalName}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex h-viewer-h-m overflow-auto bg-surface-sunken lg:h-viewer-h">
+        {!file ? (
+          <p className="m-auto text-ink-3">올린 파일이 없어요.</p>
+        ) : url.isPending ? (
+          <p className="m-auto text-ink-3">원본을 불러오는 중</p>
+        ) : url.isError ? (
+          <div className="m-auto flex flex-col items-center gap-3 text-ink-3">
+            <p className="m-0">원본을 불러오지 못했어요.</p>
+            <Button size="compact" onClick={() => url.refetch()}>
+              다시 불러오기
+            </Button>
+          </div>
+        ) : isImage ? (
+          // 확대 단계는 사용자가 고르는 값이라 폭을 비율로 준다
+          <img
+            src={url.data.url}
+            alt={`${d.scholar.name} ${label}`}
+            className="mx-auto block max-w-none shrink-0 self-start"
+            style={{ width: `${ZOOM[zoomStep] * 100}%` }}
+          />
+        ) : isPdf ? (
+          <iframe src={url.data.url} title={`${d.scholar.name} ${label}`} className="size-full border-0" />
+        ) : (
+          <p className="m-auto text-ink-3">이 형식은 미리 볼 수 없어요. 크게 보기로 여세요.</p>
+        )}
+      </div>
     </section>
   )
 }
@@ -365,21 +468,6 @@ function RevisionDialog({
         </p>
       </div>
     </FormDialog>
-  )
-}
-
-function FileList({ files }: { files: SubmissionDetail['files'] }) {
-  if (files.length === 0) return <span className="text-ink-3">올린 파일 없음</span>
-  return (
-    <ul className="m-0 flex list-none flex-col gap-2 p-0">
-      {files.map((f) => (
-        <li key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-surface-sunken px-4 text-ink-2">
-          <FileText size={16} strokeWidth={2} className="shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">{f.originalName}</span>
-          <span className="shrink-0 text-caption text-ink-3 tabular-nums">{formatBytes(f.sizeBytes)}</span>
-        </li>
-      ))}
-    </ul>
   )
 }
 

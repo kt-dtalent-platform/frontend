@@ -255,6 +255,18 @@ export const handlers = [
     })
   }),
 
+  // 원본 보기 주소. 실제로는 S3 임시 주소가 온다(백엔드 API 없음, 경로 확인 필요). 목업은 샘플 성적증명서를 돌려준다
+  http.get(`${BASE}/submissions/:submissionId/files/:fileId/url`, async ({ params, request }) => {
+    const path = `/v1/submissions/${params.submissionId}/files/${params.fileId}/url`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const file = submissionDetail(Number(params.submissionId))?.files.find((f) => f.id === Number(params.fileId))
+    if (!file) return fail(path, 404, 'FILE_NOT_FOUND', '파일을 찾을 수 없습니다')
+    await delay(200)
+    const ext = file.contentType === 'application/pdf' ? 'pdf' : 'png'
+    const url = new URL(`${import.meta.env.BASE_URL}mock/transcript-sample.${ext}`, location.origin).href
+    return ok(path, { url, expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() })
+  }),
+
   http.get(`${BASE}/submissions/:submissionId`, async ({ params, request }) => {
     const path = `/v1/submissions/${params.submissionId}`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 제출입니다')

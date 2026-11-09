@@ -121,6 +121,8 @@
   --container-page-brand: 1120px;
   --container-page-wide: 1200px;
   --container-page-form: 720px;
+  --spacing-viewer-h: 640px;
+  --spacing-viewer-h-m: 480px;
   --container-page-narrow: 400px;
   --spacing-login-card-w: 360px;
   --spacing-dialog-w: 440px;

@@ -168,9 +168,10 @@ function sample(code: string, i: number) {
     files.push({
       id: 90000 + i,
       fieldKey: 'transcript',
-      originalName: `성적증명서_${i + 1}.pdf`,
-      contentType: 'application/pdf',
-      sizeBytes: 320_000 + i * 1000,
+      // 사진으로 찍어 올린 경우와 PDF를 섞는다
+      originalName: i % 3 === 0 ? `성적증명서_${i + 1}.png` : `성적증명서_${i + 1}.pdf`,
+      contentType: i % 3 === 0 ? 'image/png' : 'application/pdf',
+      sizeBytes: (i % 3 === 0 ? 1_400_000 : 320_000) + i * 1000,
     })
     comparisons.push(
       {
