@@ -96,6 +96,17 @@ export type SubmissionDetail = {
 
 export const detailKey = (id: number) => ['manager', 'submission', id] as const
 
+// GET /submissions/{id}/files/{fileId}/url → 원본 보기용 임시 주소. 백엔드 API 없음(경로와 응답 모양 확인 필요)
+export function useFileUrl(submissionId: number, fileId: number | null) {
+  return useQuery({
+    queryKey: ['manager', 'file-url', submissionId, fileId],
+    queryFn: () => api<{ url: string; expiresAt: string }>(`/submissions/${submissionId}/files/${fileId}/url`),
+    enabled: fileId !== null,
+    // 임시 주소는 몇 분 뒤 만료되므로 오래 두지 않는다
+    staleTime: 4 * 60 * 1000,
+  })
+}
+
 export function useSubmissionDetail(submissionId: number) {
   return useQuery({ queryKey: detailKey(submissionId), queryFn: () => api<SubmissionDetail>(`/submissions/${submissionId}`) })
 }
