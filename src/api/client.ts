@@ -1,7 +1,7 @@
 import { tokenStore } from './token'
 import type { ApiEnvelope, ApiErrorBody } from './types'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/v1'
 
 export class ApiError extends Error {
   readonly status: number

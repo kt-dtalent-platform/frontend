@@ -46,7 +46,7 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
 export async function downloadExport(requestId: number, status: StatusFilter | null) {
   const params = new URLSearchParams({ format: 'csv' })
   if (status) params.set('status', status)
-  const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
+  const base = import.meta.env.VITE_API_BASE_URL ?? '/v1'
   const res = await fetch(`${base}/requests/${requestId}/export?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
   })
