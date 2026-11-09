@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, ExternalLink, ZoomIn, ZoomOut } from 'lucide-react'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import {
@@ -309,13 +309,27 @@ function CompareCard({ d }: { d: SubmissionDetail }) {
 }
 
 // 올린 서류 원본. 사진은 확대·축소, PDF는 브라우저 기본 보기. 새 탭에서 크게 볼 수 있다
-const ZOOM = [1, 1.25, 1.5, 2]
+// 처음에는 한 쪽 전체가 보이게(전체), 그다음 폭에 맞춰, 그 이상은 폭의 배수로 키운다
+const ZOOM = [
+  { label: '전체', width: null },
+  { label: '폭 맞춤', width: 1 },
+  { label: '150%', width: 1.5 },
+  { label: '200%', width: 2 },
+] as const
 
 function DocumentViewer({ d }: { d: SubmissionDetail }) {
   const [activeId, setActiveId] = useState<number | null>(d.files[0]?.id ?? null)
   const file = d.files.find((f) => f.id === activeId) ?? null
   const url = useFileUrl(d.id, file?.id ?? null)
   const [zoomStep, setZoomStep] = useState(0)
+  const zoom = ZOOM[zoomStep]
+  // 확대하면 가로 가운데를 보여 준다. 마우스로 끌어서 옮길 수 있다
+  const boxRef = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
+  useEffect(() => {
+    const box = boxRef.current
+    if (box) box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2
+  }, [zoomStep])
   const isImage = !!file?.contentType.startsWith('image/')
   const isPdf = file?.contentType === 'application/pdf'
   const label = file ? (d.fields.find((f) => f.fieldKey === file.fieldKey)?.label ?? '제출 서류') : '제출 서류'
@@ -336,8 +350,8 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
                 <Button size="compact" variant="ghost" aria-label="축소" disabled={zoomStep === 0} onClick={() => setZoomStep((z) => z - 1)}>
                   <ZoomOut size={16} strokeWidth={2} aria-hidden />
                 </Button>
-                <span className="w-12 text-center text-caption text-ink-3 tabular-nums" aria-live="polite">
-                  {Math.round(ZOOM[zoomStep] * 100)}%
+                <span className="w-14 text-center text-caption text-ink-3 tabular-nums" aria-live="polite">
+                  {zoom.label}
                 </span>
                 <Button size="compact" variant="ghost" aria-label="확대" disabled={zoomStep === ZOOM.length - 1} onClick={() => setZoomStep((z) => z + 1)}>
                   <ZoomIn size={16} strokeWidth={2} aria-hidden />
@@ -369,7 +383,28 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
         </div>
       )}
 
-      <div className="flex h-viewer-h-m overflow-auto bg-surface-sunken lg:h-viewer-h">
+      <div
+        ref={boxRef}
+        className={cn(
+          'flex h-viewer-h-m overflow-auto bg-surface-sunken lg:h-viewer-h',
+          isImage && zoom.width === null && 'items-center justify-center p-4',
+          isImage && zoom.width !== null && 'cursor-grab active:cursor-grabbing',
+        )}
+        onPointerDown={(e) => {
+          if (!isImage || zoom.width === null || e.pointerType !== 'mouse') return
+          const box = e.currentTarget
+          drag.current = { x: e.clientX, y: e.clientY, left: box.scrollLeft, top: box.scrollTop }
+          box.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => {
+          const start = drag.current
+          if (!start) return
+          e.currentTarget.scrollLeft = start.left - (e.clientX - start.x)
+          e.currentTarget.scrollTop = start.top - (e.clientY - start.y)
+        }}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
         {!file ? (
           <p className="m-auto text-ink-3">올린 파일이 없어요.</p>
         ) : url.isPending ? (
@@ -382,13 +417,18 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
             </Button>
           </div>
         ) : isImage ? (
-          // 확대 단계는 사용자가 고르는 값이라 폭을 비율로 준다
-          <img
-            src={url.data.url}
-            alt={`${d.scholar.name} ${label}`}
-            className="mx-auto block max-w-none shrink-0 self-start"
-            style={{ width: `${ZOOM[zoomStep] * 100}%` }}
-          />
+          zoom.width === null ? (
+            <img src={url.data.url} alt={`${d.scholar.name} ${label}`} draggable={false} className="block max-h-full max-w-full object-contain shadow-dialog" />
+          ) : (
+            // 확대 단계는 사용자가 고르는 값이라 폭을 비율로 준다
+            <img
+              src={url.data.url}
+              alt={`${d.scholar.name} ${label}`}
+              draggable={false}
+              className="mx-auto block max-w-none shrink-0 self-start select-none"
+              style={{ width: `${zoom.width * 100}%` }}
+            />
+          )
         ) : isPdf ? (
           <iframe src={url.data.url} title={`${d.scholar.name} ${label}`} className="size-full border-0" />
         ) : (

@@ -117,11 +117,12 @@
   --spacing-row-h: 52px;
   --spacing-header-h: 56px;
   --spacing-sidebar-w: 232px;
+  --spacing-sidebar-rail: 72px;
   --spacing-kt-square: 8px;
   --container-page-brand: 1120px;
   --container-page-wide: 1200px;
   --container-page-form: 720px;
-  --spacing-viewer-h: 640px;
+  --spacing-viewer-h: 560px;
   --spacing-viewer-h-m: 480px;
   --container-page-narrow: 400px;
   --spacing-login-card-w: 360px;
