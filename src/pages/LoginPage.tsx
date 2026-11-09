@@ -9,6 +9,7 @@ import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
 import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
+import { mockOn } from '../lib/env'
 
 const schema = z.object({
   email: z.email('이메일 형식을 확인하세요.'),
@@ -17,7 +18,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 // 개발 서버에서 목업을 쓸 때만 보이는 안내
-const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
+const isMock = mockOn
 
 // C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
