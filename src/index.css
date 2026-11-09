@@ -17,7 +17,7 @@
     letter-spacing: var(--text-body--letter-spacing);
     /* 한글은 낱말 중간에서 줄을 바꾸지 않는다. 긴 영문·숫자는 칸을 넘지 않게 끊는다 */
     word-break: keep-all;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   /* iOS Safari: 날짜·시각 칸이 고유 최소 폭 때문에 칸 밖으로 넘치고 글자가 가운데로 가는 것을 막는다 */

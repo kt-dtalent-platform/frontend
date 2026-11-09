@@ -106,7 +106,13 @@ function Review({ d }: { d: SubmissionDetail }) {
             <StatusBadge status={d.status} />
             {d.late && <Tag tone="danger">마감 후</Tag>}
           </div>
-          <PageTitle description={<MetaList items={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`]} />}>{d.scholar.name}</PageTitle>
+          <PageTitle
+            description={
+              (d.scholar.cohortName || d.submittedAt) && <MetaList items={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`]} />
+            }
+          >
+            {d.scholar.name}
+          </PageTitle>
         </div>
         {waiting && ids.length > 0 && pos >= 0 && (
           <nav aria-label="검토 순서" className="flex items-center gap-2 text-caption text-ink-3 tabular-nums">

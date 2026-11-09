@@ -5,7 +5,23 @@ import { dueIn } from './db'
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
 // 진행 중 4, 작성 중 2, 마감 17 → 전체 23건(쪽 넘김 확인용). MVP는 성적증명서 제출만 다룬다.
-const pastTerms = ['2025학년도 2학기', '2025학년도 여름학기', '2025학년도 1학기', '2024학년도 겨울학기', '2024학년도 2학기', '2024학년도 1학기']
+// 마감된 요청: 선발 연도별로 그 해부터 들은 학기만 만든다(같은 기수에 같은 학기 요청이 두 번 나오지 않게)
+const TERMS = ['1학기', '여름학기', '2학기', '겨울학기']
+function pastRequests(count: number) {
+  const out: { title: string; cohortName: string }[] = []
+  // 2025학년도 2학기부터 거꾸로
+  for (let k = 0; out.length < count && k < 40; k++) {
+    const idx = 2025 * 4 + 2 - k
+    const year = Math.floor(idx / 4)
+    const term = TERMS[idx % 4]
+    for (const sel of [2026, 2025, 2024, 2023]) {
+      // 선발 전 해 2학기 성적까지는 받는다고 본다
+      if (year < sel - 1 || (year === sel - 1 && idx % 4 < 2)) continue
+      if (out.length < count) out.push({ title: `${year}학년도 ${term} 성적증명서 제출`, cohortName: `${sel}년 선발` })
+    }
+  }
+  return out
+}
 
 export function rows(): RequestRow[] {
   const live: RequestRow[] = [
@@ -23,7 +39,7 @@ export function rows(): RequestRow[] {
     },
     {
       id: 36,
-      title: '2026학년도 1학기 성적증명서 제출',
+      title: '2026학년도 1학기 성적증명서 제출 (2025년 선발)',
       templateCode: 'GRADE_CERTIFICATE',
       cohortName: '2025년 선발',
       status: 'IN_PROGRESS',
@@ -71,7 +87,7 @@ export function rows(): RequestRow[] {
     },
     {
       id: 41,
-      title: '2026학년도 2학기 성적증명서 제출',
+      title: '2026학년도 겨울학기 성적증명서 제출',
       templateCode: null,
       cohortName: '2025년 선발',
       status: 'DRAFT',
@@ -82,11 +98,12 @@ export function rows(): RequestRow[] {
       revisionCount: 0,
     },
   ]
+  const past = pastRequests(17)
   const closed: RequestRow[] = Array.from({ length: 17 }, (_, i) => ({
     id: 27 - i,
-    title: `${pastTerms[Math.floor(i / 3) % pastTerms.length]} 성적증명서 제출`,
+    title: past[i].title,
     templateCode: 'GRADE_CERTIFICATE',
-    cohortName: i % 3 === 1 ? '2026년 선발' : '2025년 선발',
+    cohortName: past[i].cohortName,
     status: 'CLOSED',
     opensAt: opened(40 + i * 7),
     closesAt: dueIn(-(30 + i * 7)),
