@@ -4,28 +4,18 @@ import type { Comparison, StatusFilter, SubmissionDetail, SubmissionRow } from '
 import { dueIn } from './db'
 import { rows } from './manager'
 
-// 요청 유형별 입력 항목(요청 만들기 KT-24의 템플릿과 같은 값)
+// 입력 항목(요청 만들기 템플릿과 같은 값). MVP는 성적증명서 제출만 다룬다.
 const templates = [
   {
     code: 'GRADE_CERTIFICATE',
     fields: [
-      { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER' },
+      { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER' },
       { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE' },
       { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER' },
       { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE' },
       { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA' },
     ],
   },
-  {
-    code: 'TRANSPORT_CLAIM',
-    fields: [
-      { fieldKey: 'used_on', label: '이용일자', fieldType: 'DATE' },
-      { fieldKey: 'method', label: '교통수단', fieldType: 'SELECT_ONE' },
-      { fieldKey: 'amount', label: '금액(원)', fieldType: 'NUMBER' },
-      { fieldKey: 'receipt', label: '영수증', fieldType: 'FILE' },
-    ],
-  },
-  { code: 'OTHER', fields: [{ fieldKey: 'file', label: '제출 서류', fieldType: 'FILE' }] },
 ]
 
 const SURNAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황']
@@ -136,7 +126,7 @@ export function submissionDetail(id: number): SubmissionDetail | null {
   const row = baseRows(requestId).find((r) => r.submissionId === id)
   if (!req || !row) return null
   const o = overrides()[id]
-  const template = templates.find((t) => t.code === req.templateCode) ?? templates[2]
+  const template = templates.find((t) => t.code === req.templateCode) ?? templates[0]
   const i = row.index
   const { answers, files, comparisons } = sample(template.code, i)
   const mismatch = comparisons.some((c) => c.result !== 'MATCH')
@@ -166,7 +156,7 @@ function sample(code: string, i: number) {
   const files: SubmissionDetail['files'] = []
   const comparisons: Comparison[] = []
   let answers: SubmissionDetail['answers'] = {}
-  if (code === 'GRADE_CERTIFICATE') {
+  if (code) {
     const gpa = (3 + ((i * 37) % 150) / 100).toFixed(2)
     const read = i % 4 === 1 ? (Number(gpa) - 0.2).toFixed(2) : gpa
     answers = {
@@ -193,20 +183,6 @@ function sample(code: string, i: number) {
       { field: 'gpa_scale', label: '만점 기준', entered: '4.5', extracted: '4.5', result: 'MATCH' },
       { field: 'credits', label: '이수 학점', entered: String(15 + (i % 7)), extracted: String(15 + (i % 7)), result: 'MATCH' },
     )
-  } else if (code === 'TRANSPORT_CLAIM') {
-    const amount = 30000 + ((i * 1700) % 40000)
-    answers = { used_on: '2026-10-05', method: i % 2 ? 'KTX' : '고속버스', amount }
-    files.push({ id: 90000 + i, fieldKey: 'receipt', originalName: `receipt_${i + 1}.jpg`, contentType: 'image/jpeg', sizeBytes: 1_200_000 + i * 3000 })
-    const read = i % 5 === 2 ? amount + 1000 : amount
-    comparisons.push({
-      field: 'amount',
-      label: '금액(원)',
-      entered: amount.toLocaleString(),
-      extracted: read.toLocaleString(),
-      result: read === amount ? 'MATCH' : 'MISMATCH',
-    })
-  } else {
-    files.push({ id: 90000 + i, fieldKey: 'file', originalName: `제출서류_${i + 1}.pdf`, contentType: 'application/pdf', sizeBytes: 210_000 })
   }
   return { answers, files, comparisons }
 }

@@ -5,7 +5,7 @@ import { KtSquare } from './KtSquare'
 export function Logo({ to }: { to?: string }) {
   const body = (
     <>
-      KT 디지털인재장학생
+      KT디지털인재장학생
       <KtSquare />
     </>
   )

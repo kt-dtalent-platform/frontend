@@ -143,73 +143,62 @@ export function submit(requestId: number, answers: Answers, resubmit: boolean) {
   }
 }
 
-// 31: 보완 필요(교통비), 35: 미제출(성적 증빙), 28: 확인 완료
+// 장학생 홍길동(2026년 선발)의 제출 요청. MVP는 성적증명서 제출만 다룬다.
+// 31: 보완 필요, 35: 미제출, 28: 확인 완료
+const gradeFields: RawSubmissionForm['fields'] = [
+  { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 4.5 } },
+  {
+    fieldKey: 'gpa_scale',
+    label: '만점 기준',
+    fieldType: 'SELECT_ONE',
+    required: true,
+    options: ['4.5', '4.3'],
+    helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
+  },
+  { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
+  {
+    fieldKey: 'transcript',
+    label: '성적증명서',
+    fieldType: 'FILE',
+    required: true,
+    validation: { allowedExtensions: ['pdf', 'jpg', 'png'], maxSizeMb: 10 },
+  },
+  { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA', required: false, validation: { maxLength: 500 } },
+]
+
 function forms(): Record<number, RawSubmissionForm> {
   return {
     31: {
       request: {
         id: 31,
-        title: '10월 행사 교통비 증빙',
-        description: '10/5 행사 참석 교통비 영수증을 제출해 주세요.',
+        title: '2026학년도 1학기 성적증명서 제출',
+        description: '1학기 성적을 입력하고 성적증명서를 올려 주세요.',
         requestDueAt: dueIn(2),
         status: 'IN_PROGRESS',
       },
-      fields: [
-        { fieldKey: 'used_on', label: '이용일자', fieldType: 'DATE', required: true },
-        { fieldKey: 'method', label: '교통수단', fieldType: 'SELECT_ONE', required: true, options: ['KTX', '고속버스', '항공', '기타'] },
-        { fieldKey: 'amount', label: '금액(원)', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 300000 } },
-        { fieldKey: 'receipt', label: '영수증', fieldType: 'FILE', required: true, validation: { allowedExtensions: ['jpg', 'png', 'pdf'], maxSizeMb: 10 } },
-      ],
-      submission: { id: 501, status: 'REVISION_REQUIRED', answers: { used_on: '2026-10-05', method: 'KTX', amount: 48600 }, version: 4 },
-      files: [{ id: 9001, fieldKey: 'receipt', originalName: 'ktx_receipt.jpg', uploadStatus: 'UPLOADED' }],
-      revision: { id: 71, reason: '영수증 이미지가 흐려 금액이 보이지 않습니다.', fieldKeys: ['receipt', 'amount'] },
+      fields: gradeFields,
+      submission: { id: 501, status: 'REVISION_REQUIRED', answers: { gpa: 3.92, gpa_scale: '4.5', credits: 18, note: null }, version: 4 },
+      files: [{ id: 9001, fieldKey: 'transcript', originalName: '성적증명서_2026-1.jpg', uploadStatus: 'UPLOADED' }],
+      revision: { id: 71, reason: '성적증명서 사진이 흐려 평점이 보이지 않습니다. 원본 PDF로 다시 올려 주세요.', fieldKeys: ['transcript', 'gpa'] },
     },
     35: {
       request: {
         id: 35,
-        title: '2학기 지속심사 서류 제출',
-        description: '직전 학기 성적을 입력하고 성적증명서를 올려 주세요.',
+        title: '2026학년도 여름학기 성적증명서 제출',
+        description: '여름 계절학기를 들은 경우 성적증명서를 올려 주세요.',
         requestDueAt: dueIn(10),
         status: 'IN_PROGRESS',
       },
-      fields: [
-        {
-          fieldKey: 'gpa',
-          label: '직전 학기 평점',
-          fieldType: 'NUMBER',
-          required: true,
-          validation: { min: 0, max: 4.5 },
-        },
-        {
-          fieldKey: 'gpa_scale',
-          label: '만점 기준',
-          fieldType: 'SELECT_ONE',
-          required: true,
-          options: ['4.5', '4.3'],
-          helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
-        },
-        { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
-        {
-          fieldKey: 'transcript',
-          label: '성적증명서',
-          fieldType: 'FILE',
-          required: true,
-          validation: { allowedExtensions: ['pdf', 'jpg', 'png'], maxSizeMb: 10 },
-        },
-        { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA', required: false, validation: { maxLength: 500 } },
-      ],
+      fields: gradeFields,
       submission: null,
       files: [],
       revision: null,
     },
     28: {
-      request: { id: 28, title: '1학기 성적 증빙', description: null, requestDueAt: dueIn(-15), status: 'CLOSED' },
-      fields: [
-        { fieldKey: 'gpa', label: '직전 학기 평점', fieldType: 'NUMBER', required: true },
-        { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE', required: true, options: ['4.5', '4.3'] },
-      ],
-      submission: { id: 480, status: 'CONFIRMED', answers: { gpa: 3.82, gpa_scale: '4.5' }, version: 3 },
-      files: [],
+      request: { id: 28, title: '2025학년도 2학기 성적증명서 제출', description: null, requestDueAt: dueIn(-15), status: 'CLOSED' },
+      fields: gradeFields,
+      submission: { id: 480, status: 'CONFIRMED', answers: { gpa: 3.82, gpa_scale: '4.5', credits: 19, note: null }, version: 3 },
+      files: [{ id: 8001, fieldKey: 'transcript', originalName: '성적증명서_2025-2.pdf', uploadStatus: 'UPLOADED' }],
       revision: null,
     },
   }

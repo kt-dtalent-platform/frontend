@@ -52,7 +52,7 @@ export function LoginPage() {
             <KtSquare />
             KT그룹희망나눔재단
           </p>
-          <h1 className="m-0 mt-4 text-display-sm md:text-display">KT 디지털인재장학생</h1>
+          <h1 className="m-0 mt-4 text-display-sm md:text-display">KT디지털인재장학생</h1>
           <p className="m-0 mt-3 text-ink-2">장학 활동에 필요한 일을 한곳에서.</p>
         </div>
 
