@@ -22,6 +22,8 @@ export function RequireAuth({ role, children }: { role: Role; children: ReactNod
       </div>
     )
   }
+  // 임시 비밀번호로 들어왔으면 비밀번호부터 바꾼다
+  if (me.data.passwordChangeRequired) return <Navigate to="/password" replace />
   if (me.data.role !== role) return <Navigate to={roleHome(me.data.role)} replace />
   return children
 }

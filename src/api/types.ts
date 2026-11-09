@@ -1,7 +1,6 @@
 // 백엔드 공통 응답 형식 (backend KT-8)
 export type ApiEnvelope<T> =
-  | { resultType: 'SUCCESS'; success: { data: T }; error: null; meta: ApiMeta }
-  | { resultType: 'FAIL'; success: null; error: ApiErrorBody; meta: ApiMeta }
+  { resultType: 'SUCCESS'; success: { data: T }; error: null; meta: ApiMeta } | { resultType: 'FAIL'; success: null; error: ApiErrorBody; meta: ApiMeta }
 
 export type ApiMeta = { timestamp: string; path: string }
 
@@ -14,13 +13,7 @@ export type ApiErrorBody = {
 export type Role = 'MANAGER' | 'SCHOLAR'
 
 // backend submissions.status + 행이 없으면 NOT_SUBMITTED (V1__create_initial_schema.sql)
-export type SubmissionStatus =
-  | 'NOT_SUBMITTED'
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'REVISION_REQUIRED'
-  | 'RESUBMITTED'
-  | 'CONFIRMED'
+export type SubmissionStatus = 'NOT_SUBMITTED' | 'DRAFT' | 'SUBMITTED' | 'REVISION_REQUIRED' | 'RESUBMITTED' | 'CONFIRMED'
 
 // 장학생 쪽에서 할 일이 끝난 상태(검토는 담당자 몫)
 export const isDone = (s: SubmissionStatus) => s === 'SUBMITTED' || s === 'RESUBMITTED' || s === 'CONFIRMED'
@@ -33,6 +26,8 @@ export type Me = {
   role: Role
   cohort: { id: number; name: string } | null
   accessiblePrograms: { id: number; name: string }[] | null
+  // 재단이 발급한 임시 비밀번호로 처음 로그인했으면 true. 백엔드에 아직 없음(확인 필요)
+  passwordChangeRequired?: boolean
 }
 
 // 검증 실패 시 error.details. 지금 백엔드(INVALID_REQUEST)는 항목 이름 목록(string[])을 준다.
