@@ -16,8 +16,9 @@ export function FilterChips<T>({ label, items, value, onChange }: { label: strin
             aria-pressed={active}
             onClick={() => onChange(item.value)}
             className={cn(
-              'h-control-compact rounded-full border px-3 text-label',
-              active ? 'border-action bg-action text-on-action' : 'border-line-control bg-surface text-ink hover:bg-surface-hover active:bg-surface-sunken',
+              // 고르지 않은 칩도 버튼처럼 테두리 없이 연한 바탕(11/12)
+              'h-control-compact rounded-full px-3 text-label-sm',
+              active ? 'bg-action text-on-action' : 'bg-control-tonal text-ink hover:bg-control-tonal-hover active:bg-control-tonal-active',
             )}
           >
             {item.label}

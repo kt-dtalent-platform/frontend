@@ -90,6 +90,9 @@
   --text-label: 14px;
   --text-label--line-height: 20px;
   --text-label--font-weight: 600;
+  --text-label-sm: 13px;
+  --text-label-sm--line-height: 18px;
+  --text-label-sm--font-weight: 600;
   --text-caption: 13px;
   --text-caption--line-height: 18px;
   --text-caption--font-weight: 400;
