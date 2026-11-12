@@ -39,6 +39,8 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
   const revision = live.reduce((n, r) => n + r.revisionRequired, 0)
   const nearest = live[0] // 마감이 가까운 순으로 온다
   const hasReview = data.review.waiting > 0 && data.review.oldestSubmissionId !== null
+  // 요청이 둘 이상이면 한 사람이 여러 번 셀 수 있어 사람 수(명)가 아니라 건수로 적는다
+  const unit = live.length > 1 ? '건' : '명'
 
   return (
     <>
@@ -60,7 +62,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
         <TaskCard
           label="미제출"
           value={notSubmitted}
-          unit="명"
+          unit={unit}
           note={nearest ? <Due closesAt={nearest.closesAt} /> : null}
           action={
             notSubmitted > 0 && (
@@ -73,7 +75,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
         <TaskCard
           label="보완 필요"
           value={revision}
-          unit="명"
+          unit={unit}
           note={revision > 0 ? '장학생이 고치는 중' : null}
           action={
             revision > 0 && (
