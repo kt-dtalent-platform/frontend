@@ -36,7 +36,7 @@ export function SubmissionReviewPage() {
   usePageTitle(d ? `${d.scholar.name} 검토` : '검토')
 
   return (
-    <div className="mx-auto flex max-w-page-form flex-col gap-6 lg:max-w-page-wide">
+    <div className="flex max-w-page-form flex-col gap-6 lg:max-w-page-wide">
       {query.isPending && <LoadingCards count={2} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {/* key: 다음 제출로 넘어가면 대화상자·안내 상태를 새로 시작한다 */}
@@ -94,6 +94,13 @@ function Review({ d }: { d: SubmissionDetail }) {
       },
     )
 
+  const lastRevision = d.status === 'REVISION_REQUIRED' ? d.revisions.at(-1) : undefined
+  const revisionNotice = lastRevision && (
+    <Banner tone="warning" title="보완 요청 중이에요">
+      {lastRevision.reason} ({labelsOf(d, lastRevision.fieldKeys)})
+    </Banner>
+  )
+
   const actionError = [confirm.error, revision.error].find((e) => e instanceof ApiError) as ApiError | undefined
 
   return (
@@ -109,48 +116,23 @@ function Review({ d }: { d: SubmissionDetail }) {
         </Banner>
       )}
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={d.status} />
-            {d.late && <Tag tone="danger">마감 후</Tag>}
-          </div>
-          <PageTitle
-            description={
-              (d.scholar.cohortName || d.submittedAt) && <MetaList items={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`]} />
-            }
-          >
-            {d.scholar.name}
-          </PageTitle>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={d.status} />
+          {d.late && <Tag tone="danger">마감 후</Tag>}
         </div>
-        {waiting && ids.length > 0 && pos >= 0 && (
-          <nav aria-label="검토 순서" className="flex items-center gap-2 text-caption text-ink-3 tabular-nums">
-            <Button size="compact" aria-label="이전 제출" disabled={!prev} onClick={() => prev && navigate(`/manager/submissions/${prev}`)}>
-              <ChevronLeft size={16} strokeWidth={2} aria-hidden />
-            </Button>
-            <span>
-              검토 대기 {pos + 1} / {ids.length}
-            </span>
-            <Button size="compact" aria-label="다음 제출" disabled={!next} onClick={() => next && navigate(`/manager/submissions/${next}`)}>
-              <ChevronRight size={16} strokeWidth={2} aria-hidden />
-            </Button>
-          </nav>
-        )}
+        <PageTitle
+          description={
+            (d.scholar.cohortName || d.submittedAt) && <MetaList items={[d.scholar.cohortName, d.submittedAt && `${formatDue(d.submittedAt)} 제출`]} />
+          }
+        >
+          {d.scholar.name}
+        </PageTitle>
       </div>
 
-      {d.status === 'REVISION_REQUIRED' && d.revisions.at(-1) && (
-        <Banner tone="warning" title="보완 요청 중이에요">
-          {d.revisions.at(-1)!.reason} ({labelsOf(d, d.revisions.at(-1)!.fieldKeys)})
-        </Banner>
-      )}
-      {d.status === 'CONFIRMED' && (
-        <Banner tone="success" title="확인 완료한 제출이에요">
-          더 처리할 일이 없어요.
-        </Banner>
-      )}
-
-      {/* 왼쪽: 올린 서류 원본, 오른쪽: 입력값과 서류 비교, 처리 버튼(PC에서는 스크롤을 따라온다) */}
       {/* PC: 왼쪽 원본(7칸), 오른쪽 비교와 처리 버튼(5칸, 스크롤을 따라옴). 휴대폰: 원본 → 비교·버튼 → 처리 이력 */}
+      {/* 휴대폰은 원본보다 먼저 보이게. PC는 오른쪽 비교 위(한쪽은 늘 숨겨져 한 번만 읽힌다) */}
+      {revisionNotice && <div className="lg:hidden">{revisionNotice}</div>}
       <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
         <div className="min-w-0 lg:col-span-7">
           <DocumentViewer d={d} />
@@ -159,6 +141,7 @@ function Review({ d }: { d: SubmissionDetail }) {
           aria-label="입력값 확인과 처리"
           className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-header-h lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"
         >
+          {revisionNotice && <div className="hidden lg:block">{revisionNotice}</div>}
           <CompareCard d={d} />
           {actionError && (
             <Banner tone="danger" title={actionError.code === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
@@ -177,6 +160,23 @@ function Review({ d }: { d: SubmissionDetail }) {
               </Button>
             </div>
           )}
+          {/* 처리하면 다음 검토 대기로 넘어간다. 건너뛸 때만 쓰는 이동이라 처리 버튼 바로 아래에 둔다 */}
+          {waiting && ids.length > 0 && pos >= 0 && (
+            <nav aria-label="검토 순서" className="flex items-center justify-between text-caption text-ink-3 tabular-nums">
+              <Button size="compact" variant="ghost" disabled={!prev} onClick={() => prev && navigate(`/manager/submissions/${prev}`)}>
+                <ChevronLeft size={16} strokeWidth={2} aria-hidden />
+                이전<span className="sr-only"> 제출</span>
+              </Button>
+              <span>
+                검토 대기 {pos + 1} / {ids.length}
+              </span>
+              <Button size="compact" variant="ghost" disabled={!next} onClick={() => next && navigate(`/manager/submissions/${next}`)}>
+                다음<span className="sr-only"> 제출</span>
+                <ChevronRight size={16} strokeWidth={2} aria-hidden />
+              </Button>
+            </nav>
+          )}
+          {d.status === 'CONFIRMED' && <p className="m-0 text-caption text-ink-3">확인 완료한 제출이라 더 처리할 일이 없어요.</p>}
         </aside>
         <div className="min-w-0 lg:col-span-7">
           <section aria-labelledby="history" className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
@@ -255,6 +255,17 @@ function CompareCard({ d }: { d: SubmissionDetail }) {
         </h2>
         {verdict && <p className={cn('m-0 text-label', verdict.tone)}>{verdict.text}</p>}
       </div>
+      {/* 장학생이 남긴 말(재수강 포함 등)은 값을 판단하는 데 영향을 줘서 표보다 먼저 보인다 */}
+      {others.length > 0 && (
+        <dl className="m-0 flex flex-col gap-3 px-6">
+          {others.map((f) => (
+            <div key={f.fieldKey} className="flex flex-col gap-1">
+              <dt className="text-caption text-ink-3">{f.label}</dt>
+              <dd className="m-0 text-body whitespace-pre-wrap">{show(d.answers[f.fieldKey])}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {!d.analysis ? (
         <p className="m-0 px-6 text-ink-3">자동 비교를 하지 못했어요. 원본을 보고 입력값이 맞는지 확인하세요.</p>
       ) : (
@@ -294,16 +305,6 @@ function CompareCard({ d }: { d: SubmissionDetail }) {
         </table>
       )}
       <p className="m-0 px-6 text-caption text-ink-3">확인 완료하면 장학생 입력값으로 기록돼요.</p>
-      {others.length > 0 && (
-        <dl className="m-0 flex flex-col gap-3 border-t border-line-subtle px-6 pt-4">
-          {others.map((f) => (
-            <div key={f.fieldKey} className="flex flex-col gap-1">
-              <dt className="text-caption text-ink-3">{f.label}</dt>
-              <dd className="m-0 text-body whitespace-pre-wrap">{show(d.answers[f.fieldKey])}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
     </section>
   )
 }

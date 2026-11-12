@@ -224,7 +224,13 @@ export const handlers = [
     if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 프로그램입니다')
     await delay(250)
     const q = new URL(request.url).searchParams
-    return ok(path, requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
+    const list = requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    // 목업 행의 숫자를 제출 현황과 맞춘다(보완 요청, 확인 완료를 처리하면 목록에도 반영)
+    const items = list.items.map((r) => {
+      const s = submissionList(r.id, null, '', 1, 1)?.summary
+      return s ? { ...r, waitingCount: s.submitted, revisionCount: s.revisionRequired } : { ...r, waitingCount: 0 }
+    })
+    return ok(path, { ...list, items })
   }),
 
   // 담당자: 요청별 제출 현황, 내보내기, 제출 상세, 확인 완료·보완 요청

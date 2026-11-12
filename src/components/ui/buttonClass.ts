@@ -11,7 +11,8 @@ const variants: Record<Variant, string> = {
   // 보조 버튼: 외곽선 대신 연한 바탕(11/12). 외곽선은 입력칸에만 써서 누르는 곳과 입력하는 곳을 나눈다
   secondary: 'bg-control-tonal text-ink hover:bg-control-tonal-hover active:bg-control-tonal-active',
   // 테두리 없는 버튼: 상단 바 로그아웃처럼 덜 중요한 행동
-  ghost: 'bg-transparent text-ink hover:bg-surface-hover active:bg-surface-sunken',
+  // 비활성이어도 면을 깔지 않는다(아이콘 버튼이 눌린 것처럼 보이지 않게). 글자색만 흐려진다
+  ghost: 'bg-transparent text-ink hover:bg-surface-hover active:bg-surface-sunken disabled:bg-transparent disabled:hover:bg-transparent',
 }
 
 const sizes: Record<Size, string> = {

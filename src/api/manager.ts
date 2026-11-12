@@ -44,6 +44,8 @@ export type RequestRow = {
   closesAt: string | null
   targetCount: number
   submittedCount: number
+  // 담당자가 검토할 제출(다시 제출 포함). 요청 목록에서 할 일을 보이려고 프론트가 제안(확인 필요)
+  waitingCount?: number
   revisionCount: number
 }
 // 응답의 pageSize는 장학생 목록(백엔드 #16)과 같은 모양으로 가정(확인 필요)

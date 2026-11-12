@@ -2,13 +2,16 @@
 import type { Cohort, CreateRequestBody, RequestRow, RequestTemplate } from '../api/manager'
 import { dueIn } from './db'
 
+// 검토 대기 수는 제출 현황 목업에서 세어 목록 응답에 붙인다(handlers)
+type MockRow = Omit<RequestRow, 'waitingCount'>
+
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
 // 성적은 기수와 상관없이 학기마다 전원에게 한 번 받는다(11/12). 계절학기, 추가 제출은 두지 않는다.
 // 진행 중 1, 작성 중 1, 마감 2. 2026년 선발은 2026학년도부터 받는다.
-export function rows(): RequestRow[] {
+export function rows(): MockRow[] {
   const base = { templateCode: 'GRADE_CERTIFICATE', cohortName: null }
-  const list: RequestRow[] = [
+  const list: MockRow[] = [
     {
       ...base,
       id: 31,
@@ -105,15 +108,15 @@ function saveBody(id: number, body: CreateRequestBody) {
   }
 }
 
-function created(): RequestRow[] {
+function created(): MockRow[] {
   try {
-    return JSON.parse(sessionStorage.getItem(KEY) ?? '[]') as RequestRow[]
+    return JSON.parse(sessionStorage.getItem(KEY) ?? '[]') as MockRow[]
   } catch {
     return []
   }
 }
 
-function saveCreated(list: RequestRow[]) {
+function saveCreated(list: MockRow[]) {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(list))
   } catch {
@@ -125,7 +128,7 @@ export function createRequest(body: CreateRequestBody) {
   const list = created()
   const id = 100 + list.length
   const cohort = cohorts.find((c) => c.id === body.cohortId)
-  const row: RequestRow = {
+  const row: MockRow = {
     id,
     title: body.title,
     templateCode: templates.find((t) => t.id === body.templateId)?.code ?? null,
@@ -154,7 +157,7 @@ export function publishRequest(id: number) {
 
 // ── 작성 중 요청 열기·고치기 목업 ──
 
-type Edit = { row: Partial<RequestRow>; body?: CreateRequestBody }
+type Edit = { row: Partial<MockRow>; body?: CreateRequestBody }
 const EDITS = 'kt-dtalent:mock-request-edits'
 
 function edits(): Record<number, Edit> {

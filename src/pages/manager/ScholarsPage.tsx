@@ -251,8 +251,12 @@ export function ScholarsPage() {
                   </div>
                 ) : (
                   <>
-                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:flex-none md:w-40">
+                    {/* 휴대폰: 열 이름이 없어 인원 수만. PC: 열 이름을 두고 인원 수는 오른쪽 끝 */}
+                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
                       <span className="text-label text-ink">{data.total}</span>명
+                    </span>
+                    <span aria-hidden className="hidden w-40 text-caption text-ink-3 md:block">
+                      이름
                     </span>
                     <span aria-hidden className="hidden w-28 text-caption text-ink-3 md:block">
                       기수
@@ -265,6 +269,9 @@ export function ScholarsPage() {
                     </span>
                     <span aria-hidden className="hidden flex-1 text-caption text-ink-3 md:block">
                       이메일
+                    </span>
+                    <span className="hidden text-caption text-ink-3 tabular-nums md:block">
+                      <span className="text-label text-ink">{data.total}</span>명
                     </span>
                   </>
                 )}

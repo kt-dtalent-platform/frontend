@@ -241,10 +241,20 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
 }
 
 function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
+  const tags = (
+    <>
+      {row.late && <Tag tone="danger">마감 후</Tag>}
+      {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
+    </>
+  )
   const body = (
     <>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-body-strong">{row.scholarName}</span>
+        {/* 휴대폰: 보조 표시는 이름 옆에 둬서 아래 줄이 꺾이지 않게 한다 */}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-body-strong">{row.scholarName}</span>
+          <span className="flex shrink-0 gap-1 md:hidden">{tags}</span>
+        </span>
         {/* 휴대폰: 이름 아래 기수와 학교 */}
         <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3 md:hidden" />
       </span>
@@ -254,8 +264,7 @@ function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
         <span className="flex flex-wrap items-center gap-2 md:w-48">
           <StatusBadge status={row.status} />
-          {row.late && <Tag tone="danger">마감 후</Tag>}
-          {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
+          <span className="hidden md:contents">{tags}</span>
         </span>
         <span className="text-caption text-ink-2 tabular-nums md:w-20 md:text-right md:text-body">
           {row.gpa != null ? (
