@@ -22,6 +22,9 @@
   --color-surface: #FFFFFF;
   --color-surface-hover: #FAFAFA;
   --color-surface-sunken: #EBEBEB;
+  --color-control-tonal: rgba(22, 22, 22, 0.06);
+  --color-control-tonal-hover: rgba(22, 22, 22, 0.1);
+  --color-control-tonal-active: rgba(22, 22, 22, 0.14);
   --color-line: #DEDEDE;
   --color-line-subtle: #EBEBEB;
   --color-line-control: #7A7A7A;
