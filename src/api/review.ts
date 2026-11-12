@@ -78,8 +78,8 @@ export async function downloadExport(requestId: number, choice: { scopes: string
 }
 
 // 내보내기 공통: 파일을 받아 브라우저 내려받기로 넘긴다
-export async function downloadFile(path: string, choice: { scopes: string[]; columns: string[] }, fallbackName: string) {
-  const params = new URLSearchParams({ format: 'xlsx', columns: choice.columns.join(',') })
+export async function downloadFile(path: string, choice: { scopes: string[]; columns: string[] }, fallbackName: string, extra: Record<string, string> = {}) {
+  const params = new URLSearchParams({ format: 'xlsx', columns: choice.columns.join(','), ...extra })
   if (choice.scopes.length) params.set('status', choice.scopes.join(','))
   const res = await fetch(`${BASE_URL}${path}?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},

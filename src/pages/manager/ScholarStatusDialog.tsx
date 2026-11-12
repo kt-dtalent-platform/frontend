@@ -1,9 +1,10 @@
 import { useId, useState } from 'react'
-import { withdrawalReasons, type ScholarDetail, type ScholarStatus, type StatusChange, type WithdrawalReason } from '../../api/scholars'
+import { withdrawalReasons, type ScholarStatus, type StatusChange, type StatusInfo, type WithdrawalReason } from '../../api/scholars'
 import { fieldBase, fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { SelectBox } from '../../components/form/LabeledField'
 import { FormDialog } from '../../components/ui/FormDialog'
 import { cn } from '../../lib/cn'
+import { kstToday } from '../../lib/time'
 
 const options: { value: ScholarStatus; label: string }[] = [
   { value: 'ENROLLED', label: '재학' },
@@ -12,27 +13,34 @@ const options: { value: ScholarStatus; label: string }[] = [
 ]
 
 // 수료 연도 선택지: 선발 연도부터 올해 + 2년까지. 기수 이름에서 선발 연도를 읽는다(예: 2025년 선발)
-function yearOptions(cohortName: string) {
-  const now = new Date().getFullYear()
+// 올해는 한국 날짜 기준. 이미 저장된 수료 연도가 범위 밖이면 그 연도도 넣어 빈 칸으로 보이지 않게 한다
+function yearOptions(cohortName: string, saved: number | null) {
+  const now = Number(kstToday().slice(0, 4))
   const from = Number(/(\d{4})/.exec(cohortName)?.[1]) || now - 3
-  return Array.from({ length: Math.max(1, now + 2 - from + 1) }, (_, i) => from + i)
+  const years = Array.from({ length: Math.max(1, now + 2 - from + 1) }, (_, i) => from + i)
+  return saved && !years.includes(saved) ? [...years, saved].sort((a, b) => a - b) : years
 }
 
 // 상태 바꾸기. 수료면 수료 연도, 중단이면 사유를 받는다(재단 요청 11/10)
+// 한 명(상세)과 여러 명(명단에서 고르기)이 같이 쓴다. cohortName은 수료 연도 선택지의 시작 연도
 export function ScholarStatusDialog({
   open,
+  title = '상태 바꾸기',
   s,
+  cohortName,
   busy,
   onCancel,
   onSubmit,
 }: {
   open: boolean
-  s: ScholarDetail
+  title?: string
+  s: StatusInfo
+  cohortName: string
   busy: boolean
   onCancel: () => void
   onSubmit: (body: StatusChange) => void
 }) {
-  const years = yearOptions(s.cohort.name)
+  const years = yearOptions(cohortName, s.completedYear)
   const [status, setStatus] = useState<ScholarStatus>(s.status)
   const [year, setYear] = useState(s.completedYear ? String(s.completedYear) : '')
   const [reason, setReason] = useState<WithdrawalReason | ''>(s.withdrawalReason ?? '')
@@ -59,7 +67,7 @@ export function ScholarStatusDialog({
   }
 
   return (
-    <FormDialog open={open} title="상태 바꾸기" submitLabel="상태 바꾸기" busy={busy} onCancel={onCancel} onSubmit={submit}>
+    <FormDialog open={open} title={title} submitLabel="상태 바꾸기" busy={busy} onCancel={onCancel} onSubmit={submit}>
       <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
         <legend className="mb-1 p-0 text-label">상태</legend>
         {options.map((o) => (

@@ -49,6 +49,7 @@ function Detail({ s }: { s: ScholarDetail }) {
         <ScholarStatusDialog
           open
           s={s}
+          cohortName={s.cohort.name}
           busy={changeStatus.isPending}
           onCancel={() => setChanging(false)}
           onSubmit={(body) =>

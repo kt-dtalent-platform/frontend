@@ -7,6 +7,7 @@ import { TIME_ZONE, toDate } from '../../lib/time'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { Pagination } from '../../components/ui/Pagination'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -211,19 +212,7 @@ export function RequestSubmissionsPage() {
                   ))}
                 </ul>
               </div>
-              {data.total > data.pageSize && (
-                <nav aria-label="페이지" className="flex items-center justify-end gap-3 text-caption text-ink-3 tabular-nums">
-                  <span>
-                    {(data.page - 1) * data.pageSize + 1}–{Math.min(data.page * data.pageSize, data.total)} / 전체 {data.total}명
-                  </span>
-                  <Button size="compact" aria-label="이전 페이지" disabled={loadingNext || page <= 1} onClick={() => go({ page: page - 1 })}>
-                    <ChevronLeft size={16} strokeWidth={2} aria-hidden />
-                  </Button>
-                  <Button size="compact" aria-label="다음 페이지" disabled={loadingNext || page >= lastPage} onClick={() => go({ page: page + 1 })}>
-                    <ChevronRight size={16} strokeWidth={2} aria-hidden />
-                  </Button>
-                </nav>
-              )}
+              <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
             </div>
           )}
         </>

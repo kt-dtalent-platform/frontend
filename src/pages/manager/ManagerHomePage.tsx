@@ -6,6 +6,7 @@ import { daysUntil, isPastDue } from '../../api/tasks'
 import { buttonClass } from '../../components/ui/buttonClass'
 import { MetaList } from '../../components/ui/MetaList'
 import { PageTitle } from '../../components/ui/PageTitle'
+import { statusDot } from '../../components/ui/statusStyles'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
@@ -155,7 +156,7 @@ function RequestProgress({ r }: { r: DashboardRequest }) {
             </li>
           ))}
           <li className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-1.5 rounded-full border-[1.5px] border-neutral-dot" />
+            <span aria-hidden className={cn('size-1.5 rounded-full', statusDot('NOT_SUBMITTED'))} />
             미제출 {r.notSubmitted}
           </li>
         </ul>

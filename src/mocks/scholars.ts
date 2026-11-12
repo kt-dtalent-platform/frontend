@@ -142,3 +142,36 @@ export function createScholar(body: ScholarCreate) {
   save(s)
   return { id }
 }
+
+// 목업 명단 내보내기: 고른 상태, 기수, 열만 담은 CSV. 실제 서버는 xlsx(확인 필요)
+export function exportScholarsCsv(statuses: string[], cohortId: number | null, columns: string[]) {
+  const label: Record<string, string> = { ENROLLED: '재학', COMPLETED: '수료', WITHDRAWN: '중단' }
+  const reason: Record<string, string> = {
+    ACADEMIC_STATUS: '학적 변동/상실',
+    DOUBLE_BENEFIT: '이중 수혜',
+    GRADE_NOT_MET: '성적 미충족',
+    ACTIVITY_NOT_MET: '활동 요건 미충족',
+    VOLUNTARY: '자발적 포기',
+  }
+  const account: Record<string, string> = { ACTIVE: '사용 중', INACTIVE: '로그인 전', LOCKED: '잠김' }
+  const cell: Record<string, [string, (r: Row) => string]> = {
+    name: ['이름', (r) => r.name],
+    cohort: ['기수', (r) => r.cohort.name],
+    university: ['학교', (r) => r.university],
+    major: ['학과', (r) => r.major ?? ''],
+    studentNo: ['학번', (r) => String(20230000 + r.id)],
+    email: ['이메일', (r) => r.email],
+    phone: ['연락처', (r) => r.phone ?? ''],
+    status: ['상태', (r) => label[r.status] ?? r.status],
+    completedYear: ['수료 연도', (r) => (r.completedYear ? String(r.completedYear) : '')],
+    withdrawalReason: [
+      '중단 사유',
+      (r) => (r.withdrawalReason === 'OTHER' ? (r.withdrawalReasonDetail ?? '기타') : r.withdrawalReason ? reason[r.withdrawalReason] : ''),
+    ],
+    accountStatus: ['로그인 상태', (r) => account[r.accountStatus]],
+  }
+  const keys = columns.filter((k) => cell[k])
+  const rowsOut = all().filter((r) => (statuses.length === 0 || statuses.includes(r.status)) && (!cohortId || r.cohort.id === cohortId))
+  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+  return '\uFEFF' + [keys.map((k) => cell[k][0]), ...rowsOut.map((r) => keys.map((k) => esc(cell[k][1](r))))].map((l) => l.join(',')).join('\n')
+}

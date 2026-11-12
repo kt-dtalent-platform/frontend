@@ -5,7 +5,7 @@ import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
-import { changeScholarStatus, createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
+import { changeScholarStatus, createScholar, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { exportCsv, managerDashboard, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/v1'
@@ -364,6 +364,38 @@ export const handlers = [
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     await delay(200)
     return ok(path, scholarList(new URL(request.url).searchParams))
+  }),
+
+  // 여러 명 상태 바꾸기, 명단 내보내기: 프론트 제안 모양(확인 필요). :scholarId보다 먼저 둬야 잡힌다
+  http.patch(`${BASE}/scholars/status`, async ({ request }) => {
+    const path = '/v1/scholars/status'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const { scholarIds, ...change } = (await request.json()) as StatusChange & { scholarIds: number[] }
+    const bad = [
+      !scholarIds?.length && 'scholarIds',
+      !['ENROLLED', 'COMPLETED', 'WITHDRAWN'].includes(change.status) && 'status',
+      change.status === 'COMPLETED' && !change.completedYear && 'completedYear',
+      change.status === 'WITHDRAWN' && !change.withdrawalReason && 'withdrawalReason',
+      change.withdrawalReason === 'OTHER' && !change.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
+    ].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
+    await delay(300)
+    const updated = scholarIds.filter((id) => changeScholarStatus(id, change)).length
+    return ok(path, { updated })
+  }),
+
+  http.get(`${BASE}/scholars/export`, ({ request }) => {
+    const path = '/v1/scholars/export'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const q = new URL(request.url).searchParams
+    const list = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean)
+    const csv = exportScholarsCsv(list('status'), Number(q.get('cohortId')) || null, list('columns'))
+    return new HttpResponse(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="scholars.csv"; filename*=UTF-8''${encodeURIComponent('장학생명단.csv')}`,
+      },
+    })
   }),
 
   http.get(`${BASE}/scholars/:scholarId`, ({ params, request }) => {
