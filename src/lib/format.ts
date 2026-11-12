@@ -1,5 +1,8 @@
-// 날짜·마감 표시. 서버 시간 문자열(시간대 없음)을 그대로 현지 시각으로 읽는다.
+import { TIME_ZONE, toDate } from './time'
+
+// 날짜와 마감 표시. 서버의 UTC 시간을 한국 시간으로 보여 준다.
 const dateTime = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: TIME_ZONE,
   month: 'long',
   day: 'numeric',
   weekday: 'short',
@@ -7,10 +10,10 @@ const dateTime = new Intl.DateTimeFormat('ko-KR', {
   minute: '2-digit',
   hour12: false,
 })
-const time = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+const time = new Intl.DateTimeFormat('ko-KR', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hour12: false })
 
-export const formatDue = (iso: string) => dateTime.format(new Date(iso))
-export const formatTime = (iso: string) => time.format(new Date(iso))
+export const formatDue = (iso: string) => dateTime.format(toDate(iso))
+export const formatTime = (iso: string) => time.format(toDate(iso))
 
 // 파일 크기: 1.8MB, 320KB
 export function formatBytes(bytes: number) {

@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
+import { kstParts, kstToday, kstToUtc } from '../../lib/time'
 import { usePageTitle } from '../../lib/usePageTitle'
 
 export type Notice = { tone: 'success' | 'warning'; title: string; body: string }
@@ -46,9 +47,6 @@ const semesters: { value: Semester; label: string }[] = [
   { value: 'WINTER', label: '겨울학기' },
 ]
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-
 function defaults(): Values {
   const now = new Date()
   const due = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
@@ -60,7 +58,7 @@ function defaults(): Values {
     // 1~2월은 아직 지난해 2학기
     academicYear: String(month <= 2 ? now.getFullYear() - 1 : now.getFullYear()),
     semester: month >= 3 && month <= 8 ? '1' : '2',
-    closeDate: ymd(due),
+    closeDate: kstParts(due).date,
     closeTime: '23:59',
     description: '',
     completionMessage: '',
@@ -68,15 +66,10 @@ function defaults(): Values {
 }
 
 // 저장된 작성 중 요청을 입력칸 값으로
-// 서버 마감 시각 → 화면 시각(YYYY-MM-DD, HH:mm:ss). 시간대가 붙어 오면 이 기기 시각으로 바꾼다(형식 확인 필요)
+// 서버 마감 시각(UTC) → 화면의 한국 날짜와 시각(YYYY-MM-DD, HH:mm:ss)
 function splitClose(closesAt: string | null) {
   if (!closesAt) return { date: '', time: '' }
-  if (/(?:[zZ]|[+-]\d\d:?\d\d)$/.test(closesAt)) {
-    const t = new Date(closesAt)
-    if (!Number.isNaN(t.getTime())) return { date: ymd(t), time: `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}` }
-  }
-  const [date = '', time = ''] = closesAt.split('T')
-  return { date, time: time.slice(0, 8) }
+  return kstParts(closesAt)
 }
 
 function fromDetail(d: RequestDetail): Values {
@@ -166,7 +159,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const [confirming, setConfirming] = useState(false)
   // 저장이 끝나 이동할 곳. 이동 확인 창이 뜨지 않도록 렌더 뒤에 이동한다
   const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: Notice } | null>(null)
-  const [today] = useState(() => ymd(new Date()))
+  const [today] = useState(kstToday)
   const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
   const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({
     defaultValues: existing ? fromDetail(existing) : defaults(),
@@ -198,7 +191,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
     description: v.description.trim() || null,
     academicYear: Number(v.academicYear),
     semester: v.semester,
-    closesAt: `${v.closeDate}T${v.closeTime}:${seconds(v)}`,
+    closesAt: kstToUtc(v.closeDate, `${v.closeTime}:${seconds(v)}`),
     completionMessage: v.completionMessage.trim() || null,
   })
 
@@ -363,7 +356,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
                 className={cn(fieldControl, fieldBorder(!!errors.closeDate))}
                 {...register('closeDate', {
                   required: '마감일을 고르세요.',
-                  validate: (d, all) => (!all.closeTime || new Date(`${d}T${all.closeTime}:00`).getTime() > Date.now() ? true : '마감은 지금보다 뒤여야 해요.'),
+                  validate: (d, all) => (!all.closeTime || Date.parse(kstToUtc(d, all.closeTime)) > Date.now() ? true : '마감은 지금보다 뒤여야 해요.'),
                 })}
               />
             )}

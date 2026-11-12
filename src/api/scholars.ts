@@ -19,7 +19,7 @@ export type ScholarItem = {
   status: ScholarStatus
   accountStatus: AccountStatus
 }
-export type ScholarPage = { items: ScholarItem[]; page: number; page_size: number; total: number }
+export type ScholarPage = { items: ScholarItem[]; page: number; pageSize: number; total: number }
 
 export function useScholars(q: { cohortId: number | null; status: ScholarStatus | null; keyword: string; page: number }) {
   const params = new URLSearchParams({ page: String(q.page), page_size: '20' })

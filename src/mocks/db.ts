@@ -2,19 +2,17 @@
 // 임시 저장한 값은 sessionStorage에 남겨 새로고침해도 다시 보이게 한다.
 import type { Answers, RawSubmissionForm } from '../api/submissions'
 import type { SubmissionStatus } from '../api/types'
+import { kstParts, kstToUtc } from '../lib/time'
 
 const DAY = 24 * 60 * 60 * 1000
-const pad = (n: number) => String(n).padStart(2, '0')
 
-// 오늘 기준 n일 뒤 23:59:59 (서버처럼 시간대 없는 형식)
+// 오늘(한국 날짜) 기준 n일 뒤 23:59:59 한국 시간을 서버처럼 UTC(끝에 Z)로
 export function dueIn(days: number) {
-  const d = new Date(Date.now() + days * DAY)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:59`
+  return kstToUtc(kstParts(new Date(Date.now() + days * DAY)).date, '23:59:59')
 }
 
 export function now() {
-  const d = new Date()
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
 type MockFile = RawSubmissionForm['files'][number]

@@ -19,8 +19,6 @@ const ME = {
 const roleOf = (request: Request) =>
   request.headers.get('Authorization')?.includes('manager') ? 'MANAGER' : request.headers.get('Authorization') ? 'SCHOLAR' : null
 
-const passwordChanged = () => sessionStorage.getItem('mock-password-changed') === '1'
-
 const unauthorized = (path: string) => fail(path, 401, 'UNAUTHORIZED', '인증 정보가 없거나 만료되었습니다')
 
 export const handlers = [
@@ -31,38 +29,35 @@ export const handlers = [
     }
     // 목업: admin 또는 newadmin으로 시작하면 담당자, new로 시작하면 임시 비밀번호로 처음 로그인한 계정
     const role = /^(new)?admin/.test(email) ? 'MANAGER' : 'SCHOLAR'
-    const first = email.startsWith('new') && !passwordChanged()
+    // 목업: new로 시작하는 계정이 temp로 시작하는 임시 비밀번호로 들어오면 첫 로그인
+    const first = email.startsWith('new') && password.startsWith('temp')
     return ok('/v1/auth/login', {
-      accessToken: `mock-access-${role.toLowerCase()}${first ? '-first' : ''}`,
-      refreshToken: `mock-refresh-${role.toLowerCase()}`,
+      accessToken: `mock-access-${role.toLowerCase()}`,
       role,
       name: ME[role].name,
+      passwordChangeRequired: first,
     })
   }),
 
-  http.post(`${BASE}/auth/logout`, () => {
-    // 목업: 로그아웃하면 첫 로그인을 다시 확인할 수 있게 비밀번호 변경 기록을 지운다
-    sessionStorage.removeItem('mock-password-changed')
-    return ok('/v1/auth/logout', null)
-  }),
+  // 백엔드에 아직 없음. 리프레시 토큰이 생기면 쓴다
+  http.post(`${BASE}/auth/logout`, () => ok('/v1/auth/logout', null)),
 
   http.get(`${BASE}/me`, ({ request }) => {
     const role = roleOf(request)
     if (!role) return unauthorized('/v1/me')
-    const first = request.headers.get('Authorization')?.includes('-first') && !passwordChanged()
-    return ok('/v1/me', { ...ME[role], passwordChangeRequired: !!first })
+    return ok('/v1/me', ME[role])
   }),
 
-  http.patch(`${BASE}/me/password`, async ({ request }) => {
-    const path = '/v1/me/password'
+  http.patch(`${BASE}/auth/password`, async ({ request }) => {
+    const path = '/v1/auth/password'
     if (!roleOf(request)) return unauthorized(path)
     const { currentPassword, newPassword } = (await request.json()) as { currentPassword: string; newPassword: string }
     await delay(300)
     // 목업: 지금 비밀번호가 temp로 시작하지 않으면 틀린 것으로 본다
-    if (!currentPassword.startsWith('temp')) return fail(path, 400, 'INVALID_PASSWORD', '현재 비밀번호가 올바르지 않습니다.')
-    if (newPassword === currentPassword) return fail(path, 400, 'SAME_PASSWORD', '지금과 다른 비밀번호를 입력하세요.')
-    sessionStorage.setItem('mock-password-changed', '1')
-    return ok(path, null)
+    if (newPassword.length < 8 || newPassword.length > 64) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.')
+    if (!currentPassword.startsWith('temp')) return fail(path, 400, 'PASSWORD_MISMATCH', '현재 비밀번호가 올바르지 않습니다.')
+    if (newPassword === currentPassword) return fail(path, 400, 'SAME_AS_CURRENT', '기존 비밀번호와 동일합니다.')
+    return ok(path, { passwordChangedAt: now() })
   }),
 
   http.get(`${BASE}/me/tasks`, ({ request }) => {

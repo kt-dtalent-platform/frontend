@@ -3,6 +3,7 @@ import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import { useManagerDashboard, type ManagerDashboard } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
+import { TIME_ZONE } from '../../lib/time'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
@@ -10,7 +11,7 @@ import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 
-const today = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })
+const today = new Intl.DateTimeFormat('ko-KR', { timeZone: TIME_ZONE, month: 'long', day: 'numeric', weekday: 'long' })
 
 // A01 담당자 대시보드: 오늘 처리할 일 → 마감이 가까운 요청 → 전체 현황
 export function ManagerHomePage() {

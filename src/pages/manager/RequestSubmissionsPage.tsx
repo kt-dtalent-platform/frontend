@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { downloadExport, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
+import { TIME_ZONE, toDate } from '../../lib/time'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -24,7 +25,14 @@ const filters: { value: StatusFilter | null; label: string; empty: string }[] = 
   { value: 'CONFIRMED', label: '확인 완료', empty: '아직 확인 완료한 제출이 없어요.' },
 ]
 
-const submittedAt = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+const submittedAt = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: TIME_ZONE,
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
 
 // A01 제출 현황: 요청 하나의 대상 장학생 전원. 상태 칩·이름 검색·내려받기, 행을 누르면 개별 검토
 export function RequestSubmissionsPage() {
@@ -95,7 +103,7 @@ export function RequestSubmissionsPage() {
   const counts: Record<string, number | undefined> = s
     ? { all: s.target, NOT_SUBMITTED: s.notSubmitted, WAITING: s.submitted, REVISION_REQUIRED: s.revisionRequired, CONFIRMED: s.confirmed }
     : {}
-  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
+  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData
 
   // 없는 쪽(예: 마지막 쪽에서 모두 처리됨)이면 마지막 쪽으로
@@ -178,10 +186,10 @@ export function RequestSubmissionsPage() {
                   ))}
                 </ul>
               </div>
-              {data.total > data.page_size && (
+              {data.total > data.pageSize && (
                 <nav aria-label="페이지" className="flex items-center justify-end gap-3 text-caption text-ink-3 tabular-nums">
                   <span>
-                    {(data.page - 1) * data.page_size + 1}–{Math.min(data.page * data.page_size, data.total)} / 전체 {data.total}명
+                    {(data.page - 1) * data.pageSize + 1}–{Math.min(data.page * data.pageSize, data.total)} / 전체 {data.total}명
                   </span>
                   <Button size="compact" aria-label="이전 페이지" disabled={loadingNext || page <= 1} onClick={() => go({ page: page - 1 })}>
                     <ChevronLeft size={16} strokeWidth={2} aria-hidden />
@@ -232,7 +240,7 @@ function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
       </span>
       <span className="text-caption text-ink-3 tabular-nums md:w-28 md:text-right">
         <span className="md:sr-only">제출 </span>
-        {row.submittedAt ? submittedAt.format(new Date(row.submittedAt)) : '–'}
+        {row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : '–'}
       </span>
     </>
   )

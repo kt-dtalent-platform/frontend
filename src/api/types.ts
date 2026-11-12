@@ -26,8 +26,6 @@ export type Me = {
   role: Role
   cohort: { id: number; name: string } | null
   accessiblePrograms: { id: number; name: string }[] | null
-  // 재단이 발급한 임시 비밀번호로 처음 로그인했으면 true. 백엔드에 아직 없음(확인 필요)
-  passwordChangeRequired?: boolean
 }
 
 // 검증 실패 시 error.details. 지금 백엔드(INVALID_REQUEST)는 항목 이름 목록(string[])을 준다.

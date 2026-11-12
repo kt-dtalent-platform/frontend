@@ -23,7 +23,7 @@ export type SubmissionPage = {
   summary: StatusSummary
   items: SubmissionRow[]
   page: number
-  page_size: number
+  pageSize: number
   total: number
 }
 

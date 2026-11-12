@@ -80,7 +80,7 @@ export function ScholarsPage() {
     return () => clearTimeout(t)
   }, [typed, keyword, params, setParams])
 
-  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
+  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData
 
   // 없는 쪽 번호(?page=99 등)면 마지막 쪽으로
@@ -167,10 +167,10 @@ export function ScholarsPage() {
                 ))}
               </ul>
             </div>
-            {data.total > data.page_size && (
+            {data.total > data.pageSize && (
               <nav aria-label="페이지" className="flex items-center justify-end gap-3 text-caption text-ink-3 tabular-nums">
                 <span>
-                  {(data.page - 1) * data.page_size + 1}–{Math.min(data.page * data.page_size, data.total)} / 전체 {data.total}명
+                  {(data.page - 1) * data.pageSize + 1}–{Math.min(data.page * data.pageSize, data.total)} / 전체 {data.total}명
                 </span>
                 <Button size="compact" aria-label="이전 페이지" disabled={loadingNext || page <= 1} onClick={() => set({ page: page - 1 })}>
                   <ChevronLeft size={16} strokeWidth={2} aria-hidden />

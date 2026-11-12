@@ -119,7 +119,7 @@ export function rows(): RequestRow[] {
 export function requestList(status: string | null, page: number, pageSize: number) {
   const all = rows().filter((r) => !status || r.status === status)
   const p = Math.max(1, page)
-  return { items: all.slice((p - 1) * pageSize, p * pageSize), page: p, page_size: pageSize, total: all.length }
+  return { items: all.slice((p - 1) * pageSize, p * pageSize), page: p, pageSize, total: all.length }
 }
 
 export function managerDashboard(): ManagerDashboard {

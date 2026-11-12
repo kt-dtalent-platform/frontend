@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './client'
 import { isDone, type SubmissionStatus } from './types'
+import { daysBetween, kstParts, kstToday, toDate } from '../lib/time'
 
 // GET /me/tasks · 담당 정윤 · 백엔드 PR #25(KT-16) 기준
 // 백엔드 조회 결과(MyTaskRepository.TaskRow): requestId, title, requestDueAt, status, revisionReason
@@ -27,14 +28,10 @@ export function useMyTasks() {
 
 // 마감 시각이 지났는지(날짜가 같아도 시각까지 비교)
 export function isPastDue(iso: string) {
-  return new Date(iso).getTime() < Date.now()
+  return toDate(iso).getTime() < Date.now()
 }
 
-// 오늘 기준 남은 날(마감일 - 오늘, 날짜만 비교)
+// 오늘 기준 남은 날(마감일 - 오늘, 한국 날짜만 비교)
 export function daysUntil(iso: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const due = new Date(iso)
-  due.setHours(0, 0, 0, 0)
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000)
+  return daysBetween(kstToday(), kstParts(iso).date)
 }
