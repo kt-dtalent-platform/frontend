@@ -33,7 +33,7 @@ export function Pagination({ page, lastPage, disabled, onChange }: { page: numbe
             disabled={disabled}
             onClick={() => p !== page && onChange(p)}
             className={cn(
-              'h-control-compact min-w-control-compact rounded-md px-2 text-label',
+              'h-control-compact min-w-control-compact rounded-md px-2 text-label-sm',
               p === page ? 'bg-action text-on-action' : 'text-ink-2 hover:bg-surface-hover active:bg-surface-sunken',
             )}
           >
