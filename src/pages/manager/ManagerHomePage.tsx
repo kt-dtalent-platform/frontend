@@ -48,7 +48,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           label="검토 대기"
           value={data.review.waiting}
           unit="건"
-          note={data.review.resubmitted > 0 ? `보완 후 다시 제출 ${data.review.resubmitted}건 포함` : null}
+          note={data.review.resubmitted > 0 ? `다시 제출 ${data.review.resubmitted}건 포함` : null}
           action={
             hasReview && (
               <Link to={`/manager/submissions/${data.review.oldestSubmissionId}`} className={buttonClass({ variant: 'primary', size: 'default' })}>
@@ -74,7 +74,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           label="보완 필요"
           value={revision}
           unit="명"
-          note={revision > 0 ? '장학생이 고쳐서 다시 내면 검토 대기로 와요' : null}
+          note={revision > 0 ? '장학생이 고치는 중' : null}
           action={
             revision > 0 && (
               <Link to={listOf('REVISION_REQUIRED')} className={buttonClass({ size: 'default' })}>
@@ -108,19 +108,23 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
   )
 }
 
-// 숫자 하나와 행동 하나. 행동이 없을 때(0건)도 카드 높이를 맞추려고 아래쪽을 비워 둔다
+// 숫자 하나와 행동 하나. 이름은 위, 숫자는 왼쪽 아래, 버튼은 오른쪽 아래.
+// 숫자와 버튼을 같은 줄 양끝에 둬서 무게가 왼쪽에 몰리지 않고, 카드 세 개의 버튼이 같은 높이에 선다
 function TaskCard({ label, value, unit, note, action }: { label: string; value: number; unit: string; note: ReactNode; action: ReactNode }) {
   return (
-    <div className="flex flex-col gap-4 rounded-lg bg-surface px-6 py-6">
-      <div className="flex flex-col gap-1">
-        <span className="text-label text-ink-2">{label}</span>
-        <span className={cn('text-number tabular-nums', value === 0 && 'text-ink-3')}>
-          {value}
-          <span className="ml-0.5 text-body font-normal text-ink-3">{unit}</span>
-        </span>
-        {note && <span className="text-caption text-ink-3">{note}</span>}
+    <div className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6">
+      <span className="text-label text-ink-2">{label}</span>
+      <div className="mt-auto flex items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={cn('text-number tabular-nums', value === 0 && 'text-ink-3')}>
+            {value}
+            <span className="ml-0.5 text-body font-normal text-ink-3">{unit}</span>
+          </span>
+          {/* 설명이 없는 카드도 숫자 줄 높이를 맞춘다 */}
+          <span className="min-h-5 text-caption text-ink-3">{note}</span>
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      {action && <div className="mt-auto flex">{action}</div>}
     </div>
   )
 }
@@ -155,8 +159,12 @@ function RequestRow({ r }: { r: DashboardRequest }) {
           <span className="text-caption text-ink-3">
             <Due closesAt={r.closesAt} />
           </span>
+          {/* 휴대폰: 제목이 잘리지 않게 제출 인원은 아래 줄로 */}
+          <span className="text-caption text-ink-3 tabular-nums md:hidden">
+            제출 <span className="text-ink">{done}</span> / {r.targetCount}명
+          </span>
         </span>
-        <span className="shrink-0 text-caption text-ink-3 tabular-nums">
+        <span className="hidden shrink-0 text-caption text-ink-3 tabular-nums md:block">
           제출 <span className="text-body text-ink">{done}</span> / {r.targetCount}명
         </span>
         <ChevronRight size={20} strokeWidth={1.75} className="shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
