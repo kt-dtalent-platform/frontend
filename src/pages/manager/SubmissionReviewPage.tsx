@@ -25,6 +25,7 @@ import { cn } from '../../lib/cn'
 import { formatBytes, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
+import { Checkbox } from '../../components/form/Checkbox'
 
 type Notice = { title: string; body: string }
 
@@ -481,9 +482,7 @@ function RevisionDialog({
         <legend className="mb-1 p-0 text-label">다시 받을 항목</legend>
         {d.fields.map((f) => (
           <label key={f.fieldKey} className="flex min-h-control-default items-center gap-3">
-            <input
-              type="checkbox"
-              className="size-5 accent-action"
+            <Checkbox
               checked={keys.includes(f.fieldKey)}
               aria-invalid={!!keysError}
               onChange={(e) => setKeys((k) => (e.target.checked ? [...k, f.fieldKey] : k.filter((x) => x !== f.fieldKey)))}

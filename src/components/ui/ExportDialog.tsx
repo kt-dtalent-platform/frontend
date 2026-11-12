@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { FormDialog } from './FormDialog'
+import { Checkbox } from '../form/Checkbox'
 
 export type ExportOption = { value: string; label: string; count?: number }
 export type ExportColumn = { key: string; label: string; required?: boolean; default?: boolean }
@@ -69,9 +70,7 @@ export function ExportDialog({
           <div className="flex flex-col gap-1 pl-8">
             {scopes.map((s) => (
               <label key={s.value} className="flex min-h-control-default items-center gap-3">
-                <input
-                  type="checkbox"
-                  className="size-5 accent-action"
+                <Checkbox
                   checked={picked.includes(s.value)}
                   aria-invalid={!!scopeError}
                   aria-describedby={scopeError ? errorId : undefined}
@@ -96,9 +95,7 @@ export function ExportDialog({
           <div className="grid grid-cols-2 gap-x-4">
             {g.columns.map((c) => (
               <label key={c.key} className="flex min-h-control-default items-center gap-3">
-                <input
-                  type="checkbox"
-                  className="size-5 accent-action"
+                <Checkbox
                   checked={columns.includes(c.key)}
                   disabled={c.required}
                   onChange={(e) => setColumns((list) => toggle(list, c.key, e.target.checked))}

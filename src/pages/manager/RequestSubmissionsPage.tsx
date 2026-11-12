@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { downloadExport, submissionExportColumns, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, toDate } from '../../lib/time'
-import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
+import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { Pagination } from '../../components/ui/Pagination'
@@ -165,19 +165,19 @@ export function RequestSubmissionsPage() {
             />
             <div className="flex items-center gap-2">
               <div className="relative flex-1 md:w-64 md:flex-none">
-                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
+                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
                 <input
                   type="search"
                   aria-label="이름으로 찾기"
                   placeholder="이름으로 찾기"
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
-                  className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
+                  className={cn(filterField, 'pl-8')}
                 />
               </div>
               {/* 목록에 대한 보조 행동이라 테두리 없는 버튼으로 필터 옆에 둔다(11/12) */}
               <Button
-                size="default"
+                size="compact"
                 variant="ghost"
                 disabled={exporting || data.summary.target === 0}
                 onClick={() => (setExportError(false), setExportOpen(true))}
