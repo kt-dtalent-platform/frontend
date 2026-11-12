@@ -2,6 +2,7 @@
 import type { SubmissionStatus } from '../api/types'
 import type { Comparison, StatusFilter, SubmissionDetail, SubmissionRow } from '../api/review'
 import type { ManagerDashboard } from '../api/manager'
+import { kstParts } from '../lib/time'
 import { dueIn } from './db'
 import { rows } from './manager'
 
@@ -74,6 +75,10 @@ function baseRows(requestId: number): (SubmissionRow & { index: number })[] {
       scholarId: 1000 + i,
       scholarName: name(i + requestId),
       cohortName: req.cohortName ?? (i % 2 ? '2025년 선발' : '2026년 선발'),
+      university: SCHOOLS[i % SCHOOLS.length],
+      // 상세 화면의 평점과 같은 값(sample 참고). 제출 전이면 없음
+      gpa: submitted ? Number(gpaOf(i)) : null,
+      gpaScale: submitted ? '4.5' : null,
       submissionId: status === 'NOT_SUBMITTED' ? null : requestId * 1000 + i,
       status,
       submittedAt: submitted ? minutesAgo(60 * (i + 1) + requestId) : null,
@@ -153,12 +158,15 @@ export function submissionDetail(id: number): SubmissionDetail | null {
   }
 }
 
+const SCHOOLS = ['한국대학교', '서울과학기술대학교', '부산대학교', '경북대학교', '충남대학교', '전남대학교']
+const gpaOf = (i: number) => (3 + ((i * 37) % 150) / 100).toFixed(2)
+
 function sample(code: string, i: number) {
   const files: SubmissionDetail['files'] = []
   const comparisons: Comparison[] = []
   let answers: SubmissionDetail['answers'] = {}
   if (code) {
-    const gpa = (3 + ((i * 37) % 150) / 100).toFixed(2)
+    const gpa = gpaOf(i)
     const read = i % 4 === 1 ? (Number(gpa) - 0.2).toFixed(2) : gpa
     answers = {
       gpa: Number(gpa),
@@ -208,9 +216,11 @@ export function review(id: number, action: 'confirm' | 'revision', body: { versi
   return { status }
 }
 
-export function exportCsv(requestId: number, status: string | null) {
-  const list = submissionList(requestId, status, '', 1, 10_000)
-  if (!list) return null
+// 목업 내보내기: 고른 상태(쉼표로 여러 개)와 열만 담은 CSV. 실제 서버는 xlsx를 준다(확인 필요)
+export function exportCsv(requestId: number, statuses: string[], columns: string[]) {
+  const all = submissionList(requestId, null, '', 1, 10_000)
+  if (!all) return null
+  const items = all.items.filter((r) => statuses.length === 0 || statuses.some((st) => matches(r.status, st as StatusFilter)))
   const label: Record<string, string> = {
     NOT_SUBMITTED: '미제출',
     DRAFT: '작성 중',
@@ -219,10 +229,25 @@ export function exportCsv(requestId: number, status: string | null) {
     REVISION_REQUIRED: '보완 필요',
     CONFIRMED: '확인 완료',
   }
-  const lines = [
-    ['이름', '기수', '제출상태', '제출일시'],
-    ...list.items.map((r) => [r.scholarName, r.cohortName ?? '', label[r.status], r.submittedAt?.replace('T', ' ').slice(0, 16) ?? '']),
-  ]
+  const kst = (iso: string | null) => (iso ? `${kstParts(iso).date} ${kstParts(iso).time.slice(0, 5)}` : '')
+  const cell: Record<string, [string, (r: (typeof items)[number], i: number) => string]> = {
+    name: ['이름', (r) => r.scholarName],
+    cohort: ['기수', (r) => r.cohortName ?? ''],
+    university: ['학교', (r) => r.university ?? ''],
+    major: ['학과', (_r, i) => ['컴퓨터공학과', '전자공학과', '산업공학과'][i % 3]],
+    studentNo: ['학번', (r) => String(20230000 + r.scholarId)],
+    email: ['이메일', (r) => `scholar${r.scholarId}@example.com`],
+    phone: ['연락처', (r) => `010-0000-${String(r.scholarId).slice(-4)}`],
+    status: ['제출 상태', (r) => label[r.status]],
+    submittedAt: ['제출 일시', (r) => kst(r.submittedAt)],
+    gpa: ['평점', (r) => (r.gpa != null ? r.gpa.toFixed(2) : '')],
+    gpaScale: ['만점 기준', (r) => r.gpaScale ?? ''],
+    credits: ['이수 학점', (r, i) => (r.gpa != null ? String(15 + (i % 7)) : '')],
+    revisionReason: ['보완 사유', (r) => (r.status === 'REVISION_REQUIRED' ? '성적증명서가 흐려 다시 올려 주세요' : '')],
+  }
+  const keys = columns.filter((k) => cell[k])
+  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
+  const lines = [keys.map((k) => cell[k][0]), ...items.map((r, i) => keys.map((k) => esc(cell[k][1](r, i))))]
   // 엑셀에서 한글이 깨지지 않도록 BOM을 붙인 CSV(목업). 실제 서버는 xlsx를 준다
   return '﻿' + lines.map((l) => l.join(',')).join('\n')
 }
