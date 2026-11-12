@@ -1,5 +1,5 @@
 // 담당자 화면 목업. 모양은 노션 명세서(옛 자료)에서 MVP 범위만 가져왔다(확인 필요).
-import type { Cohort, CreateRequestBody, ManagerDashboard, RequestRow, RequestTemplate } from '../api/manager'
+import type { Cohort, CreateRequestBody, RequestRow, RequestTemplate } from '../api/manager'
 import { dueIn } from './db'
 
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
@@ -63,33 +63,6 @@ export function requestList(status: string | null, page: number, pageSize: numbe
   const all = rows().filter((r) => !status || r.status === status)
   const p = Math.max(1, page)
   return { items: all.slice((p - 1) * pageSize, p * pageSize), page: p, pageSize, total: all.length }
-}
-
-export function managerDashboard(): ManagerDashboard {
-  const live = rows().filter((r) => r.status === 'IN_PROGRESS')
-  const soon = live
-    .filter((r) => r.closesAt && new Date(r.closesAt).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000)
-    .sort((a, b) => a.closesAt!.localeCompare(b.closesAt!))
-  return {
-    today: { unreviewedSubmissions: 14, resubmitted: 3 },
-    tasks: {
-      closingSoon: soon.map((r) => ({
-        requestId: r.id,
-        title: r.title,
-        closesAt: r.closesAt!,
-        notSubmitted: r.targetCount - r.submittedCount,
-        targetCount: r.targetCount,
-      })),
-    },
-    overview: {
-      scholarCount: 94,
-      byCohort: [
-        { cohortName: '2025년 선발', count: 47 },
-        { cohortName: '2026년 선발', count: 47 },
-      ],
-      inProgressRequests: live.length,
-    },
-  }
 }
 
 // ── 요청 만들기 목업 ──

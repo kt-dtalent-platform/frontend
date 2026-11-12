@@ -3,10 +3,10 @@ import type { CreateRequestBody } from '../api/manager'
 import type { ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
-import { cohorts, createRequest, managerDashboard, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
+import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
-import { exportCsv, review, submissionDetail, submissionList } from './review'
+import { exportCsv, managerDashboard, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/v1'
 

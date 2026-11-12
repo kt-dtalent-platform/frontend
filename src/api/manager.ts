@@ -8,10 +8,22 @@ export type RequestStatus = 'DRAFT' | 'IN_PROGRESS' | 'CLOSED'
 
 // GET /dashboard/manager
 // 명세서에는 경비·문의·행사·소모임 수치도 있지만 MVP 범위(제출·검토) 밖이라 화면에 쓰지 않는다.
+// 대시보드는 백엔드 API가 없다. 화면에 필요한 모양을 프론트가 정했다(11/12, 확인 필요)
+// review: 진행 중 요청 전체의 검토 대기. oldestSubmissionId는 가장 오래 기다린 제출(검토 시작 버튼)
+// requests: 진행 중 요청을 마감 순으로. 네 숫자를 더하면 targetCount
+export type DashboardRequest = {
+  requestId: number
+  title: string
+  closesAt: string
+  targetCount: number
+  confirmed: number
+  waiting: number
+  revisionRequired: number
+  notSubmitted: number
+}
 export type ManagerDashboard = {
-  today: { unreviewedSubmissions: number; resubmitted: number }
-  tasks: { closingSoon: { requestId: number; title: string; closesAt: string; notSubmitted: number; targetCount: number }[] }
-  overview: { scholarCount: number; byCohort: { cohortName: string; count: number }[]; inProgressRequests: number }
+  review: { waiting: number; resubmitted: number; oldestSubmissionId: number | null; oldestSubmittedAt: string | null }
+  requests: DashboardRequest[]
 }
 
 export function useManagerDashboard() {
