@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
-import { PHONE, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
+import { PHONE, withdrawalText, useChangeScholarStatus, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
@@ -15,8 +15,9 @@ import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateV
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
+import { ScholarStatusDialog } from './ScholarStatusDialog'
 
-// A05 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
+// A05 장학생 상세: 기본 정보 보기, 이름, 연락처, 학교, 전공 고치기(백엔드 KT-11, 12 기준), 상태 바꾸기
 export function ScholarDetailPage() {
   const id = Number(useParams().scholarId)
   const query = useScholar(id)
@@ -38,20 +39,37 @@ export function ScholarDetailPage() {
 
 function Detail({ s }: { s: ScholarDetail }) {
   const [editing, setEditing] = useState(false)
-  const [result, setResult] = useState<'saved' | 'unchanged' | null>(null)
+  const [changing, setChanging] = useState(false)
+  const [result, setResult] = useState<'saved' | 'unchanged' | 'status' | null>(null)
+  const changeStatus = useChangeScholarStatus(s.id)
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
-          <ScholarStatusBadge status={s.status} />
-          <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
-        </div>
-        {!editing && (
-          <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
-            정보 수정
-          </Button>
-        )}
-      </div>
+      <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
+      {changing && (
+        <ScholarStatusDialog
+          open
+          s={s}
+          busy={changeStatus.isPending}
+          onCancel={() => setChanging(false)}
+          onSubmit={(body) =>
+            changeStatus.mutate(body, {
+              onSuccess: () => (setChanging(false), setResult('status')),
+              // 실패하면 대화상자를 닫고 아래 안내로 알린다
+              onError: () => setChanging(false),
+            })
+          }
+        />
+      )}
+      {changeStatus.isError && !changing && (
+        <Banner tone="danger" title="상태를 바꾸지 못했어요">
+          {changeStatus.error instanceof ApiError ? changeStatus.error.message : '잠시 뒤 다시 시도하세요.'}
+        </Banner>
+      )}
+      {result === 'status' && (
+        <Banner tone="success" title="상태를 바꿨어요">
+          바뀐 상태가 명단에도 반영됐어요.
+        </Banner>
+      )}
       {result === 'saved' && (
         <Banner tone="success" title="정보를 고쳤어요">
           바뀐 내용이 명단에도 반영됐어요.
@@ -62,10 +80,37 @@ function Detail({ s }: { s: ScholarDetail }) {
           저장할 것이 없어 그대로 두었어요.
         </Banner>
       )}
+      {/* 상태와 기본 정보를 구역으로 나누고 각 구역 머리에 작은 고치기 버튼(32px)을 둔다(11/12).
+          상태는 수료 연도, 중단 사유를 함께 받아야 해서 정보 수정과 따로 바꾼다 */}
+      <section aria-labelledby={`status-${s.id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
+        <div className="flex items-center justify-between gap-4">
+          <h2 id={`status-${s.id}`} className="m-0 text-title-2">
+            상태
+          </h2>
+          {!editing && (
+            <Button size="compact" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+              상태 바꾸기
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <ScholarStatusBadge status={s.status} />
+          {s.status === 'COMPLETED' && s.completedYear && <span className="text-body">{s.completedYear}년 수료</span>}
+          {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
+        </div>
+      </section>
       {editing ? (
         <EditForm s={s} onDone={(r) => (setEditing(false), setResult(r))} />
       ) : (
-        <section className="rounded-lg bg-surface px-6 py-6 md:px-8">
+        <section aria-labelledby={`info-${s.id}`} className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-6 md:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <h2 id={`info-${s.id}`} className="m-0 text-title-2">
+              기본 정보
+            </h2>
+            <Button size="compact" onClick={() => (setResult(null), setEditing(true))}>
+              정보 수정
+            </Button>
+          </div>
           <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <Item label="이메일" value={s.email} />
             <Item label="연락처" value={s.maskedPhone} />
