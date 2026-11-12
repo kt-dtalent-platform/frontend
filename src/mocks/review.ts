@@ -159,7 +159,19 @@ export function submissionDetail(id: number): SubmissionDetail | null {
       ? { overallResult: mismatch ? (comparisons.some((c) => c.result === 'UNREADABLE') ? 'UNREADABLE' : 'MISMATCH') : 'MATCH', comparisons }
       : null,
     history: o?.history ?? baseHistory(row),
-    revisions: o?.revisions ?? [],
+    // 미리 만든 보완 필요 제출에도 보완 요청 기록을 둔다(검토 화면 안내가 비지 않게)
+    revisions:
+      o?.revisions ??
+      (row.status === 'REVISION_REQUIRED'
+        ? [
+            {
+              fieldKeys: ['gpa', 'transcript'],
+              reason: '성적증명서의 평점과 입력한 평점이 달라요. 직전 학기 평점을 다시 확인해 주세요.',
+              dueAt: null,
+              resolvedAt: null,
+            },
+          ]
+        : []),
     version: o?.version ?? 2,
   }
 }

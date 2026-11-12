@@ -29,7 +29,7 @@ const filters: { value: StatusFilter | null; label: string; empty: string }[] = 
 
 const submittedAt = new Intl.DateTimeFormat('ko-KR', {
   timeZone: TIME_ZONE,
-  month: 'numeric',
+  month: 'long',
   day: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
@@ -231,7 +231,7 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
         items={[
           cohortName ?? '전체 기수',
           `마감 ${formatDue(closesAt)}`,
-          <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>
+          <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
             {dDayText(dDay, overdue)}
           </span>,
         ]}
@@ -243,7 +243,7 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
 function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
   const tags = (
     <>
-      {row.late && <Tag tone="danger">마감 후</Tag>}
+      {row.late && <Tag tone="neutral">마감 후</Tag>}
       {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
     </>
   )

@@ -37,7 +37,7 @@ export function SubmissionReviewPage() {
   usePageTitle(d ? `${d.scholar.name} 검토` : '검토')
 
   return (
-    <div className="flex max-w-page-form flex-col gap-6 lg:max-w-page-wide">
+    <div className="mx-auto flex w-full max-w-page-form flex-col gap-6 lg:max-w-page-wide">
       {query.isPending && <LoadingCards count={2} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {/* key: 다음 제출로 넘어가면 대화상자·안내 상태를 새로 시작한다 */}
@@ -120,7 +120,7 @@ function Review({ d }: { d: SubmissionDetail }) {
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={d.status} />
-          {d.late && <Tag tone="danger">마감 후</Tag>}
+          {d.late && <Tag tone="neutral">마감 후</Tag>}
         </div>
         <PageTitle
           description={

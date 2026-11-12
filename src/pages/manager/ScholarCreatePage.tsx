@@ -65,7 +65,7 @@ export function ScholarCreatePage() {
   })
 
   return (
-    <div className="flex max-w-page-form flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-page-form flex-col gap-6">
       <Link to="/manager/scholars" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         장학생

@@ -101,7 +101,7 @@ export type CreateRequestBody = {
   description: string | null
   academicYear: number
   semester: Semester
-  closesAt: string // 서버 형식(시간대 없음) 2026-11-20T23:59:00
+  closesAt: string // UTC, 끝에 Z. 예: 2026-11-20T14:59:00Z (한국 23:59)
   completionMessage: string | null
 }
 export type CreatedRequest = { id: number; status: RequestStatus }

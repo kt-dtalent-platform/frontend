@@ -343,7 +343,7 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
       >
         <span className="flex min-w-0 items-center gap-2 md:w-40">
           <span className="truncate text-body-strong group-hover:underline">{s.name}</span>
-          {s.accountStatus === 'LOCKED' && <Tag tone="danger">잠김</Tag>}
+          {s.accountStatus === 'LOCKED' && <Tag tone="warning">잠김</Tag>}
           {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">로그인 전</Tag>}
           <span className="ml-auto shrink-0 md:hidden">
             <ScholarStatusBadge status={s.status} />
