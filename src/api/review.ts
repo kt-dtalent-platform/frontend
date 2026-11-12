@@ -12,6 +12,9 @@ export type SubmissionRow = {
   scholarId: number
   scholarName: string
   cohortName?: string | null
+  university?: string | null // 목록에서 학교와 평점을 같이 본다(11/12, 백엔드 확인 필요)
+  gpa?: number | null
+  gpaScale?: string | null
   submissionId: number | null
   status: SubmissionStatus
   submittedAt: string | null
@@ -42,15 +45,47 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
   })
 }
 
-// GET /requests/{requestId}/export?status=&format=csv → 파일 내려받기(형식 csv·xlsx 중 무엇인지 확인 필요)
-export async function downloadExport(requestId: number, status: StatusFilter | null) {
-  const params = new URLSearchParams({ format: 'csv' })
-  if (status) params.set('status', status)
-  const res = await fetch(`${BASE_URL}/requests/${requestId}/export?${params}`, {
+// GET /requests/{requestId}/export?format=xlsx&status=A,B&columns=name,cohort,...
+// 범위(상태 여러 개, 비우면 전체)와 열을 고른다(재단 요청 11/10). 파라미터 모양은 프론트 제안(확인 필요)
+export const submissionExportColumns = [
+  {
+    label: '장학생 정보',
+    columns: [
+      { key: 'name', label: '이름', required: true },
+      { key: 'cohort', label: '기수', default: true },
+      { key: 'university', label: '학교', default: true },
+      { key: 'major', label: '학과' },
+      { key: 'studentNo', label: '학번' },
+      { key: 'email', label: '이메일' },
+      { key: 'phone', label: '연락처' },
+    ],
+  },
+  {
+    label: '제출 정보',
+    columns: [
+      { key: 'status', label: '제출 상태', default: true },
+      { key: 'submittedAt', label: '제출 일시', default: true },
+      { key: 'gpa', label: '평점', default: true },
+      { key: 'gpaScale', label: '만점 기준', default: true },
+      { key: 'credits', label: '이수 학점', default: true },
+      { key: 'revisionReason', label: '보완 사유' },
+    ],
+  },
+]
+
+export async function downloadExport(requestId: number, choice: { scopes: string[]; columns: string[] }) {
+  return downloadFile(`/requests/${requestId}/export`, choice, `request_${requestId}.xlsx`)
+}
+
+// 내보내기 공통: 파일을 받아 브라우저 내려받기로 넘긴다
+export async function downloadFile(path: string, choice: { scopes: string[]; columns: string[] }, fallbackName: string) {
+  const params = new URLSearchParams({ format: 'xlsx', columns: choice.columns.join(',') })
+  if (choice.scopes.length) params.set('status', choice.scopes.join(','))
+  const res = await fetch(`${BASE_URL}${path}?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
   })
   if (!res.ok) throw new ApiError(res.status, { code: 'EXPORT_FAILED', message: '파일을 만들지 못했습니다.' })
-  const name = fileNameOf(res.headers.get('Content-Disposition')) ?? `request_${requestId}.csv`
+  const name = fileNameOf(res.headers.get('Content-Disposition')) ?? fallbackName
   const url = URL.createObjectURL(await res.blob())
   const a = Object.assign(document.createElement('a'), { href: url, download: name })
   document.body.append(a)

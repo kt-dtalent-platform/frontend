@@ -240,7 +240,9 @@ export const handlers = [
   http.get(`${BASE}/requests/:requestId/export`, ({ params, request }) => {
     const path = `/v1/requests/${params.requestId}/export`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
-    const csv = exportCsv(Number(params.requestId), new URL(request.url).searchParams.get('status'))
+    const q = new URL(request.url).searchParams
+    const list = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean)
+    const csv = exportCsv(Number(params.requestId), list('status'), list('columns'))
     if (!csv) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
     return new HttpResponse(csv, {
       headers: {

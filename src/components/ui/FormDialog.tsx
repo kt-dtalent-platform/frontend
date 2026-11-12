@@ -49,7 +49,8 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
           {title}
         </h2>
         {children}
-        <div className="mt-2 flex justify-end gap-2">
+        {/* 내용이 길어 대화상자가 스크롤되면(휴대폰) 버튼은 아래에 붙어 있게 한다 */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 flex justify-end gap-2 bg-surface px-6 pt-3 pb-6">
           <Button size="default" disabled={busy} onClick={onCancel}>
             취소
           </Button>

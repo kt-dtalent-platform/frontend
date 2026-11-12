@@ -1,12 +1,13 @@
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
-import { downloadExport, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
+import { downloadExport, submissionExportColumns, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, toDate } from '../../lib/time'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
@@ -34,7 +35,7 @@ const submittedAt = new Intl.DateTimeFormat('ko-KR', {
   hour12: false,
 })
 
-// A01 제출 현황: 요청 하나의 대상 장학생 전원. 상태 칩·이름 검색·내려받기, 행을 누르면 개별 검토
+// A01 제출 현황: 요청 하나의 대상 장학생 전원. 상태 칩, 이름 검색, 내보내기, 행을 누르면 개별 검토
 export function RequestSubmissionsPage() {
   const requestId = Number(useParams().requestId)
   const [params, setParams] = useSearchParams()
@@ -83,16 +84,18 @@ export function RequestSubmissionsPage() {
     return () => clearTimeout(t)
   }, [typed, keyword, params, setParams])
 
+  const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState(false)
   const filter = filters.find((f) => f.value === status)!
-  const exportLabel = status ? `${filter.label} 내려받기` : '전체 내려받기'
-  const onExport = async () => {
+  const onExport = async (choice: ExportChoice) => {
     setExporting(true)
     setExportError(false)
     try {
-      await downloadExport(requestId, status)
+      await downloadExport(requestId, choice)
+      setExportOpen(false)
     } catch {
+      setExportOpen(false)
       setExportError(true)
     } finally {
       setExporting(false)
@@ -132,17 +135,24 @@ export function RequestSubmissionsPage() {
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {data && (
         <>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <PageTitle description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} />}>{data.request.title}</PageTitle>
-            <Button size="default" disabled={exporting || (status ? data.total : data.summary.target) === 0} onClick={() => void onExport()}>
-              <Download size={16} strokeWidth={2} aria-hidden />
-              {exporting ? '만드는 중' : exportLabel}
-            </Button>
-          </div>
+          <PageTitle description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} />}>{data.request.title}</PageTitle>
           {exportError && (
             <Banner tone="danger" title="파일을 만들지 못했어요">
-              잠시 후 다시 내려받으세요.
+              잠시 후 다시 내보내세요.
             </Banner>
+          )}
+          {exportOpen && (
+            <ExportDialog
+              open
+              title="제출 현황 내보내기"
+              total={data.summary.target}
+              scopes={filters.slice(1).map((f) => ({ value: f.value!, label: f.label, count: counts[f.value!] }))}
+              initialScopes={status ? [status] : []}
+              columnGroups={submissionExportColumns}
+              busy={exporting}
+              onCancel={() => setExportOpen(false)}
+              onSubmit={(c) => void onExport(c)}
+            />
           )}
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -152,16 +162,28 @@ export function RequestSubmissionsPage() {
               value={status}
               onChange={(v) => go({ status: v })}
             />
-            <div className="relative md:w-64">
-              <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
-              <input
-                type="search"
-                aria-label="이름으로 찾기"
-                placeholder="이름으로 찾기"
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 md:w-64 md:flex-none">
+                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
+                <input
+                  type="search"
+                  aria-label="이름으로 찾기"
+                  placeholder="이름으로 찾기"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
+                />
+              </div>
+              {/* 목록에 대한 보조 행동이라 테두리 없는 버튼으로 필터 옆에 둔다(11/12) */}
+              <Button
+                size="default"
+                variant="ghost"
+                disabled={exporting || data.summary.target === 0}
+                onClick={() => (setExportError(false), setExportOpen(true))}
+              >
+                <Download size={16} strokeWidth={2} aria-hidden />
+                내보내기
+              </Button>
             </div>
           </div>
 
@@ -176,7 +198,10 @@ export function RequestSubmissionsPage() {
               <div className="overflow-hidden rounded-lg bg-surface">
                 <div aria-hidden className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
                   <span className="flex-1">이름</span>
-                  <span className="w-56">상태</span>
+                  <span className="w-28">기수</span>
+                  <span className="w-44">학교</span>
+                  <span className="w-48">상태</span>
+                  <span className="w-20 text-right">평점</span>
                   <span className="w-28 text-right">제출</span>
                   <span className="w-5" />
                 </div>
@@ -231,16 +256,33 @@ function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
     <>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-body-strong">{row.scholarName}</span>
-        {row.cohortName && <span className="text-caption text-ink-3">{row.cohortName}</span>}
+        {/* 휴대폰: 이름 아래 기수와 학교 */}
+        <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3 md:hidden" />
       </span>
-      <span className="flex flex-wrap items-center gap-2 md:w-56">
-        <StatusBadge status={row.status} />
-        {row.late && <Tag tone="danger">마감 후</Tag>}
-        {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
-      </span>
-      <span className="text-caption text-ink-3 tabular-nums md:w-28 md:text-right">
-        <span className="md:sr-only">제출 </span>
-        {row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : '–'}
+      <span className="hidden truncate text-ink-2 md:block md:w-28">{row.cohortName ?? '–'}</span>
+      <span className="hidden truncate text-ink-2 md:block md:w-44">{row.university ?? '–'}</span>
+      {/* 휴대폰: 상태, 평점, 제출 시각을 한 줄에. PC에서는 각자 열이 된다 */}
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
+        <span className="flex flex-wrap items-center gap-2 md:w-48">
+          <StatusBadge status={row.status} />
+          {row.late && <Tag tone="danger">마감 후</Tag>}
+          {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
+        </span>
+        <span className="text-caption text-ink-2 tabular-nums md:w-20 md:text-right md:text-body">
+          {row.gpa != null ? (
+            <>
+              <span className="md:sr-only">평점 </span>
+              {row.gpa.toFixed(2)}
+              {row.gpaScale && <span className="text-ink-3"> / {row.gpaScale}</span>}
+            </>
+          ) : (
+            <span className="hidden text-ink-3 md:inline">–</span>
+          )}
+        </span>
+        <span className="text-caption text-ink-3 tabular-nums md:w-28 md:text-right">
+          <span className="md:sr-only">제출 </span>
+          {row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : '–'}
+        </span>
       </span>
     </>
   )
