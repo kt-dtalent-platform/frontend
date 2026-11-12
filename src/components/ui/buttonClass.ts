@@ -15,7 +15,7 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  compact: 'h-control-compact px-3 text-label',
+  compact: 'h-control-compact px-3 text-label-sm',
   default: 'h-control-default px-4 text-label',
   md: 'h-control-h px-5 text-label',
   cta: 'h-control-cta px-6 text-label',
