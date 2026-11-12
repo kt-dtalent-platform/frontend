@@ -265,7 +265,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
           {late && <Tag tone="danger">마감 지남</Tag>}
         </div>
         <PageTitle>{form.request.title}</PageTitle>
-        <p className="m-0 pl-5 text-caption text-ink-3 tabular-nums">
+        <p className="m-0 text-caption text-ink-3 tabular-nums">
           <MetaList items={[`마감 ${formatDue(form.request.dueAt)}`, !locked && dDayText(dDay, late)]} />
         </p>
       </header>
