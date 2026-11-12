@@ -4,80 +4,26 @@ import { dueIn } from './db'
 
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
-// 진행 중 4, 작성 중 2, 마감 17 → 전체 23건(쪽 넘김 확인용). MVP는 성적증명서 제출만 다룬다.
-// 마감된 요청: 선발 연도별로 그 해부터 들은 학기만 만든다(같은 기수에 같은 학기 요청이 두 번 나오지 않게)
-const TERMS = ['1학기', '여름학기', '2학기', '겨울학기']
-function pastRequests(count: number) {
-  const out: { title: string; cohortName: string }[] = []
-  // 2025학년도 2학기부터 거꾸로
-  for (let k = 0; out.length < count && k < 40; k++) {
-    const idx = 2025 * 4 + 2 - k
-    const year = Math.floor(idx / 4)
-    const term = TERMS[idx % 4]
-    for (const sel of [2026, 2025, 2024, 2023]) {
-      // 선발 전 해 2학기 성적까지는 받는다고 본다
-      if (year < sel - 1 || (year === sel - 1 && idx % 4 < 2)) continue
-      if (out.length < count) out.push({ title: `${year}학년도 ${term} 성적증명서 제출`, cohortName: `${sel}년 선발` })
-    }
-  }
-  return out
-}
-
+// 성적은 기수와 상관없이 학기마다 전원에게 한 번 받는다(11/12). 계절학기, 추가 제출은 두지 않는다.
+// 진행 중 1, 작성 중 1, 마감 2. 2026년 선발은 2026학년도부터 받는다.
 export function rows(): RequestRow[] {
-  const live: RequestRow[] = [
+  const base = { templateCode: 'GRADE_CERTIFICATE', cohortName: null }
+  const list: RequestRow[] = [
     {
+      ...base,
       id: 31,
       title: '2026학년도 1학기 성적증명서 제출',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '2026년 선발',
       status: 'IN_PROGRESS',
-      opensAt: opened(5),
+      opensAt: opened(12),
       closesAt: dueIn(2),
-      targetCount: 47,
-      submittedCount: 32,
-      revisionCount: 3,
-    },
-    {
-      id: 36,
-      title: '2026학년도 1학기 성적증명서 제출 (2025년 선발)',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '2025년 선발',
-      status: 'IN_PROGRESS',
-      opensAt: opened(8),
-      closesAt: dueIn(0),
-      targetCount: 47,
-      submittedCount: 40,
-      revisionCount: 2,
-    },
-    {
-      id: 35,
-      title: '2026학년도 여름학기 성적증명서 제출',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: null,
-      status: 'IN_PROGRESS',
-      opensAt: opened(3),
-      closesAt: dueIn(10),
       targetCount: 94,
-      submittedCount: 20,
-      revisionCount: 1,
+      submittedCount: 72,
+      revisionCount: 5,
     },
     {
-      id: 39,
-      title: '2025학년도 2학기 성적증명서 추가 제출',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '2025년 선발',
-      status: 'IN_PROGRESS',
-      opensAt: opened(10),
-      closesAt: dueIn(-1),
-      targetCount: 12,
-      submittedCount: 10,
-      revisionCount: 0,
-    },
-    {
+      ...base,
       id: 40,
       title: '2026학년도 2학기 성적증명서 제출',
-      templateCode: 'GRADE_CERTIFICATE',
-      cohortName: '2026년 선발',
       status: 'DRAFT',
       opensAt: null,
       closesAt: null,
@@ -86,34 +32,31 @@ export function rows(): RequestRow[] {
       revisionCount: 0,
     },
     {
-      id: 41,
-      title: '2026학년도 겨울학기 성적증명서 제출',
-      templateCode: null,
-      cohortName: '2025년 선발',
-      status: 'DRAFT',
-      opensAt: null,
-      closesAt: dueIn(30),
+      ...base,
+      id: 28,
+      title: '2025학년도 2학기 성적증명서 제출',
+      status: 'CLOSED',
+      opensAt: opened(120),
+      closesAt: dueIn(-100),
       targetCount: 47,
-      submittedCount: 0,
+      submittedCount: 47,
+      revisionCount: 0,
+    },
+    {
+      ...base,
+      id: 27,
+      title: '2025학년도 1학기 성적증명서 제출',
+      status: 'CLOSED',
+      opensAt: opened(290),
+      closesAt: dueIn(-270),
+      targetCount: 47,
+      submittedCount: 46,
       revisionCount: 0,
     },
   ]
-  const past = pastRequests(17)
-  const closed: RequestRow[] = Array.from({ length: 17 }, (_, i) => ({
-    id: 27 - i,
-    title: past[i].title,
-    templateCode: 'GRADE_CERTIFICATE',
-    cohortName: past[i].cohortName,
-    status: 'CLOSED',
-    opensAt: opened(40 + i * 7),
-    closesAt: dueIn(-(30 + i * 7)),
-    targetCount: 47,
-    submittedCount: 47 - (i % 4),
-    revisionCount: 0,
-  }))
   // 수정·공개한 내용을 미리 만든 행에도 덮어쓴다
   const ed = edits()
-  return [...created(), ...live, ...closed].map((r) => (ed[r.id] ? { ...r, ...ed[r.id].row } : r))
+  return [...created(), ...list].map((r) => (ed[r.id] ? { ...r, ...ed[r.id].row } : r))
 }
 
 export function requestList(status: string | null, page: number, pageSize: number) {

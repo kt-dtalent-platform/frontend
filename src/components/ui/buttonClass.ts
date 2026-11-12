@@ -8,13 +8,14 @@ type Size = ButtonSize
 const variants: Record<Variant, string> = {
   // 주요 버튼은 화면에 하나.
   primary: 'bg-action text-on-action hover:bg-action-hover active:bg-gray-600',
-  secondary: 'border border-line-control bg-surface text-ink hover:bg-surface-hover active:bg-surface-sunken',
+  // 보조 버튼: 외곽선 대신 연한 바탕(11/12). 외곽선은 입력칸에만 써서 누르는 곳과 입력하는 곳을 나눈다
+  secondary: 'bg-control-tonal text-ink hover:bg-control-tonal-hover active:bg-control-tonal-active',
   // 테두리 없는 버튼: 상단 바 로그아웃처럼 덜 중요한 행동
   ghost: 'bg-transparent text-ink hover:bg-surface-hover active:bg-surface-sunken',
 }
 
 const sizes: Record<Size, string> = {
-  compact: 'h-control-compact px-3 text-label',
+  compact: 'h-control-compact px-3 text-label-sm',
   default: 'h-control-default px-4 text-label',
   md: 'h-control-h px-5 text-label',
   cta: 'h-control-cta px-6 text-label',

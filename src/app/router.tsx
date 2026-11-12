@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { LoginPage } from '../pages/LoginPage'
 import { LogoutPage } from '../pages/LogoutPage'
 import { PasswordChangePage } from '../pages/PasswordChangePage'
@@ -12,7 +12,6 @@ import { ScholarDetailPage } from '../pages/manager/ScholarDetailPage'
 import { ScholarsPage } from '../pages/manager/ScholarsPage'
 import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
 import { SubmissionReviewPage } from '../pages/manager/SubmissionReviewPage'
-import { SubmissionsHubPage } from '../pages/manager/SubmissionsHubPage'
 import { MyTasksPage } from '../pages/scholar/MyTasksPage'
 import { SubmissionPage } from '../pages/scholar/SubmissionPage'
 import { ManagerLayout } from './layouts/ManagerLayout'
@@ -52,7 +51,8 @@ export const router = createBrowserRouter(
         { path: 'requests/:requestId/edit', element: <RequestEditPage /> }, // A03·A04 작성 중 요청
         { path: 'requests/:requestId', element: <RequestSubmissionsPage /> }, // A01 제출 현황
         { path: 'submissions/:submissionId', element: <SubmissionReviewPage /> }, // A02 개별 검토
-        { path: 'submissions', element: <SubmissionsHubPage /> },
+        // 제출 현황 메뉴는 없앴다(11/12). 예전 주소로 오면 요청 관리로
+        { path: 'submissions', element: <Navigate to="/manager/requests" replace /> },
         { path: 'scholars', element: <ScholarsPage /> }, // A05
         { path: 'scholars/new', element: <ScholarCreatePage /> }, // A06
         { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A05 상세
