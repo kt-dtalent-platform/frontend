@@ -1,4 +1,4 @@
-import { ChartColumn, ClipboardList, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Users, X, type LucideIcon } from 'lucide-react'
+import { ClipboardList, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { Button } from '../../components/ui/Button'
@@ -9,7 +9,6 @@ import { cn } from '../../lib/cn'
 const menu: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
   { to: '/manager', label: '대시보드', icon: LayoutDashboard, end: true },
   { to: '/manager/requests', label: '요청 관리', icon: ClipboardList },
-  { to: '/manager/submissions', label: '제출 현황', icon: ChartColumn },
   { to: '/manager/scholars', label: '장학생', icon: Users },
 ]
 
@@ -26,12 +25,13 @@ function Nav({ onNavigate, compact }: { onNavigate?: () => void; compact?: boole
           title={compact ? label : undefined}
           className={({ isActive }) =>
             cn(
-              // 모든 상태에서 KT 스퀘어 자리(왼쪽 24px)를 비워 둬 글자 시작점이 같다.
+              // 펼친 메뉴: 모든 상태에서 KT 스퀘어 자리(왼쪽 24px)를 비워 둬 글자 시작점이 같다.
+              // 접은 메뉴: 아이콘만 있어 스퀘어 자리가 애매하므로 바탕과 진한 아이콘으로만 선택을 보인다(11/12)
               'relative flex h-control-default items-center gap-2 rounded-md text-label font-normal text-ink-2 no-underline',
-              compact ? 'justify-center px-0 before:left-1' : 'pr-3 pl-6 before:left-2',
-              'before:absolute before:top-4 before:size-kt-square before:rounded-xs',
+              compact ? 'justify-center px-0' : 'pr-3 pl-6 before:absolute before:top-4 before:left-2 before:size-kt-square before:rounded-xs',
               'hover:bg-surface-hover active:bg-surface-sunken',
-              isActive && 'bg-surface-hover font-semibold text-ink before:bg-kt-red',
+              isActive && 'bg-surface-sunken font-semibold text-ink',
+              isActive && !compact && 'before:bg-kt-red',
             )
           }
         >
