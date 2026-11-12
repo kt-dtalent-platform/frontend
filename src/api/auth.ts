@@ -54,7 +54,11 @@ export function useChangePassword() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: PasswordChange) => api<{ passwordChangedAt: string }>('/auth/password', { method: 'PATCH', body }),
-    onSuccess: () => {
+    // 보낸 때의 로그인을 기억해 둔다. 응답 전에 로그아웃하고 다른 계정으로 들어왔으면 그 계정에 반영하지 않는다
+    // (지금은 토큰 재발급이 없어 토큰으로 구분. 리프레시 토큰이 생기면 다시 확인 필요)
+    onMutate: () => ({ token: tokenStore.access() }),
+    onSuccess: (_data, _body, context) => {
+      if (!context?.token || context.token !== tokenStore.access()) return
       tokenStore.passwordChanged()
       return queryClient.invalidateQueries({ queryKey: ['me'] })
     },
