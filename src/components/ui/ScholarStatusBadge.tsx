@@ -4,8 +4,7 @@ import { cn } from '../../lib/cn'
 // 장학생 상태. 다른 상태 배지와 같은 모양(점 + 글자)
 const styles: Record<ScholarStatus, { label: string; box: string; dot: string }> = {
   ENROLLED: { label: '재학', box: 'bg-info-bg text-info-text', dot: 'bg-info-dot' },
-  LEAVE: { label: '휴학', box: 'bg-warning-bg text-warning-text', dot: 'bg-warning-dot' },
-  GRADUATED: { label: '졸업', box: 'bg-neutral-bg text-neutral-text', dot: 'bg-neutral-dot' },
+  COMPLETED: { label: '수료', box: 'bg-neutral-bg text-neutral-text', dot: 'bg-neutral-dot' },
   WITHDRAWN: { label: '중단', box: 'border border-line text-neutral-text', dot: 'bg-neutral-dot' },
 }
 

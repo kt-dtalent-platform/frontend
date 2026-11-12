@@ -1,5 +1,6 @@
 // 장학생 목업. 응답 모양은 백엔드 KT-10~13 기준. 등록·수정은 sessionStorage에 남긴다.
-import type { AccountStatus, ScholarCreate, ScholarDetail, ScholarItem, ScholarStatus, ScholarUpdate } from '../api/scholars'
+import type { AccountStatus, ScholarCreate, ScholarDetail, ScholarItem, ScholarUpdate, StatusChange, StatusInfo, WithdrawalReason } from '../api/scholars'
+import { now } from './db'
 import { cohorts } from './manager'
 
 const SURNAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황']
@@ -14,7 +15,19 @@ const KEY = 'kt-dtalent:mock-scholars'
 function base(): Row[] {
   return Array.from({ length: 94 }, (_, i) => {
     const cohort = i < 47 ? cohorts[0] : cohorts[1]
-    const status: ScholarStatus = i % 23 === 5 ? 'LEAVE' : i % 31 === 7 ? 'WITHDRAWN' : cohort.id === 5 && i % 17 === 3 ? 'GRADUATED' : 'ENROLLED'
+    // 2025년 선발 일부는 수료, 몇 명은 중단(사유를 돌아가며)
+    const reasons: WithdrawalReason[] = ['GRADE_NOT_MET', 'VOLUNTARY', 'DOUBLE_BENEFIT', 'OTHER']
+    const st: StatusInfo =
+      i % 23 === 5 || i % 31 === 7
+        ? {
+            status: 'WITHDRAWN',
+            completedYear: null,
+            withdrawalReason: reasons[i % 4],
+            withdrawalReasonDetail: reasons[i % 4] === 'OTHER' ? '연락 두절로 재단과 협의 후 중단' : null,
+          }
+        : cohort.id === 5 && i % 9 === 3
+          ? { status: 'COMPLETED', completedYear: 2026, withdrawalReason: null, withdrawalReasonDetail: null }
+          : { status: 'ENROLLED', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }
     return {
       id: 1000 + i,
       name: SURNAMES[(i * 7) % 16] + GIVEN[(i * 5 + Math.floor(i / 16)) % 16],
@@ -24,13 +37,13 @@ function base(): Row[] {
       university: SCHOOLS[i % SCHOOLS.length],
       major: MAJORS[i % MAJORS.length],
       cohort: { id: cohort.id, name: cohort.name },
-      status,
+      ...st,
       accountStatus: i % 19 === 4 ? 'LOCKED' : i % 13 === 6 ? 'INACTIVE' : 'ACTIVE',
     }
   })
 }
 
-function load(): { created: Row[]; edits: Record<number, ScholarUpdate> } {
+function load(): { created: Row[]; edits: Record<number, ScholarUpdate & Partial<StatusInfo>> } {
   try {
     return JSON.parse(sessionStorage.getItem(KEY) ?? '{"created":[],"edits":{}}')
   } catch {
@@ -74,6 +87,9 @@ export function scholarList(q: URLSearchParams) {
     cohortName: r.cohort.name,
     university: r.university,
     status: r.status,
+    completedYear: r.completedYear,
+    withdrawalReason: r.withdrawalReason,
+    withdrawalReasonDetail: r.withdrawalReasonDetail,
     accountStatus: r.accountStatus,
   }))
   return { items, page, pageSize: size, total: list.length }
@@ -91,7 +107,15 @@ export function updateScholar(id: number, body: ScholarUpdate) {
   const s = load()
   s.edits[id] = { ...s.edits[id], ...body }
   save(s)
-  return { id, updatedAt: new Date().toISOString().slice(0, 19) }
+  return { id, updatedAt: now() }
+}
+
+export function changeScholarStatus(id: number, body: StatusChange) {
+  if (!all().some((r) => r.id === id)) return null
+  const s = load()
+  s.edits[id] = { ...s.edits[id], ...body }
+  save(s)
+  return { id, updatedAt: now() }
 }
 
 export function createScholar(body: ScholarCreate) {
@@ -110,6 +134,9 @@ export function createScholar(body: ScholarCreate) {
     major: body.major,
     cohort: { id: cohort.id, name: cohort.name },
     status: 'ENROLLED',
+    completedYear: null,
+    withdrawalReason: null,
+    withdrawalReasonDetail: null,
     accountStatus: 'INACTIVE',
   })
   save(s)

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
 import { useCohorts } from '../../api/manager'
-import { useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
+import { statusNote, useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -20,8 +20,7 @@ import { MetaList } from '../../components/ui/MetaList'
 const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: null, label: '전체' },
   { value: 'ENROLLED', label: '재학' },
-  { value: 'LEAVE', label: '휴학' },
-  { value: 'GRADUATED', label: '졸업' },
+  { value: 'COMPLETED', label: '수료' },
   { value: 'WITHDRAWN', label: '중단' },
 ]
 
@@ -195,7 +194,7 @@ function Row({ s }: { s: ScholarItem }) {
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-body-strong">{s.name}</span>
-          <MetaList oneLine items={[s.cohortName, s.university]} className="flex text-caption text-ink-3" />
+          <MetaList oneLine items={[s.cohortName, statusNote(s), s.university]} className="flex text-caption text-ink-3" />
         </span>
         <span className="truncate text-caption text-ink-3 md:w-56 md:text-body md:text-ink-2">{s.email}</span>
         <span className="flex flex-wrap items-center gap-2 md:w-40">

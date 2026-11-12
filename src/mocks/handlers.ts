@@ -1,11 +1,11 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { CreateRequestBody } from '../api/manager'
-import type { ScholarCreate, ScholarUpdate } from '../api/scholars'
+import type { ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { cohorts, createRequest, managerDashboard, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
-import { createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
+import { changeScholarStatus, createScholar, scholarDetail, scholarList, updateScholar } from './scholars'
 import { exportCsv, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/v1'
@@ -378,6 +378,23 @@ export const handlers = [
     if (!Object.keys(body).length) return fail(path, 400, 'INVALID_REQUEST', '수정할 필드의 문자열 값을 전달해야 합니다.')
     await delay(250)
     const r = updateScholar(Number(params.scholarId), body)
+    return r ? ok(path, r) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
+  }),
+
+  // 프론트 제안 모양(백엔드에 아직 없음, 확인 필요)
+  http.patch(`${BASE}/scholars/:scholarId/status`, async ({ params, request }) => {
+    const path = `/v1/scholars/${params.scholarId}/status`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const body = (await request.json()) as StatusChange
+    const bad = [
+      !['ENROLLED', 'COMPLETED', 'WITHDRAWN'].includes(body.status) && 'status',
+      body.status === 'COMPLETED' && !body.completedYear && 'completedYear',
+      body.status === 'WITHDRAWN' && !body.withdrawalReason && 'withdrawalReason',
+      body.withdrawalReason === 'OTHER' && !body.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
+    ].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
+    await delay(250)
+    const r = changeScholarStatus(Number(params.scholarId), body)
     return r ? ok(path, r) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
   }),
 

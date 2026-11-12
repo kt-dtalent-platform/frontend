@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
-import { PHONE, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
+import { PHONE, withdrawalText, useChangeScholarStatus, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
@@ -15,8 +15,9 @@ import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateV
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
+import { ScholarStatusDialog } from './ScholarStatusDialog'
 
-// A05 장학생 상세: 기본 정보 보기, 이름·연락처·학교·전공 고치기(백엔드 KT-11·12 기준)
+// A05 장학생 상세: 기본 정보 보기, 이름, 연락처, 학교, 전공 고치기(백엔드 KT-11, 12 기준), 상태 바꾸기
 export function ScholarDetailPage() {
   const id = Number(useParams().scholarId)
   const query = useScholar(id)
@@ -38,20 +39,52 @@ export function ScholarDetailPage() {
 
 function Detail({ s }: { s: ScholarDetail }) {
   const [editing, setEditing] = useState(false)
-  const [result, setResult] = useState<'saved' | 'unchanged' | null>(null)
+  const [changing, setChanging] = useState(false)
+  const [result, setResult] = useState<'saved' | 'unchanged' | 'status' | null>(null)
+  const changeStatus = useChangeScholarStatus(s.id)
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col items-start gap-3">
           <ScholarStatusBadge status={s.status} />
           <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
         </div>
         {!editing && (
-          <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
-            정보 수정
-          </Button>
+          <div className="flex gap-2">
+            <Button size="default" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+              상태 바꾸기
+            </Button>
+            <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
+              정보 수정
+            </Button>
+          </div>
         )}
       </div>
+      {changing && (
+        <ScholarStatusDialog
+          open
+          s={s}
+          busy={changeStatus.isPending}
+          onCancel={() => setChanging(false)}
+          onSubmit={(body) =>
+            changeStatus.mutate(body, {
+              onSuccess: () => (setChanging(false), setResult('status')),
+              // 실패하면 대화상자를 닫고 아래 안내로 알린다
+              onError: () => setChanging(false),
+            })
+          }
+        />
+      )}
+      {changeStatus.isError && !changing && (
+        <Banner tone="danger" title="상태를 바꾸지 못했어요">
+          {changeStatus.error instanceof ApiError ? changeStatus.error.message : '잠시 뒤 다시 시도하세요.'}
+        </Banner>
+      )}
+      {result === 'status' && (
+        <Banner tone="success" title="상태를 바꿨어요">
+          바뀐 상태가 명단에도 반영됐어요.
+        </Banner>
+      )}
       {result === 'saved' && (
         <Banner tone="success" title="정보를 고쳤어요">
           바뀐 내용이 명단에도 반영됐어요.
@@ -67,6 +100,8 @@ function Detail({ s }: { s: ScholarDetail }) {
       ) : (
         <section className="rounded-lg bg-surface px-6 py-6 md:px-8">
           <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            {s.status === 'COMPLETED' && <Item label="수료 연도" value={s.completedYear ? `${s.completedYear}년` : null} />}
+            {s.status === 'WITHDRAWN' && <Item label="중단 사유" value={withdrawalText(s)} />}
             <Item label="이메일" value={s.email} />
             <Item label="연락처" value={s.maskedPhone} />
             <Item label="기수" value={s.cohort.name} />
