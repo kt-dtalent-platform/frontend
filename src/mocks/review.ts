@@ -1,6 +1,7 @@
 // 담당자 제출 현황·개별 검토 목업. 요청 목록(manager.ts)의 인원·건수에 맞춰 장학생별 제출을 만든다.
 import type { SubmissionStatus } from '../api/types'
 import type { Comparison, StatusFilter, SubmissionDetail, SubmissionRow } from '../api/review'
+import type { ManagerDashboard } from '../api/manager'
 import { dueIn } from './db'
 import { rows } from './manager'
 
@@ -224,4 +225,36 @@ export function exportCsv(requestId: number, status: string | null) {
   ]
   // 엑셀에서 한글이 깨지지 않도록 BOM을 붙인 CSV(목업). 실제 서버는 xlsx를 준다
   return '﻿' + lines.map((l) => l.join(',')).join('\n')
+}
+
+// 대시보드: 진행 중 요청의 상태별 인원과 검토 대기 중 가장 오래된 제출
+export function managerDashboard(): ManagerDashboard {
+  const live = rows()
+    .filter((r) => r.status === 'IN_PROGRESS' && r.closesAt)
+    .sort((a, b) => a.closesAt!.localeCompare(b.closesAt!))
+  const requests = live.map((r) => {
+    const s = submissionList(r.id, null, '', 1, 1)!.summary
+    return {
+      requestId: r.id,
+      title: r.title,
+      closesAt: r.closesAt!,
+      targetCount: s.target,
+      confirmed: s.confirmed,
+      waiting: s.submitted,
+      revisionRequired: s.revisionRequired,
+      notSubmitted: s.notSubmitted,
+    }
+  })
+  const waiting = live
+    .flatMap((r) => withOverrides(baseRows(r.id)).filter((w) => matches(w.status, 'WAITING')))
+    .sort((a, b) => (a.submittedAt ?? '').localeCompare(b.submittedAt ?? ''))
+  return {
+    review: {
+      waiting: waiting.length,
+      resubmitted: waiting.filter((w) => w.status === 'RESUBMITTED').length,
+      oldestSubmissionId: waiting[0]?.submissionId ?? null,
+      oldestSubmittedAt: waiting[0]?.submittedAt ?? null,
+    },
+    requests,
+  }
 }
