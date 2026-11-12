@@ -34,7 +34,8 @@ export type RequestRow = {
   submittedCount: number
   revisionCount: number
 }
-export type RequestPage = { items: RequestRow[]; page: number; page_size: number; total: number }
+// 응답의 pageSize는 장학생 목록(백엔드 #16)과 같은 모양으로 가정(확인 필요)
+export type RequestPage = { items: RequestRow[]; page: number; pageSize: number; total: number }
 
 export const PAGE_SIZE = 20
 

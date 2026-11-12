@@ -76,7 +76,7 @@ export function scholarList(q: URLSearchParams) {
     status: r.status,
     accountStatus: r.accountStatus,
   }))
-  return { items, page, page_size: size, total: list.length }
+  return { items, page, pageSize: size, total: list.length }
 }
 
 export function scholarDetail(id: number): ScholarDetail | null {

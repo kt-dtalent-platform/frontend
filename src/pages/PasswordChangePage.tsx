@@ -1,10 +1,11 @@
 import { Check, Circle } from 'lucide-react'
 import { useId } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { Link, Navigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { roleHome, useChangePassword, useMe } from '../api/auth'
 import { ApiError } from '../api/client'
 import { tokenStore } from '../api/token'
+import type { Role } from '../api/types'
 import { fieldBorder, fieldControl } from '../components/form/fieldClass'
 import { LabeledField } from '../components/form/LabeledField'
 import { Banner } from '../components/ui/Banner'
@@ -16,9 +17,9 @@ import { usePageTitle } from '../lib/usePageTitle'
 
 type Values = { currentPassword: string; newPassword: string; confirm: string }
 
-// 비밀번호 규칙. 백엔드 규칙은 확인 필요(지금은 명세서의 8자 이상 + 영문·숫자)
+// 비밀번호 규칙. 백엔드는 8~64자만 본다(#45). 영문, 숫자 포함은 프론트에서 더 거는 규칙
 const rules = [
-  { label: '8자 이상', test: (v: string) => v.length >= 8 },
+  { label: '8~64자', test: (v: string) => v.length >= 8 && v.length <= 64 },
   { label: '영문 포함', test: (v: string) => /[A-Za-z]/.test(v) },
   { label: '숫자 포함', test: (v: string) => /\d/.test(v) },
 ]
@@ -36,11 +37,12 @@ export function PasswordChangePage() {
       </div>
     )
   }
-  if (me.data && !me.data.passwordChangeRequired) return <Navigate to={roleHome(me.data.role)} replace />
-  return <ChangeForm email={me.data?.email ?? ''} />
+  if (me.data && !tokenStore.mustChangePassword()) return <Navigate to={roleHome(me.data.role)} replace />
+  return <ChangeForm email={me.data.email} role={me.data.role} />
 }
 
-function ChangeForm({ email }: { email: string }) {
+function ChangeForm({ email, role }: { email: string; role: Role }) {
+  const navigate = useNavigate()
   const change = useChangePassword()
   const rulesId = useId()
   const { register, handleSubmit, control, formState, setError, getValues, trigger } = useForm<Values>({
@@ -53,12 +55,12 @@ function ChangeForm({ email }: { email: string }) {
 
   const onSubmit = handleSubmit(async (v) => {
     try {
-      // 성공하면 내 정보를 다시 받고, 위 PasswordChangePage가 역할별 첫 화면으로 보낸다
       await change.mutateAsync({ currentPassword: v.currentPassword, newPassword: v.newPassword })
+      navigate(roleHome(role), { replace: true })
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'INVALID_PASSWORD')
+      if (err instanceof ApiError && err.code === 'PASSWORD_MISMATCH')
         setError('currentPassword', { message: '임시 비밀번호가 맞지 않아요.' }, { shouldFocus: true })
-      else if (err instanceof ApiError && err.code === 'SAME_PASSWORD')
+      else if (err instanceof ApiError && err.code === 'SAME_AS_CURRENT')
         setError('newPassword', { message: '임시 비밀번호와 다른 비밀번호를 쓰세요.' }, { shouldFocus: true })
       else setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
     }

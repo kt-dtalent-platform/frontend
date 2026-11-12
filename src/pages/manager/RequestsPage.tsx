@@ -51,9 +51,9 @@ export function RequestsPage() {
   }
 
   const data = query.data
-  const from = data ? (data.page - 1) * data.page_size + 1 : 0
-  const to = data ? Math.min(data.page * data.page_size, data.total) : 0
-  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1
+  const from = data ? (data.page - 1) * data.pageSize + 1 : 0
+  const to = data ? Math.min(data.page * data.pageSize, data.total) : 0
+  const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData // 탭·페이지를 바꿔 새 결과를 기다리는 중(이전 결과가 대신 보임)
 
   // 주소의 페이지가 범위를 넘으면(예: ?page=99) 마지막 페이지로 옮긴다

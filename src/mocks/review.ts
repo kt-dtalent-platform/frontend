@@ -108,7 +108,7 @@ export function submissionList(requestId: number, status: string | null, keyword
     summary,
     items: filtered.slice((p - 1) * pageSize, p * pageSize).map(({ index: _i, ...r }) => r),
     page: p,
-    page_size: pageSize,
+    pageSize,
     total: filtered.length,
   }
 }
