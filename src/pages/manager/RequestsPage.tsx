@@ -1,10 +1,10 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { PAGE_SIZE, useRequests, type RequestRow, type RequestStatus } from '../../api/manager'
+import { useRequests, type RequestRow, type RequestStatus } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { Banner } from '../../components/ui/Banner'
-import { Button } from '../../components/ui/Button'
+import { Pagination } from '../../components/ui/Pagination'
 import { buttonClass } from '../../components/ui/buttonClass'
 import type { Notice } from './RequestCreatePage'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -51,8 +51,6 @@ export function RequestsPage() {
   }
 
   const data = query.data
-  const from = data ? (data.page - 1) * data.pageSize + 1 : 0
-  const to = data ? Math.min(data.page * data.pageSize, data.total) : 0
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData // 탭·페이지를 바꿔 새 결과를 기다리는 중(이전 결과가 대신 보임)
 
@@ -107,19 +105,7 @@ export function RequestsPage() {
             </ul>
           </div>
 
-          {data.total > PAGE_SIZE && (
-            <nav aria-label="페이지" className="flex items-center justify-end gap-3 text-caption text-ink-3 tabular-nums">
-              <span>
-                {from}–{to} / 전체 {data.total}건
-              </span>
-              <Button size="compact" aria-label="이전 페이지" disabled={loadingNext || page <= 1} onClick={() => go({ page: page - 1 })}>
-                <ChevronLeft size={16} strokeWidth={2} aria-hidden />
-              </Button>
-              <Button size="compact" aria-label="다음 페이지" disabled={loadingNext || page >= lastPage} onClick={() => go({ page: page + 1 })}>
-                <ChevronRight size={16} strokeWidth={2} aria-hidden />
-              </Button>
-            </nav>
-          )}
+          <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
         </div>
       )}
     </div>

@@ -14,16 +14,18 @@ export function ExportDialog({
   scopes,
   initialScopes,
   columnGroups,
+  note,
   busy,
   onCancel,
   onSubmit,
 }: {
   open: boolean
   title: string
-  total: number
+  total?: number // 모르면 비운다
   scopes: ExportOption[]
   initialScopes: string[] // 비어 있으면 전체
   columnGroups: { label: string; columns: ExportColumn[] }[]
+  note?: string // 범위에 함께 걸리는 조건(예: 기수 필터)
   busy: boolean
   onCancel: () => void
   onSubmit: (choice: ExportChoice) => void
@@ -33,14 +35,16 @@ export function ExportDialog({
   const [columns, setColumns] = useState(() => columnGroups.flatMap((g) => g.columns.filter((c) => c.required || c.default).map((c) => c.key)))
   const [tried, setTried] = useState(false)
   const scopeError = tried && !all && picked.length === 0 ? '내보낼 상태를 하나 이상 고르세요.' : null
-  const count = all ? total : scopes.filter((s) => picked.includes(s.value)).reduce((n, s) => n + (s.count ?? 0), 0)
+  // 상태별 인원을 모르면(장학생 명단) 버튼에 인원을 쓰지 않는다
+  const known = all ? total !== undefined : scopes.every((s) => s.count !== undefined)
+  const count = all ? (total ?? 0) : scopes.filter((s) => picked.includes(s.value)).reduce((n, s) => n + (s.count ?? 0), 0)
   const toggle = (list: string[], v: string, on: boolean) => (on ? [...list, v] : list.filter((x) => x !== v))
 
   return (
     <FormDialog
       open={open}
       title={title}
-      submitLabel={busy ? '만드는 중' : `${count}명 내보내기`}
+      submitLabel={busy ? '만드는 중' : known ? `${count}명 내보내기` : '내보내기'}
       busy={busy}
       onCancel={onCancel}
       onSubmit={() => {
@@ -51,9 +55,10 @@ export function ExportDialog({
     >
       <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
         <legend className="mb-1 p-0 text-label">범위</legend>
+        {note && <p className="m-0 mb-1 text-caption text-ink-3">{note}</p>}
         <label className="flex min-h-control-default items-center gap-3">
           <input type="radio" name="export-scope" className="size-5 accent-action" checked={all} onChange={() => setAll(true)} />
-          전체 <span className="text-ink-3 tabular-nums">{total}명</span>
+          전체 {total !== undefined && <span className="text-ink-3 tabular-nums">{total}명</span>}
         </label>
         <label className="flex min-h-control-default items-center gap-3">
           <input type="radio" name="export-scope" className="size-5 accent-action" checked={!all} onChange={() => setAll(false)} />

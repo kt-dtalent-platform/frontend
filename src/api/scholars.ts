@@ -111,6 +111,43 @@ export function useChangeScholarStatus(id: number) {
   })
 }
 
+// PATCH /v1/scholars/status: 여러 명 상태를 한 번에(11/12). 백엔드에 질문할 것, 모양은 프론트 제안(확인 필요)
+export function useChangeScholarsStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: StatusChange & { scholarIds: number[] }) => api<{ updated: number }>('/scholars/status', { method: 'PATCH', body }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'scholar'] })
+    },
+  })
+}
+
+// GET /v1/scholars/export?format=xlsx&status=A,B&cohortId=&columns=... (재단 요청 11/10, 확인 필요)
+export const scholarExportColumns = [
+  {
+    label: '장학생 정보',
+    columns: [
+      { key: 'name', label: '이름', required: true },
+      { key: 'cohort', label: '기수', default: true },
+      { key: 'university', label: '학교', default: true },
+      { key: 'major', label: '학과', default: true },
+      { key: 'studentNo', label: '학번' },
+      { key: 'email', label: '이메일', default: true },
+      { key: 'phone', label: '연락처' },
+    ],
+  },
+  {
+    label: '상태',
+    columns: [
+      { key: 'status', label: '상태', default: true },
+      { key: 'completedYear', label: '수료 연도', default: true },
+      { key: 'withdrawalReason', label: '중단 사유', default: true },
+      { key: 'accountStatus', label: '로그인 상태' },
+    ],
+  },
+]
+
 // POST /v1/scholars (KT-13 요청 검증만 있음). 응답 모양은 확인 필요({ id }로 가정)
 export type ScholarCreate = {
   cohortId: number

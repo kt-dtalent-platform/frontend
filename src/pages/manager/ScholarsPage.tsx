@@ -1,12 +1,16 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
 import { useCohorts } from '../../api/manager'
-import { statusNote, useScholars, type ScholarItem, type ScholarStatus } from '../../api/scholars'
+import { ApiError } from '../../api/client'
+import { downloadFile } from '../../api/review'
+import { scholarExportColumns, useChangeScholarsStatus, useScholars, withdrawalText, type ScholarItem, type ScholarStatus } from '../../api/scholars'
 import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
+import { Pagination } from '../../components/ui/Pagination'
 import { buttonClass } from '../../components/ui/buttonClass'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -16,6 +20,7 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
+import { ScholarStatusDialog } from './ScholarStatusDialog'
 
 const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: null, label: '전체' },
@@ -26,7 +31,7 @@ const statuses: { value: ScholarStatus | null; label: string }[] = [
 
 type Notice = { title: string; body: string }
 
-// A05 장학생 명단: 기수·상태·이름(이메일) 찾기, 행을 누르면 상세
+// A05 장학생 명단: 상태, 기수, 이름(이메일) 찾기, 여러 명 골라 상태 바꾸기, 내보내기. 행을 누르면 상세
 export function ScholarsPage() {
   usePageTitle('장학생')
   const [params, setParams] = useSearchParams()
@@ -82,6 +87,40 @@ export function ScholarsPage() {
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData
 
+  // 여러 명 고르기: 이 쪽에 보이는 장학생 중에서. 필터나 쪽을 바꾸면 비운다
+  const [picked, setPicked] = useState<number[]>([])
+  const [listKey, setListKey] = useState(params.toString())
+  if (listKey !== params.toString()) {
+    setListKey(params.toString())
+    setPicked([])
+  }
+  const pageIds = data?.items.map((x) => x.id) ?? []
+  const allPicked = pageIds.length > 0 && pageIds.every((x) => picked.includes(x))
+  // 고른 사람이 모두 같은 기수면 그 선발 연도부터 수료 연도를 보여 준다
+  const pickedCohorts = [...new Set(data?.items.filter((x) => picked.includes(x.id)).map((x) => x.cohortName) ?? [])]
+  const pickedCohort = pickedCohorts.length === 1 ? pickedCohorts[0] : ''
+  const bulk = useChangeScholarsStatus()
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkDone, setBulkDone] = useState<number | null>(null)
+
+  // 내보내기: 기수 필터는 그대로 걸고, 상태와 열은 대화상자에서 고른다
+  const cohortName = cohorts.data?.find((c) => c.id === cohortId)?.name ?? null
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(false)
+  const onExport = async (choice: ExportChoice) => {
+    setExporting(true)
+    setExportError(false)
+    try {
+      await downloadFile('/scholars/export', choice, 'scholars.xlsx', cohortId ? { cohortId: String(cohortId) } : {})
+    } catch {
+      setExportError(true)
+    } finally {
+      setExporting(false)
+      setExportOpen(false)
+    }
+  }
+
   // 없는 쪽 번호(?page=99 등)면 마지막 쪽으로
   useEffect(() => {
     if (!data || query.isPlaceholderData || page <= lastPage) return
@@ -90,6 +129,14 @@ export function ScholarsPage() {
     else p.delete('page')
     setParams(p, { replace: true })
   }, [data, query.isPlaceholderData, page, lastPage, params, setParams])
+
+  // 목록에 대한 보조 행동이라 테두리 없는 버튼(11/12)
+  const exportButton = (
+    <Button size="default" variant="ghost" disabled={!data || data.total === 0} onClick={() => (setExportError(false), setExportOpen(true))}>
+      <Download size={16} strokeWidth={2} aria-hidden />
+      내보내기
+    </Button>
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,7 +155,11 @@ export function ScholarsPage() {
       )}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
+        {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
+        <div className="flex items-center justify-between gap-2">
+          <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
+          <div className="md:hidden">{exportButton}</div>
+        </div>
         <div className="grid grid-cols-2 gap-2 md:flex md:w-auto">
           <div className="relative md:w-36">
             <select
@@ -137,11 +188,27 @@ export function ScholarsPage() {
               className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
             />
           </div>
+          <div className="hidden md:block">{exportButton}</div>
         </div>
       </div>
 
       {query.isPending && <LoadingCards count={3} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
+      {bulkDone && (
+        <Banner tone="success" title={`${bulkDone}명의 상태를 바꿨어요`}>
+          바뀐 상태가 명단에 반영됐어요.
+        </Banner>
+      )}
+      {bulk.isError && !bulkOpen && (
+        <Banner tone="danger" title="상태를 바꾸지 못했어요">
+          {bulk.error instanceof ApiError ? bulk.error.message : '잠시 뒤 다시 시도하세요.'}
+        </Banner>
+      )}
+      {exportError && (
+        <Banner tone="danger" title="파일을 만들지 못했어요">
+          잠시 후 다시 내보내세요.
+        </Banner>
+      )}
       {data &&
         (data.items.length === 0 ? (
           loadingNext ? (
@@ -154,55 +221,128 @@ export function ScholarsPage() {
         ) : (
           <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
             <div className="overflow-hidden rounded-lg bg-surface">
-              <div aria-hidden className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                <span className="flex-1">이름</span>
-                <span className="w-56">이메일</span>
-                <span className="w-40">상태</span>
-                <span className="w-5" />
+              {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
+              <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
+                <input
+                  type="checkbox"
+                  aria-label="이 쪽 장학생 모두 고르기"
+                  className="size-5 shrink-0 accent-action"
+                  checked={allPicked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = picked.length > 0 && !allPicked
+                  }}
+                  onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
+                />
+                {picked.length > 0 ? (
+                  <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
+                    <span className="mr-2 text-label tabular-nums">{picked.length}명 고름</span>
+                    <Button size="compact" onClick={() => (bulk.reset(), setBulkDone(null), setBulkOpen(true))}>
+                      상태 바꾸기
+                    </Button>
+                    <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
+                      고르기 해제
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:flex-none md:w-40">
+                      <span className="text-label text-ink">{data.total}</span>명
+                    </span>
+                    <span aria-hidden className="hidden w-28 text-caption text-ink-3 md:block">
+                      기수
+                    </span>
+                    <span aria-hidden className="hidden w-44 text-caption text-ink-3 md:block">
+                      학교
+                    </span>
+                    <span aria-hidden className="hidden w-56 text-caption text-ink-3 md:block">
+                      상태
+                    </span>
+                    <span aria-hidden className="hidden flex-1 text-caption text-ink-3 md:block">
+                      이메일
+                    </span>
+                  </>
+                )}
               </div>
               <ul className="m-0 list-none p-0">
                 {data.items.map((s) => (
-                  <Row key={s.id} s={s} />
+                  <Row key={s.id} s={s} picked={picked.includes(s.id)} onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))} />
                 ))}
               </ul>
             </div>
-            {data.total > data.pageSize && (
-              <nav aria-label="페이지" className="flex items-center justify-end gap-3 text-caption text-ink-3 tabular-nums">
-                <span>
-                  {(data.page - 1) * data.pageSize + 1}–{Math.min(data.page * data.pageSize, data.total)} / 전체 {data.total}명
-                </span>
-                <Button size="compact" aria-label="이전 페이지" disabled={loadingNext || page <= 1} onClick={() => set({ page: page - 1 })}>
-                  <ChevronLeft size={16} strokeWidth={2} aria-hidden />
-                </Button>
-                <Button size="compact" aria-label="다음 페이지" disabled={loadingNext || page >= lastPage} onClick={() => set({ page: page + 1 })}>
-                  <ChevronRight size={16} strokeWidth={2} aria-hidden />
-                </Button>
-              </nav>
-            )}
+            <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
           </div>
         ))}
+
+      {bulkOpen && (
+        <ScholarStatusDialog
+          open
+          title={`${picked.length}명 상태 바꾸기`}
+          s={{ status: 'ENROLLED', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }}
+          cohortName={pickedCohort}
+          busy={bulk.isPending}
+          onCancel={() => setBulkOpen(false)}
+          onSubmit={(body) =>
+            bulk.mutate(
+              { ...body, scholarIds: picked },
+              {
+                onSuccess: (r) => (setBulkOpen(false), setBulkDone(r.updated), setPicked([])),
+                onError: () => setBulkOpen(false),
+              },
+            )
+          }
+        />
+      )}
+      {exportOpen && data && (
+        <ExportDialog
+          open
+          title="장학생 명단 내보내기"
+          total={status || keyword ? undefined : data.total}
+          note={cohortName ? `${cohortName}만 내보내요.` : undefined}
+          scopes={statuses.slice(1).map((x) => ({ value: x.value!, label: x.label }))}
+          initialScopes={status ? [status] : []}
+          columnGroups={scholarExportColumns}
+          busy={exporting}
+          onCancel={() => setExportOpen(false)}
+          onSubmit={(c) => void onExport(c)}
+        />
+      )}
     </div>
   )
 }
 
-function Row({ s }: { s: ScholarItem }) {
+function Row({ s, picked, onPick }: { s: ScholarItem; picked: boolean; onPick: (on: boolean) => void }) {
+  // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
+  const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
   return (
-    <li className="border-b border-line-subtle last:border-b-0">
+    <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0', picked && 'bg-surface-hover')}>
+      <input
+        type="checkbox"
+        aria-label={`${s.name} 고르기`}
+        className="size-5 shrink-0 accent-action"
+        checked={picked}
+        onChange={(e) => onPick(e.target.checked)}
+      />
       <Link
         to={`/manager/scholars/${s.id}`}
-        className="group flex flex-col gap-2 px-6 py-4 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-3"
+        className="group flex min-w-0 flex-1 flex-col gap-1 py-3 pr-6 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-2"
       >
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-body-strong">{s.name}</span>
-          <MetaList oneLine items={[s.cohortName, statusNote(s), s.university]} className="flex text-caption text-ink-3" />
-        </span>
-        <span className="truncate text-caption text-ink-3 md:w-56 md:text-body md:text-ink-2">{s.email}</span>
-        <span className="flex flex-wrap items-center gap-2 md:w-40">
-          <ScholarStatusBadge status={s.status} />
-          {s.accountStatus === 'LOCKED' && <Tag tone="danger">로그인 잠김</Tag>}
+        <span className="flex min-w-0 items-center gap-2 md:w-40">
+          <span className="truncate text-body-strong group-hover:underline">{s.name}</span>
+          {s.accountStatus === 'LOCKED' && <Tag tone="danger">잠김</Tag>}
           {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">로그인 전</Tag>}
+          <span className="ml-auto shrink-0 md:hidden">
+            <ScholarStatusBadge status={s.status} />
+          </span>
         </span>
-        <ChevronRight size={20} strokeWidth={1.75} className="hidden shrink-0 text-ink-3 group-hover:text-ink md:block" aria-hidden />
+        {/* 휴대폰: 이름 줄 오른쪽에 상태, 아래에 기수와 학교 */}
+        <MetaList oneLine items={[s.cohortName, note, s.university]} className="flex text-caption text-ink-3 md:hidden" />
+        <span className="hidden truncate text-ink-2 md:block md:w-28">{s.cohortName}</span>
+        <span className="hidden truncate text-ink-2 md:block md:w-44">{s.university}</span>
+        <span className="hidden min-w-0 items-center gap-2 md:flex md:w-56">
+          <ScholarStatusBadge status={s.status} />
+          {note && <span className="truncate text-caption text-ink-3">{note}</span>}
+        </span>
+        <span className="hidden min-w-0 flex-1 truncate text-caption text-ink-3 md:block">{s.email}</span>
       </Link>
     </li>
   )
