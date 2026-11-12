@@ -41,7 +41,7 @@ export type RequestRow = {
   cohortName: string | null
   status: RequestStatus
   opensAt: string | null
-  closesAt: string | null
+  closesAt: string
   targetCount: number
   submittedCount: number
   // 담당자가 검토할 제출(다시 제출 포함). 요청 목록에서 할 일을 보이려고 프론트가 제안(확인 필요)

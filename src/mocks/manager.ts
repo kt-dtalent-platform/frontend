@@ -29,7 +29,8 @@ export function rows(): MockRow[] {
       title: '2026학년도 2학기 성적증명서 제출',
       status: 'DRAFT',
       opensAt: null,
-      closesAt: null,
+      // 작성 중이어도 마감은 정해 둔다(백엔드 requests.closes_at NOT NULL)
+      closesAt: dueIn(40),
       targetCount: 0,
       submittedCount: 0,
       revisionCount: 0,

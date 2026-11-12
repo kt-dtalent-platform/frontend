@@ -114,10 +114,11 @@ export function RequestsPage() {
 }
 
 function Row({ row }: { row: RequestRow }) {
+  // 마감은 작성 중 요청에도 늘 있다(백엔드 requests.closes_at NOT NULL)
   const due = row.closesAt
-  const overdue = due ? isPastDue(due) : false
-  const dDay = due ? daysUntil(due) : null
-  const urgent = row.status === 'IN_PROGRESS' && dDay !== null && dDay <= 3
+  const overdue = isPastDue(due)
+  const dDay = daysUntil(due)
+  const urgent = row.status === 'IN_PROGRESS' && dDay <= 3
   // MVP는 요청 유형이 성적증명서 하나라 유형은 따로 적지 않는다.
   // 대상이 전체 기수면 모든 행에 같은 말이 반복되므로 특정 기수일 때만 적는다.
   const meta = row.cohortName ? [row.cohortName] : []
@@ -137,17 +138,9 @@ function Row({ row }: { row: RequestRow }) {
           <RequestStatusBadge status={row.status} />
         </span>
         <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-48">
-          {due ? (
-            <>
-              <span className="md:sr-only">마감 </span>
-              {formatDue(due)}
-              {row.status === 'IN_PROGRESS' && dDay !== null && (
-                <span className={cn('ml-1', urgent && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>
-              )}
-            </>
-          ) : (
-            '마감 미정'
-          )}
+          <span className="md:sr-only">마감 </span>
+          {formatDue(due)}
+          {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>}
         </span>
         <span className="flex gap-4 text-caption text-ink-3 tabular-nums md:contents">
           <span className="md:w-20 md:text-right">
