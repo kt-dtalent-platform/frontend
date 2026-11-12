@@ -82,25 +82,22 @@ function Detail({ s }: { s: ScholarDetail }) {
       )}
       {/* 상태와 기본 정보를 구역으로 나누고 각 구역에 고치기 버튼을 둔다(11/12).
           상태는 수료 연도, 중단 사유를 함께 받아야 해서 정보 수정과 따로 바꾼다 */}
-      <section
-        aria-labelledby={`status-${s.id}`}
-        className="flex flex-col gap-4 rounded-lg bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between md:px-8"
-      >
-        <div className="flex flex-col gap-2">
+      <section aria-labelledby={`status-${s.id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
+        <div className="flex items-center justify-between gap-4">
           <h2 id={`status-${s.id}`} className="m-0 text-title-2">
             상태
           </h2>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <ScholarStatusBadge status={s.status} />
-            {s.status === 'COMPLETED' && s.completedYear && <span className="text-body">{s.completedYear}년 수료</span>}
-            {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
-          </div>
+          {!editing && (
+            <Button size="default" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+              상태 바꾸기
+            </Button>
+          )}
         </div>
-        {!editing && (
-          <Button size="default" className="self-start sm:self-auto" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
-            상태 바꾸기
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <ScholarStatusBadge status={s.status} />
+          {s.status === 'COMPLETED' && s.completedYear && <span className="text-body">{s.completedYear}년 수료</span>}
+          {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
+        </div>
       </section>
       {editing ? (
         <EditForm s={s} onDone={(r) => (setEditing(false), setResult(r))} />
