@@ -46,18 +46,26 @@ function Detail({ s }: { s: ScholarDetail }) {
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col items-start gap-3">
-          <ScholarStatusBadge status={s.status} />
+          {/* 상태는 정보 수정과 따로 바꾼다(수료 연도, 중단 사유를 받아야 해서). 상태를 보는 자리 옆에 둬서 무엇을 바꾸는지 보이게 한다 */}
+          <div className="flex items-center gap-1">
+            <ScholarStatusBadge status={s.status} />
+            {!editing && (
+              <Button
+                size="compact"
+                variant="ghost"
+                className="text-ink-2 underline underline-offset-2"
+                onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}
+              >
+                상태 바꾸기
+              </Button>
+            )}
+          </div>
           <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
         </div>
         {!editing && (
-          <div className="flex gap-2">
-            <Button size="default" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
-              상태 바꾸기
-            </Button>
-            <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
-              정보 수정
-            </Button>
-          </div>
+          <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
+            정보 수정
+          </Button>
         )}
       </div>
       {changing && (
