@@ -80,7 +80,7 @@ function Detail({ s }: { s: ScholarDetail }) {
           저장할 것이 없어 그대로 두었어요.
         </Banner>
       )}
-      {/* 상태와 기본 정보를 구역으로 나누고 각 구역에 고치기 버튼을 둔다(11/12).
+      {/* 상태와 기본 정보를 구역으로 나누고 각 구역 머리에 작은 고치기 버튼(32px)을 둔다(11/12).
           상태는 수료 연도, 중단 사유를 함께 받아야 해서 정보 수정과 따로 바꾼다 */}
       <section aria-labelledby={`status-${s.id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
         <div className="flex items-center justify-between gap-4">
@@ -88,7 +88,7 @@ function Detail({ s }: { s: ScholarDetail }) {
             상태
           </h2>
           {!editing && (
-            <Button size="default" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+            <Button size="compact" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
               상태 바꾸기
             </Button>
           )}
@@ -107,7 +107,7 @@ function Detail({ s }: { s: ScholarDetail }) {
             <h2 id={`info-${s.id}`} className="m-0 text-title-2">
               기본 정보
             </h2>
-            <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
+            <Button size="compact" onClick={() => (setResult(null), setEditing(true))}>
               정보 수정
             </Button>
           </div>
