@@ -148,14 +148,13 @@ export const scholarExportColumns = [
   },
 ]
 
-// POST /v1/scholars (KT-13 요청 검증만 있음). 응답 모양은 확인 필요({ id }로 가정)
+// POST /v1/scholars (백엔드 KT-13). 생년월일은 MVP에서 받지 않고 학교는 필수(11/11 백엔드 결정). 응답 모양은 확인 필요({ id }로 가정)
 export type ScholarCreate = {
   cohortId: number
   name: string
   email: string
   phone: string | null
-  birthDate: string // YYYY-MM-DD
-  university: string | null
+  university: string
   major: string | null
   studentNo: string | null
 }

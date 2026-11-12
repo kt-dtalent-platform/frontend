@@ -17,7 +17,7 @@ export function rows(): MockRow[] {
       id: 31,
       title: '2026학년도 1학기 성적증명서 제출',
       status: 'IN_PROGRESS',
-      opensAt: opened(12),
+      publishedAt: opened(12),
       closesAt: dueIn(2),
       targetCount: 94,
       submittedCount: 72,
@@ -28,7 +28,7 @@ export function rows(): MockRow[] {
       id: 40,
       title: '2026학년도 2학기 성적증명서 제출',
       status: 'DRAFT',
-      opensAt: null,
+      publishedAt: null,
       // 작성 중이어도 마감은 정해 둔다(백엔드 requests.closes_at NOT NULL)
       closesAt: dueIn(40),
       targetCount: 0,
@@ -40,7 +40,7 @@ export function rows(): MockRow[] {
       id: 28,
       title: '2025학년도 2학기 성적증명서 제출',
       status: 'CLOSED',
-      opensAt: opened(120),
+      publishedAt: opened(120),
       closesAt: dueIn(-100),
       targetCount: 47,
       submittedCount: 47,
@@ -51,7 +51,7 @@ export function rows(): MockRow[] {
       id: 27,
       title: '2025학년도 1학기 성적증명서 제출',
       status: 'CLOSED',
-      opensAt: opened(290),
+      publishedAt: opened(290),
       closesAt: dueIn(-270),
       targetCount: 47,
       submittedCount: 46,
@@ -135,7 +135,7 @@ export function createRequest(body: CreateRequestBody) {
     templateCode: templates.find((t) => t.id === body.templateId)?.code ?? null,
     cohortName: cohort?.name ?? null,
     status: 'DRAFT',
-    opensAt: null,
+    publishedAt: null,
     closesAt: body.closesAt,
     targetCount: 0,
     submittedCount: 0,
@@ -151,8 +151,8 @@ export function publishRequest(id: number) {
   if (!row) return { error: 'NOT_FOUND' as const }
   if (row.status !== 'DRAFT') return { error: 'INVALID_STATE_TRANSITION' as const }
   const targetCount = row.cohortName ? (cohorts.find((c) => c.name === row.cohortName)?.scholarCount ?? 0) : cohorts.reduce((n, c) => n + c.scholarCount, 0)
-  const publishedAt = new Date().toISOString().slice(0, 19)
-  patch(id, { row: { status: 'IN_PROGRESS', targetCount, opensAt: publishedAt } })
+  const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+  patch(id, { row: { status: 'IN_PROGRESS', targetCount, publishedAt } })
   return { status: 'IN_PROGRESS' as const, targetCount, publishedAt }
 }
 

@@ -40,7 +40,7 @@ export type RequestRow = {
   templateCode: string | null
   cohortName: string | null
   status: RequestStatus
-  opensAt: string | null
+  publishedAt: string | null
   closesAt: string
   targetCount: number
   submittedCount: number

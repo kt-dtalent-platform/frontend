@@ -15,7 +15,7 @@ import { PageTitle } from '../../components/ui/PageTitle'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 
-type Values = { cohortId: string; name: string; email: string; birthDate: string; phone: string; university: string; major: string; studentNo: string }
+type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const opt = (v: string) => v.trim() || null
@@ -37,7 +37,7 @@ export function ScholarCreatePage() {
       })
   }, [done, navigate])
   const { register, handleSubmit, formState, setError } = useForm<Values>({
-    defaultValues: { cohortId: '', name: '', email: '', birthDate: '', phone: '', university: '', major: '', studentNo: '' },
+    defaultValues: { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' },
     mode: 'onBlur',
   })
   const e = formState.errors
@@ -50,9 +50,8 @@ export function ScholarCreatePage() {
         cohortId: Number(v.cohortId),
         name: v.name.trim(),
         email: v.email.trim(),
-        birthDate: v.birthDate,
         phone: opt(v.phone),
-        university: opt(v.university),
+        university: v.university.trim(),
         major: opt(v.major),
         studentNo: opt(v.studentNo),
       })
@@ -94,31 +93,19 @@ export function ScholarCreatePage() {
               </SelectBox>
             )}
           </LabeledField>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <LabeledField label="이름" required error={e.name?.message}>
-              {(p) => (
-                <input
-                  {...p}
-                  autoComplete="off"
-                  className={cn(fieldControl, fieldBorder(!!e.name))}
-                  {...register('name', {
-                    validate: (x) => (x.trim() ? true : '이름을 입력하세요.'),
-                    maxLength: { value: 50, message: '50자 안으로 입력하세요.' },
-                  })}
-                />
-              )}
-            </LabeledField>
-            <LabeledField label="생년월일" required error={e.birthDate?.message}>
-              {(p) => (
-                <input
-                  {...p}
-                  type="date"
-                  className={cn(fieldControl, fieldBorder(!!e.birthDate))}
-                  {...register('birthDate', { required: '생년월일을 입력하세요.' })}
-                />
-              )}
-            </LabeledField>
-          </div>
+          <LabeledField label="이름" required error={e.name?.message}>
+            {(p) => (
+              <input
+                {...p}
+                autoComplete="off"
+                className={cn(fieldControl, fieldBorder(!!e.name))}
+                {...register('name', {
+                  validate: (x) => (x.trim() ? true : '이름을 입력하세요.'),
+                  maxLength: { value: 50, message: '50자 안으로 입력하세요.' },
+                })}
+              />
+            )}
+          </LabeledField>
           <LabeledField label="이메일" required hint="로그인 아이디로 써요." error={e.email?.message}>
             {(p) => (
               <input
@@ -148,13 +135,16 @@ export function ScholarCreatePage() {
 
         <section className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-8 md:px-8">
           <h2 className="m-0 text-title-2">학적</h2>
-          <LabeledField label="학교" error={e.university?.message}>
+          <LabeledField label="학교" required error={e.university?.message}>
             {(p) => (
               <input
                 {...p}
                 autoComplete="off"
                 className={cn(fieldControl, fieldBorder(!!e.university))}
-                {...register('university', { maxLength: { value: 100, message: '100자 안으로 입력하세요.' } })}
+                {...register('university', {
+                  validate: (x) => (x.trim() ? true : '학교를 입력하세요.'),
+                  maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
+                })}
               />
             )}
           </LabeledField>

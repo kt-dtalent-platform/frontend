@@ -91,8 +91,8 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             >
               <option value="">선택하세요</option>
               {(field.options ?? []).map((o) => (
-                <option key={o} value={o}>
-                  {o}
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </select>
@@ -104,9 +104,9 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         input = (
           <div className="flex flex-col gap-2" role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy}>
             {(field.options ?? []).map((o) => (
-              <label key={o} className="flex min-h-control-default items-center gap-2">
-                <Checkbox value={o} {...register(field.fieldKey)} />
-                {o}
+              <label key={o.value} className="flex min-h-control-default items-center gap-2">
+                <Checkbox value={o.value} {...register(field.fieldKey)} />
+                {o.label}
               </label>
             ))}
           </div>
