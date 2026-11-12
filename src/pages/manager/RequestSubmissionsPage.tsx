@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { downloadExport, submissionExportColumns, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, toDate } from '../../lib/time'
-import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
+import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { Pagination } from '../../components/ui/Pagination'
@@ -165,19 +165,19 @@ export function RequestSubmissionsPage() {
             />
             <div className="flex items-center gap-2">
               <div className="relative flex-1 md:w-64 md:flex-none">
-                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
+                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
                 <input
                   type="search"
                   aria-label="이름으로 찾기"
                   placeholder="이름으로 찾기"
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
-                  className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
+                  className={cn(filterField, 'pl-8')}
                 />
               </div>
               {/* 목록에 대한 보조 행동이라 테두리 없는 버튼으로 필터 옆에 둔다(11/12) */}
               <Button
-                size="default"
+                size="compact"
                 variant="ghost"
                 disabled={exporting || data.summary.target === 0}
                 onClick={() => (setExportError(false), setExportOpen(true))}
@@ -241,10 +241,20 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
 }
 
 function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
+  const tags = (
+    <>
+      {row.late && <Tag tone="danger">마감 후</Tag>}
+      {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
+    </>
+  )
   const body = (
     <>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-body-strong">{row.scholarName}</span>
+        {/* 휴대폰: 보조 표시는 이름 옆에 둬서 아래 줄이 꺾이지 않게 한다 */}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-body-strong">{row.scholarName}</span>
+          <span className="flex shrink-0 gap-1 md:hidden">{tags}</span>
+        </span>
         {/* 휴대폰: 이름 아래 기수와 학교 */}
         <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3 md:hidden" />
       </span>
@@ -254,8 +264,7 @@ function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
         <span className="flex flex-wrap items-center gap-2 md:w-48">
           <StatusBadge status={row.status} />
-          {row.late && <Tag tone="danger">마감 후</Tag>}
-          {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
+          <span className="hidden md:contents">{tags}</span>
         </span>
         <span className="text-caption text-ink-2 tabular-nums md:w-20 md:text-right md:text-body">
           {row.gpa != null ? (

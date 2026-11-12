@@ -6,7 +6,7 @@ import { useCohorts } from '../../api/manager'
 import { ApiError } from '../../api/client'
 import { downloadFile } from '../../api/review'
 import { scholarExportColumns, useChangeScholarsStatus, useScholars, withdrawalText, type ScholarItem, type ScholarStatus } from '../../api/scholars'
-import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
+import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
@@ -21,6 +21,7 @@ import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
+import { Checkbox } from '../../components/form/Checkbox'
 
 const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: null, label: '전체' },
@@ -137,7 +138,7 @@ export function ScholarsPage() {
 
   // 목록에 대한 보조 행동이라 테두리 없는 버튼(11/12)
   const exportButton = (
-    <Button size="default" variant="ghost" disabled={!data || data.total === 0} onClick={() => (setExportError(false), setExportOpen(true))}>
+    <Button size="compact" variant="ghost" disabled={!data || data.total === 0} onClick={() => (setExportError(false), setExportOpen(true))}>
       <Download size={16} strokeWidth={2} aria-hidden />
       내보내기
     </Button>
@@ -171,7 +172,7 @@ export function ScholarsPage() {
               aria-label="기수"
               value={cohortId ? String(cohortId) : ''}
               onChange={(e) => set({ cohort: Number(e.target.value) || null })}
-              className={cn(fieldBase, 'h-control-default appearance-none pr-10', fieldBorder(false))}
+              className={cn(filterField, 'appearance-none pr-8')}
             >
               <option value="">전체 기수</option>
               {(cohorts.data ?? []).map((c) => (
@@ -180,17 +181,17 @@ export function ScholarsPage() {
                 </option>
               ))}
             </select>
-            <ChevronDown size={20} strokeWidth={1.75} className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-3" aria-hidden />
+            <ChevronDown size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
           </div>
           <div className="relative md:w-56">
-            <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" aria-hidden />
+            <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
             <input
               type="search"
               aria-label="이름 또는 이메일로 찾기"
               placeholder="이름, 이메일"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className={cn(fieldBase, 'h-control-default pl-9', fieldBorder(false))}
+              className={cn(filterField, 'pl-8')}
             />
           </div>
           <div className="hidden md:block">{exportButton}</div>
@@ -228,17 +229,16 @@ export function ScholarsPage() {
             <div className="overflow-hidden rounded-lg bg-surface">
               {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
               <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
-                <input
-                  type="checkbox"
-                  aria-label="이 쪽 장학생 모두 고르기"
-                  className="size-5 shrink-0 accent-action"
-                  disabled={loadingNext}
-                  checked={allPicked}
-                  ref={(el) => {
-                    if (el) el.indeterminate = sel.length > 0 && !allPicked
-                  }}
-                  onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
-                />
+                {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
+                <label className="-mx-3 flex cursor-pointer items-center self-stretch px-3">
+                  <Checkbox
+                    aria-label="이 쪽 장학생 모두 고르기"
+                    disabled={loadingNext}
+                    checked={allPicked}
+                    indeterminate={sel.length > 0 && !allPicked}
+                    onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
+                  />
+                </label>
                 {sel.length > 0 ? (
                   <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
                     <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
@@ -251,8 +251,12 @@ export function ScholarsPage() {
                   </div>
                 ) : (
                   <>
-                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:flex-none md:w-40">
+                    {/* 휴대폰: 열 이름이 없어 인원 수만. PC: 열 이름을 두고 인원 수는 오른쪽 끝 */}
+                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
                       <span className="text-label text-ink">{data.total}</span>명
+                    </span>
+                    <span aria-hidden className="hidden w-40 text-caption text-ink-3 md:block">
+                      이름
                     </span>
                     <span aria-hidden className="hidden w-28 text-caption text-ink-3 md:block">
                       기수
@@ -265,6 +269,9 @@ export function ScholarsPage() {
                     </span>
                     <span aria-hidden className="hidden flex-1 text-caption text-ink-3 md:block">
                       이메일
+                    </span>
+                    <span className="hidden text-caption text-ink-3 tabular-nums md:block">
+                      <span className="text-label text-ink">{data.total}</span>명
                     </span>
                   </>
                 )}
@@ -327,14 +334,9 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
   return (
     <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0', picked && 'bg-surface-hover')}>
-      <input
-        type="checkbox"
-        aria-label={`${s.name} 고르기`}
-        className="size-5 shrink-0 accent-action"
-        checked={picked}
-        disabled={disabled}
-        onChange={(e) => onPick(e.target.checked)}
-      />
+      <label className="-mx-3 flex cursor-pointer items-center self-stretch px-3">
+        <Checkbox aria-label={`${s.name} 고르기`} checked={picked} disabled={disabled} onChange={(e) => onPick(e.target.checked)} />
+      </label>
       <Link
         to={`/manager/scholars/${s.id}`}
         className="group flex min-w-0 flex-1 flex-col gap-1 py-3 pr-6 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-2"

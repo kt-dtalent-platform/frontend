@@ -3,7 +3,6 @@ import type { SubmissionStatus } from '../api/types'
 import type { Comparison, StatusFilter, SubmissionDetail, SubmissionRow } from '../api/review'
 import type { ManagerDashboard } from '../api/manager'
 import { kstParts } from '../lib/time'
-import { dueIn } from './db'
 import { rows } from './manager'
 
 // 입력 항목(요청 만들기 템플릿과 같은 값). MVP는 성적증명서 제출만 다룬다.
@@ -53,7 +52,8 @@ const minutesAgo = (m: number) => {
 function baseRows(requestId: number): (SubmissionRow & { index: number })[] {
   const req = rows().find((r) => r.id === requestId)
   if (!req || req.targetCount === 0) return []
-  const confirmed = Math.floor(req.submittedCount * 0.3)
+  // 마감한 요청은 보완 중인 건 말고 모두 확인을 마친 것으로 둔다
+  const confirmed = req.status === 'CLOSED' ? req.submittedCount - req.revisionCount : Math.floor(req.submittedCount * 0.3)
   const revision = req.revisionCount
   const waiting = Math.max(0, req.submittedCount - confirmed - revision)
   return Array.from({ length: req.targetCount }, (_, i) => {
@@ -96,10 +96,18 @@ function withOverrides(list: ReturnType<typeof baseRows>) {
 const matches = (s: SubmissionStatus, f: StatusFilter) =>
   f === 'NOT_SUBMITTED' ? s === 'NOT_SUBMITTED' || s === 'DRAFT' : f === 'WAITING' ? s === 'SUBMITTED' || s === 'RESUBMITTED' : s === f
 
+// 목록 기본 순서(프론트 제안, 백엔드 확인 필요): 담당자가 손댈 순서대로
+// 검토 대기(오래 기다린 제출 먼저) → 보완 필요 → 미제출 → 확인 완료
+const rank = (s: SubmissionStatus) =>
+  s === 'SUBMITTED' || s === 'RESUBMITTED' ? 0 : s === 'REVISION_REQUIRED' ? 1 : s === 'NOT_SUBMITTED' || s === 'DRAFT' ? 2 : 3
+function ordered(list: ReturnType<typeof baseRows>) {
+  return [...list].sort((a, b) => rank(a.status) - rank(b.status) || (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '') || a.index - b.index)
+}
+
 export function submissionList(requestId: number, status: string | null, keyword: string, page: number, pageSize: number) {
   const req = rows().find((r) => r.id === requestId)
   if (!req) return null
-  const all = withOverrides(baseRows(requestId))
+  const all = ordered(withOverrides(baseRows(requestId)))
   const summary = {
     target: all.length,
     notSubmitted: all.filter((r) => matches(r.status, 'NOT_SUBMITTED')).length,
@@ -121,7 +129,7 @@ export function submissionList(requestId: number, status: string | null, keyword
 
 // 검토 순서(이전·다음): 같은 요청에서 검토 대기인 제출
 export function reviewQueue(requestId: number) {
-  return withOverrides(baseRows(requestId))
+  return ordered(withOverrides(baseRows(requestId)))
     .filter((r) => matches(r.status, 'WAITING'))
     .map((r) => r.submissionId!)
 }
@@ -150,12 +158,22 @@ export function submissionDetail(id: number): SubmissionDetail | null {
     analysis: comparisons.length
       ? { overallResult: mismatch ? (comparisons.some((c) => c.result === 'UNREADABLE') ? 'UNREADABLE' : 'MISMATCH') : 'MATCH', comparisons }
       : null,
-    history: o?.history ?? [
-      { from: 'DRAFT', to: row.status === 'RESUBMITTED' ? 'RESUBMITTED' : 'SUBMITTED', actorType: 'SCHOLAR', changedAt: row.submittedAt ?? dueIn(-1) },
-    ],
+    history: o?.history ?? baseHistory(row),
     revisions: o?.revisions ?? [],
     version: o?.version ?? 2,
   }
+}
+
+// 미리 만든 상태에 맞는 처리 이력. 확인 완료, 보완 필요인데 담당자 처리 기록이 없으면 이상해 보인다
+function baseHistory(row: ReturnType<typeof baseRows>[number]): SubmissionDetail['history'] {
+  const submittedAt = row.submittedAt ?? minutesAgo(24 * 60)
+  // 제출 30분 뒤 처리(지금보다 늦지 않게). minutesAgo와 같은 형식
+  const ago = Math.max(0, (Date.now() - new Date(submittedAt).getTime()) / 60_000 - 30)
+  const later = minutesAgo(Math.round(ago))
+  const first = { from: 'DRAFT', to: row.status === 'RESUBMITTED' ? 'RESUBMITTED' : 'SUBMITTED', actorType: 'SCHOLAR', changedAt: submittedAt } as const
+  if (row.status === 'CONFIRMED') return [first, { from: 'SUBMITTED', to: 'CONFIRMED', actorType: 'MANAGER', changedAt: later }]
+  if (row.status === 'REVISION_REQUIRED') return [first, { from: 'SUBMITTED', to: 'REVISION_REQUIRED', actorType: 'MANAGER', changedAt: later }]
+  return [first]
 }
 
 const SCHOOLS = ['한국대학교', '서울과학기술대학교', '부산대학교', '경북대학교', '충남대학교', '전남대학교']

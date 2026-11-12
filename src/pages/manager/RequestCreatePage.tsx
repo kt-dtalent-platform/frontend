@@ -116,7 +116,7 @@ export function RequestFormShell({
   const error = me.error ?? templates.error ?? cohorts.error ?? extraError ?? null
 
   return (
-    <div className="mx-auto flex max-w-page-form flex-col gap-6">
+    <div className="flex max-w-page-form flex-col gap-6">
       <Link to="/manager/requests" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         요청 관리

@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { Tag } from '../ui/Tag'
 import { FileField, type FileHandlers } from './FileField'
 import { fieldBase, fieldControl } from './fieldClass'
+import { Checkbox } from './Checkbox'
 
 export type FormValues = Record<string, string | boolean | string[]>
 
@@ -104,7 +105,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
           <div className="flex flex-col gap-2" role="group" aria-labelledby={`${id}-label`} aria-describedby={describedBy}>
             {(field.options ?? []).map((o) => (
               <label key={o} className="flex min-h-control-default items-center gap-2">
-                <input type="checkbox" value={o} className="size-5 accent-gray-900" {...register(field.fieldKey)} />
+                <Checkbox value={o} {...register(field.fieldKey)} />
                 {o}
               </label>
             ))}
@@ -136,14 +137,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
     return (
       <div className="flex flex-col gap-2">
         <label className="flex min-h-control-default items-center gap-3">
-          <input
-            type="checkbox"
-            disabled={!editable}
-            aria-invalid={!!error}
-            aria-describedby={describedBy}
-            className="size-5 accent-gray-900"
-            {...register(field.fieldKey)}
-          />
+          <Checkbox disabled={!editable} aria-invalid={!!error} aria-describedby={describedBy} {...register(field.fieldKey)} />
           <span className="text-label">{field.label}</span>
           {highlight && <Tag tone="warning">보완 요청</Tag>}
         </label>

@@ -95,6 +95,7 @@ export function RequestsPage() {
               <span className="w-24">상태</span>
               <span className="w-48">마감</span>
               <span className="w-20 text-right">제출</span>
+              <span className="w-20 text-right">검토 대기</span>
               <span className="w-20 text-right">보완 필요</span>
               <span className="w-5" />
             </div>
@@ -113,12 +114,14 @@ export function RequestsPage() {
 }
 
 function Row({ row }: { row: RequestRow }) {
+  // 마감은 작성 중 요청에도 늘 있다(백엔드 requests.closes_at NOT NULL)
   const due = row.closesAt
-  const overdue = due ? isPastDue(due) : false
-  const dDay = due ? daysUntil(due) : null
-  const urgent = row.status === 'IN_PROGRESS' && dDay !== null && dDay <= 3
-  // MVP는 요청 유형이 성적증명서 하나라 유형은 따로 적지 않는다
-  const meta = [row.cohortName ?? '전체 기수']
+  const overdue = isPastDue(due)
+  const dDay = daysUntil(due)
+  const urgent = row.status === 'IN_PROGRESS' && dDay <= 3
+  // MVP는 요청 유형이 성적증명서 하나라 유형은 따로 적지 않는다.
+  // 대상이 전체 기수면 모든 행에 같은 말이 반복되므로 특정 기수일 때만 적는다.
+  const meta = row.cohortName ? [row.cohortName] : []
 
   return (
     <li className="border-b border-line-subtle last:border-b-0">
@@ -135,17 +138,9 @@ function Row({ row }: { row: RequestRow }) {
           <RequestStatusBadge status={row.status} />
         </span>
         <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-48">
-          {due ? (
-            <>
-              <span className="md:sr-only">마감 </span>
-              {formatDue(due)}
-              {row.status === 'IN_PROGRESS' && dDay !== null && (
-                <span className={cn('ml-1', urgent && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>
-              )}
-            </>
-          ) : (
-            '마감 미정'
-          )}
+          <span className="md:sr-only">마감 </span>
+          {formatDue(due)}
+          {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>}
         </span>
         <span className="flex gap-4 text-caption text-ink-3 tabular-nums md:contents">
           <span className="md:w-20 md:text-right">
@@ -159,8 +154,12 @@ function Row({ row }: { row: RequestRow }) {
             )}
           </span>
           <span className="md:w-20 md:text-right">
+            <span className="md:sr-only">검토 대기 </span>
+            <span className={cn('text-body', (row.waitingCount ?? 0) > 0 ? 'font-semibold text-ink' : 'text-ink-3')}>{row.waitingCount ?? '–'}</span>
+          </span>
+          <span className="md:w-20 md:text-right">
             <span className="md:sr-only">보완 필요 </span>
-            <span className={cn('text-body', row.revisionCount > 0 ? 'font-semibold text-warning-text' : 'text-ink-3')}>{row.revisionCount}</span>
+            <span className={cn('text-body', row.revisionCount > 0 ? 'text-warning-text' : 'text-ink-3')}>{row.revisionCount}</span>
           </span>
         </span>
         <ChevronRight size={20} strokeWidth={1.75} className="hidden shrink-0 text-ink-3 group-hover:text-ink md:block" aria-hidden />
