@@ -140,7 +140,7 @@ function Row({ row }: { row: RequestRow }) {
         <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-48">
           <span className="md:sr-only">마감 </span>
           {formatDue(due)}
-          {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-danger-text')}>{dDayText(dDay, overdue)}</span>}
+          {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-warning-text')}>{dDayText(dDay, overdue)}</span>}
         </span>
         <span className="flex gap-4 text-caption text-ink-3 tabular-nums md:contents">
           <span className="md:w-20 md:text-right">

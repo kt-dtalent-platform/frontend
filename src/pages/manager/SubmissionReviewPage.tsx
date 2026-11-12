@@ -120,7 +120,7 @@ function Review({ d }: { d: SubmissionDetail }) {
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={d.status} />
-          {d.late && <Tag tone="danger">마감 후</Tag>}
+          {d.late && <Tag tone="neutral">마감 후</Tag>}
         </div>
         <PageTitle
           description={

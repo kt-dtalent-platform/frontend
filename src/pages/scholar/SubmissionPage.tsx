@@ -262,7 +262,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={form.status} />
-          {late && <Tag tone="danger">마감 지남</Tag>}
+          {late && <Tag tone="warning">마감 지남</Tag>}
         </div>
         <PageTitle>{form.request.title}</PageTitle>
         <p className="m-0 text-caption text-ink-3 tabular-nums">

@@ -139,7 +139,7 @@ function Due({ closesAt }: { closesAt: string }) {
       className="tabular-nums"
       items={[
         `마감 ${formatDue(closesAt)}`,
-        <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-danger-text')}>
+        <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
           {dDayText(dDay, overdue)}
         </span>,
       ]}
