@@ -90,18 +90,23 @@ export function ScholarsPage() {
   // 여러 명 고르기: 이 쪽에 보이는 장학생 중에서. 필터나 쪽을 바꾸면 비운다
   const [picked, setPicked] = useState<number[]>([])
   const [listKey, setListKey] = useState(params.toString())
+  const [bulkDone, setBulkDone] = useState<number | null>(null)
+  const bulk = useChangeScholarsStatus()
   if (listKey !== params.toString()) {
     setListKey(params.toString())
     setPicked([])
+    // 다른 목록으로 옮기면 지난 결과 안내도 지운다
+    setBulkDone(null)
+    if (!bulk.isIdle) bulk.reset()
   }
-  const pageIds = data?.items.map((x) => x.id) ?? []
-  const allPicked = pageIds.length > 0 && pageIds.every((x) => picked.includes(x))
+  // 다음 쪽을 불러오는 동안 남아 있는 이전 행은 고를 수 없게 하고, 지금 쪽에 보이는 사람만 센다
+  const pageIds = loadingNext ? [] : (data?.items.map((x) => x.id) ?? [])
+  const sel = picked.filter((id) => pageIds.includes(id))
+  const allPicked = pageIds.length > 0 && pageIds.every((x) => sel.includes(x))
   // 고른 사람이 모두 같은 기수면 그 선발 연도부터 수료 연도를 보여 준다
-  const pickedCohorts = [...new Set(data?.items.filter((x) => picked.includes(x.id)).map((x) => x.cohortName) ?? [])]
+  const pickedCohorts = [...new Set(data?.items.filter((x) => sel.includes(x.id)).map((x) => x.cohortName) ?? [])]
   const pickedCohort = pickedCohorts.length === 1 ? pickedCohorts[0] : ''
-  const bulk = useChangeScholarsStatus()
   const [bulkOpen, setBulkOpen] = useState(false)
-  const [bulkDone, setBulkDone] = useState<number | null>(null)
 
   // 내보내기: 기수 필터는 그대로 걸고, 상태와 열은 대화상자에서 고른다
   const cohortName = cohorts.data?.find((c) => c.id === cohortId)?.name ?? null
@@ -194,7 +199,7 @@ export function ScholarsPage() {
 
       {query.isPending && <LoadingCards count={3} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {bulkDone && (
+      {bulkDone !== null && bulkDone > 0 && (
         <Banner tone="success" title={`${bulkDone}명의 상태를 바꿨어요`}>
           바뀐 상태가 명단에 반영됐어요.
         </Banner>
@@ -227,15 +232,16 @@ export function ScholarsPage() {
                   type="checkbox"
                   aria-label="이 쪽 장학생 모두 고르기"
                   className="size-5 shrink-0 accent-action"
+                  disabled={loadingNext}
                   checked={allPicked}
                   ref={(el) => {
-                    if (el) el.indeterminate = picked.length > 0 && !allPicked
+                    if (el) el.indeterminate = sel.length > 0 && !allPicked
                   }}
                   onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
                 />
-                {picked.length > 0 ? (
+                {sel.length > 0 ? (
                   <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
-                    <span className="mr-2 text-label tabular-nums">{picked.length}명 고름</span>
+                    <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
                     <Button size="compact" onClick={() => (bulk.reset(), setBulkDone(null), setBulkOpen(true))}>
                       상태 바꾸기
                     </Button>
@@ -265,7 +271,13 @@ export function ScholarsPage() {
               </div>
               <ul className="m-0 list-none p-0">
                 {data.items.map((s) => (
-                  <Row key={s.id} s={s} picked={picked.includes(s.id)} onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))} />
+                  <Row
+                    key={s.id}
+                    s={s}
+                    disabled={loadingNext}
+                    picked={sel.includes(s.id)}
+                    onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))}
+                  />
                 ))}
               </ul>
             </div>
@@ -276,14 +288,14 @@ export function ScholarsPage() {
       {bulkOpen && (
         <ScholarStatusDialog
           open
-          title={`${picked.length}명 상태 바꾸기`}
+          title={`${sel.length}명 상태 바꾸기`}
           s={{ status: 'ENROLLED', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }}
           cohortName={pickedCohort}
           busy={bulk.isPending}
           onCancel={() => setBulkOpen(false)}
           onSubmit={(body) =>
             bulk.mutate(
-              { ...body, scholarIds: picked },
+              { ...body, scholarIds: sel },
               {
                 onSuccess: (r) => (setBulkOpen(false), setBulkDone(r.updated), setPicked([])),
                 onError: () => setBulkOpen(false),
@@ -297,7 +309,7 @@ export function ScholarsPage() {
           open
           title="장학생 명단 내보내기"
           total={status || keyword ? undefined : data.total}
-          note={cohortName ? `${cohortName}만 내보내요.` : undefined}
+          note={[cohortName && `${cohortName}만 내보내요.`, keyword && '이름, 이메일 검색은 적용하지 않아요.'].filter(Boolean).join(' ') || undefined}
           scopes={statuses.slice(1).map((x) => ({ value: x.value!, label: x.label }))}
           initialScopes={status ? [status] : []}
           columnGroups={scholarExportColumns}
@@ -310,7 +322,7 @@ export function ScholarsPage() {
   )
 }
 
-function Row({ s, picked, onPick }: { s: ScholarItem; picked: boolean; onPick: (on: boolean) => void }) {
+function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean; disabled: boolean; onPick: (on: boolean) => void }) {
   // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
   return (
@@ -320,6 +332,7 @@ function Row({ s, picked, onPick }: { s: ScholarItem; picked: boolean; onPick: (
         aria-label={`${s.name} 고르기`}
         className="size-5 shrink-0 accent-action"
         checked={picked}
+        disabled={disabled}
         onChange={(e) => onPick(e.target.checked)}
       />
       <Link

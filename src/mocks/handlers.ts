@@ -370,11 +370,18 @@ export const handlers = [
   http.patch(`${BASE}/scholars/status`, async ({ request }) => {
     const path = '/v1/scholars/status'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
-    const body = (await request.json()) as StatusChange & { scholarIds: number[] }
-    if (!body.scholarIds?.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', ['scholarIds'])
+    const { scholarIds, ...change } = (await request.json()) as StatusChange & { scholarIds: number[] }
+    const bad = [
+      !scholarIds?.length && 'scholarIds',
+      !['ENROLLED', 'COMPLETED', 'WITHDRAWN'].includes(change.status) && 'status',
+      change.status === 'COMPLETED' && !change.completedYear && 'completedYear',
+      change.status === 'WITHDRAWN' && !change.withdrawalReason && 'withdrawalReason',
+      change.withdrawalReason === 'OTHER' && !change.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
+    ].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
     await delay(300)
-    body.scholarIds.forEach((id) => changeScholarStatus(id, body))
-    return ok(path, { updated: body.scholarIds.length })
+    const updated = scholarIds.filter((id) => changeScholarStatus(id, change)).length
+    return ok(path, { updated })
   }),
 
   http.get(`${BASE}/scholars/export`, ({ request }) => {

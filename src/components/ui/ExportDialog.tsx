@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { FormDialog } from './FormDialog'
 
 export type ExportOption = { value: string; label: string; count?: number }
@@ -34,6 +34,7 @@ export function ExportDialog({
   const [picked, setPicked] = useState<string[]>(initialScopes)
   const [columns, setColumns] = useState(() => columnGroups.flatMap((g) => g.columns.filter((c) => c.required || c.default).map((c) => c.key)))
   const [tried, setTried] = useState(false)
+  const errorId = useId()
   const scopeError = tried && !all && picked.length === 0 ? '내보낼 상태를 하나 이상 고르세요.' : null
   // 상태별 인원을 모르면(장학생 명단) 버튼에 인원을 쓰지 않는다
   const known = all ? total !== undefined : scopes.every((s) => s.count !== undefined)
@@ -73,13 +74,18 @@ export function ExportDialog({
                   className="size-5 accent-action"
                   checked={picked.includes(s.value)}
                   aria-invalid={!!scopeError}
+                  aria-describedby={scopeError ? errorId : undefined}
                   onChange={(e) => setPicked((p) => toggle(p, s.value, e.target.checked))}
                 />
                 {s.label}
                 {s.count !== undefined && <span className="text-ink-3 tabular-nums">{s.count}명</span>}
               </label>
             ))}
-            {scopeError && <p className="m-0 text-caption text-danger-text">{scopeError}</p>}
+            {scopeError && (
+              <p id={errorId} className="m-0 text-caption text-danger-text">
+                {scopeError}
+              </p>
+            )}
           </div>
         )}
       </fieldset>

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button } from './Button'
 
 type Props = {
@@ -15,6 +15,16 @@ type Props = {
 export function FormDialog({ open, title, children, submitLabel, busy, onSubmit, onCancel }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+
+  // 대화상자를 화면에서 빼 버리면(조건부로 그릴 때) 브라우저가 연 버튼으로 포커스를 돌려주지 않는다(Chrome, Safari).
+  // 처음 그릴 때 포커스가 있던 곳을 기억했다가 빠질 때 돌려준다
+  const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null))
+  useEffect(
+    () => () => {
+      if (opener?.isConnected) opener.focus()
+    },
+    [opener],
+  )
 
   useEffect(() => {
     const d = ref.current
