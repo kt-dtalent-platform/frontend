@@ -25,6 +25,7 @@ import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { kstParts, kstToday, kstToUtc } from '../../lib/time'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { Radio } from '../../components/form/Radio'
 
 export type Notice = { tone: 'success' | 'warning'; title: string; body: string }
 
@@ -116,7 +117,7 @@ export function RequestFormShell({
   const error = me.error ?? templates.error ?? cohorts.error ?? extraError ?? null
 
   return (
-    <div className="flex max-w-page-form flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-page-form flex-col gap-6">
       <Link to="/manager/requests" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         요청 관리
@@ -162,7 +163,8 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const [today] = useState(kstToday)
   const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
   const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({
-    defaultValues: existing ? fromDetail(existing) : defaults(),
+    // 요청 유형이 하나뿐이면 미리 골라 둔다
+    defaultValues: existing ? fromDetail(existing) : { ...defaults(), templateId: templates.length === 1 ? String(templates[0].id) : '' },
     mode: 'onBlur',
   })
   const errors = formState.errors
@@ -268,11 +270,10 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
           </legend>
           {templates.map((t) => (
             <label key={t.id} className="flex cursor-pointer items-start gap-3 border-b border-line-subtle py-3 last:border-b-0">
-              <input
-                type="radio"
+              <Radio
+                className="mt-0.5"
                 value={String(t.id)}
                 aria-invalid={!!errors.templateId}
-                className="mt-0.5 size-5 shrink-0 accent-action"
                 {...register('templateId', { required: '요청 유형을 고르세요.' })}
               />
               <span className="flex flex-col gap-0.5">

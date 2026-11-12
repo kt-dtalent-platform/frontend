@@ -193,7 +193,7 @@ export function requestDetail(id: number) {
       description: null,
       academicYear: 2026,
       semester: '2',
-      closesAt: row.closesAt?.slice(0, 19) ?? '',
+      closesAt: row.closesAt,
       completionMessage: null,
     }
   return { id, status: row.status, ...body, templateId: body.templateId || null }

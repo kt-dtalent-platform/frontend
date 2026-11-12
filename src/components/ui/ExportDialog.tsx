@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { FormDialog } from './FormDialog'
 import { Checkbox } from '../form/Checkbox'
+import { Radio } from '../form/Radio'
 
 export type ExportOption = { value: string; label: string; count?: number }
 export type ExportColumn = { key: string; label: string; required?: boolean; default?: boolean }
@@ -59,11 +60,11 @@ export function ExportDialog({
         <legend className="mb-1 p-0 text-label">범위</legend>
         {note && <p className="m-0 mb-1 text-caption text-ink-3">{note}</p>}
         <label className="flex min-h-control-default items-center gap-3">
-          <input type="radio" name="export-scope" className="size-5 accent-action" checked={all} onChange={() => setAll(true)} />
+          <Radio name="export-scope" checked={all} onChange={() => setAll(true)} />
           전체 {total !== undefined && <span className="text-ink-3 tabular-nums">{total}명</span>}
         </label>
         <label className="flex min-h-control-default items-center gap-3">
-          <input type="radio" name="export-scope" className="size-5 accent-action" checked={!all} onChange={() => setAll(false)} />
+          <Radio name="export-scope" checked={!all} onChange={() => setAll(false)} />
           상태 고르기
         </label>
         {!all && (

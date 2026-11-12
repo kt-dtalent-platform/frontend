@@ -5,6 +5,7 @@ import { SelectBox } from '../../components/form/LabeledField'
 import { FormDialog } from '../../components/ui/FormDialog'
 import { cn } from '../../lib/cn'
 import { kstToday } from '../../lib/time'
+import { Radio } from '../../components/form/Radio'
 
 const options: { value: ScholarStatus; label: string }[] = [
   { value: 'ENROLLED', label: '재학' },
@@ -72,7 +73,7 @@ export function ScholarStatusDialog({
         <legend className="mb-1 p-0 text-label">상태</legend>
         {options.map((o) => (
           <label key={o.value} className="flex min-h-control-default items-center gap-3">
-            <input type="radio" name="scholar-status" className="size-5 accent-action" checked={status === o.value} onChange={() => setStatus(o.value)} />
+            <Radio name="scholar-status" checked={status === o.value} onChange={() => setStatus(o.value)} />
             {o.label}
           </label>
         ))}
