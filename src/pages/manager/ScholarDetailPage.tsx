@@ -44,30 +44,7 @@ function Detail({ s }: { s: ScholarDetail }) {
   const changeStatus = useChangeScholarStatus(s.id)
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col items-start gap-3">
-          {/* 상태는 정보 수정과 따로 바꾼다(수료 연도, 중단 사유를 받아야 해서). 상태를 보는 자리 옆에 둬서 무엇을 바꾸는지 보이게 한다 */}
-          <div className="flex items-center gap-1">
-            <ScholarStatusBadge status={s.status} />
-            {!editing && (
-              <Button
-                size="compact"
-                variant="ghost"
-                className="text-ink-2 underline underline-offset-2"
-                onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}
-              >
-                상태 바꾸기
-              </Button>
-            )}
-          </div>
-          <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
-        </div>
-        {!editing && (
-          <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
-            정보 수정
-          </Button>
-        )}
-      </div>
+      <PageTitle description={<MetaList items={[s.cohort.name, s.university]} />}>{s.name}</PageTitle>
       {changing && (
         <ScholarStatusDialog
           open
@@ -104,13 +81,41 @@ function Detail({ s }: { s: ScholarDetail }) {
           저장할 것이 없어 그대로 두었어요.
         </Banner>
       )}
+      {/* 상태와 기본 정보를 구역으로 나누고 각 구역에 고치기 버튼을 둔다(11/12).
+          상태는 수료 연도, 중단 사유를 함께 받아야 해서 정보 수정과 따로 바꾼다 */}
+      <section
+        aria-labelledby={`status-${s.id}`}
+        className="flex flex-col gap-4 rounded-lg bg-surface px-6 py-5 sm:flex-row sm:items-center sm:justify-between md:px-8"
+      >
+        <div className="flex flex-col gap-2">
+          <h2 id={`status-${s.id}`} className="m-0 text-title-2">
+            상태
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <ScholarStatusBadge status={s.status} />
+            {s.status === 'COMPLETED' && s.completedYear && <span className="text-body">{s.completedYear}년 수료</span>}
+            {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
+          </div>
+        </div>
+        {!editing && (
+          <Button size="default" className="self-start sm:self-auto" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+            상태 바꾸기
+          </Button>
+        )}
+      </section>
       {editing ? (
         <EditForm s={s} onDone={(r) => (setEditing(false), setResult(r))} />
       ) : (
-        <section className="rounded-lg bg-surface px-6 py-6 md:px-8">
+        <section aria-labelledby={`info-${s.id}`} className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-6 md:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <h2 id={`info-${s.id}`} className="m-0 text-title-2">
+              기본 정보
+            </h2>
+            <Button size="default" onClick={() => (setResult(null), setEditing(true))}>
+              정보 수정
+            </Button>
+          </div>
           <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-            {s.status === 'COMPLETED' && <Item label="수료 연도" value={s.completedYear ? `${s.completedYear}년` : null} />}
-            {s.status === 'WITHDRAWN' && <Item label="중단 사유" value={withdrawalText(s)} />}
             <Item label="이메일" value={s.email} />
             <Item label="연락처" value={s.maskedPhone} />
             <Item label="기수" value={s.cohort.name} />
