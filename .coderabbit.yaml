@@ -1,0 +1,5 @@
+# CodeRabbit 설정. 여기 없는 값은 조직 설정을 그대로 쓴다
+inheritance: true
+reviews:
+  # 변경 요약을 PR 본문 끝이 아니라 리뷰 댓글(walkthrough)에 넣는다
+  high_level_summary_in_walkthrough: true
