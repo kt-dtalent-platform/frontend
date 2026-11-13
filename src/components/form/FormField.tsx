@@ -216,14 +216,16 @@ function formatRules(field: Field) {
 }
 
 function ReadOnlyValue({ field, value }: { field: Field; value: AnswerValue }) {
+  // 선택 항목은 저장 값(value) 대신 보이는 이름(label)으로. 맞는 선택지가 없으면 값 그대로
+  const labelOf = (v: unknown) => field.options?.find((o) => o.value === String(v))?.label ?? String(v)
   const text =
     value === null || value === undefined || value === ''
       ? '입력하지 않음'
       : Array.isArray(value)
-        ? value.join(', ')
+        ? value.map(labelOf).join(', ')
         : typeof value === 'number'
           ? value.toLocaleString()
-          : String(value)
+          : labelOf(value)
   return (
     <div className={cn('flex min-h-control-h items-center rounded-md bg-surface-sunken px-4 text-ink-2', field.fieldType === 'TEXTAREA' && 'py-3')}>{text}</div>
   )
