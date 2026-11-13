@@ -150,7 +150,10 @@ const gradeFields: RawSubmissionForm['fields'] = [
     label: '만점 기준',
     fieldType: 'SELECT_ONE',
     required: true,
-    options: ['4.5', '4.3'],
+    options: [
+      { value: '4.5', label: '4.5' },
+      { value: '4.3', label: '4.3' },
+    ],
     helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
   },
   { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },

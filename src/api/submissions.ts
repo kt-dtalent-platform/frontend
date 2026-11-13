@@ -18,8 +18,8 @@ export type FormField = {
     maxSizeMb?: number
     maxFiles?: number // 없으면 1개로 본다(확인 필요)
   } | null
-  // DB(request_fields)에는 options·help_text가 있지만 백엔드 조회 결과에는 아직 없다(확인 필요)
-  options?: string[] | null
+  // 선택지: 저장되는 값(value)과 화면에 보이는 이름(label). 백엔드 KT-17
+  options?: { value: string; label: string }[] | null
   helpText?: string | null
 }
 

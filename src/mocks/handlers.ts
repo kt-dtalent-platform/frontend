@@ -446,7 +446,7 @@ export const handlers = [
       !body.cohortId && 'cohortId',
       !body.name?.trim() && 'name',
       !/^[^@\s]+@[^@\s]+$/.test(body.email ?? '') && 'email',
-      !body.birthDate && 'birthDate',
+      !body.university?.trim() && 'university',
     ].filter(Boolean)
     if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', bad)
     await delay(300)
