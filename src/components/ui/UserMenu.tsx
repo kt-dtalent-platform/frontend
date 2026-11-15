@@ -3,18 +3,13 @@ import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../api/auth'
 import { Button } from './Button'
 
-// 상단 바 오른쪽: 이름, 소속 + 로그아웃. 장학생은 이름을 누르면 내 정보로 간다(11/15)
+// 상단 바 오른쪽: 이름 + 로그아웃. 장학생은 이름을 누르면 내 정보로 간다(11/15)
 export function UserMenu() {
   const { data: me } = useMe()
   const navigate = useNavigate()
   if (!me) return null
-  const sub = me.cohort?.name ?? '담당자'
-  const label = (
-    <>
-      <span className="font-semibold text-ink-2">{me.name}</span>
-      <span>{sub}</span>
-    </>
-  )
+  // 이름만 둔다. 기수(2026년 선발)는 내 정보에서 본다(11/15)
+  const label = <span className="font-semibold text-ink-2">{me.name}</span>
 
   return (
     <div className="flex items-center gap-2">
@@ -25,11 +20,11 @@ export function UserMenu() {
         >
           {/* 좁은 화면에서는 이름 대신 아이콘만 둬서 로고와 겹치지 않게 한다 */}
           <UserRound size={16} strokeWidth={2} aria-hidden className="sm:hidden" />
-          <span className="sr-only sm:not-sr-only sm:inline-flex sm:gap-2">{label}</span>
+          <span className="sr-only sm:not-sr-only">{label}</span>
           <span className="sr-only">내 정보</span>
         </Link>
       ) : (
-        <span className="hidden gap-2 text-caption whitespace-nowrap text-ink-3 sm:inline-flex">{label}</span>
+        <span className="hidden text-caption whitespace-nowrap sm:inline">{label}</span>
       )}
       <Button
         size="compact"
