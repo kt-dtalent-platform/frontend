@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useMe } from '../../api/auth'
 import { PasswordChangeForm } from '../../components/form/PasswordChangeForm'
 import { PageTitle } from '../../components/ui/PageTitle'
+import { useToast } from '../../components/ui/useToast'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { usePageTitle } from '../../lib/usePageTitle'
 
@@ -11,6 +12,7 @@ export function MyPasswordPage() {
   usePageTitle('비밀번호 변경')
   const me = useMe()
   const navigate = useNavigate()
+  const toast = useToast()
   // 기록에 쌓지 않고 바꾼다. 쌓으면 내 정보에서 뒤로 가기를 눌렀을 때 빈 비밀번호 폼이 다시 열린다
   const back = () => navigate('/me', { replace: true })
   return (
@@ -26,7 +28,7 @@ export function MyPasswordPage() {
           email={me.data.email}
           mode="change"
           onCancel={back}
-          onDone={() => navigate('/me', { replace: true, state: { toast: '비밀번호를 바꿨어요' } })}
+          onDone={() => (toast('비밀번호를 바꿨어요'), navigate('/me', { replace: true }))}
         />
       )}
     </div>

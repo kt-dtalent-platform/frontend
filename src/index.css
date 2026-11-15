@@ -59,3 +59,13 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* 완료 알림 위치: 휴대폰은 화면 아래 16px에 아이폰 홈 막대 높이를 더하고, PC는 24px */
+.toast-host {
+  bottom: calc(var(--spacing) * 4 + env(safe-area-inset-bottom));
+}
+@media (min-width: 48rem) {
+  .toast-host {
+    bottom: calc(var(--spacing) * 6);
+  }
+}

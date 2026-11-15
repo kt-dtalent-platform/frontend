@@ -1,10 +1,8 @@
 import { ChevronRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { useMe } from '../../api/auth'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
-import { Toast } from '../../components/ui/Toast'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 
@@ -12,14 +10,6 @@ import { usePageTitle } from '../../lib/usePageTitle'
 export function MyInfoPage() {
   usePageTitle('내 정보')
   const me = useMe()
-  // 비밀번호를 바꾸고 돌아오면 결과를 잠깐 알린다. 새로고침하면 다시 뜨지 않게 기록에서 지운다
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [toast, setToast] = useState(() => (location.state as { toast?: string } | null)?.toast ?? null)
-  useEffect(() => {
-    if (location.state) navigate(location.pathname, { replace: true, state: null })
-  }, [location, navigate])
-
   return (
     <div className="flex flex-col gap-6">
       <PageTitle>내 정보</PageTitle>
@@ -44,7 +34,6 @@ export function MyInfoPage() {
           </Link>
         </>
       )}
-      <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   )
 }
