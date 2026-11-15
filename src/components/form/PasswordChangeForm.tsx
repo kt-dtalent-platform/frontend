@@ -30,7 +30,7 @@ type Props = {
 export function PasswordChangeForm({ email, mode, onDone, onCancel }: Props) {
   const change = useChangePassword()
   const rulesId = useId()
-  const current = mode === 'first' ? '임시 비밀번호' : '지금 비밀번호'
+  const current = mode === 'first' ? '임시 비밀번호' : '현재 비밀번호'
   const { register, handleSubmit, control, formState, setError, getValues, trigger } = useForm<Values>({
     defaultValues: { currentPassword: '', newPassword: '', confirm: '' },
     mode: 'onTouched',
