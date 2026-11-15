@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
 // 장학생 명단·상세·수정·등록. 담당 정윤. 백엔드 PR #16~#19(KT-10~13) 응답·요청 모양 기준.
@@ -54,13 +55,16 @@ export type ScholarItem = StatusInfo & {
 }
 export type ScholarPage = { items: ScholarItem[]; page: number; pageSize: number; total: number }
 
-export function useScholars(q: { cohortId: number | null; status: ScholarStatus | null; keyword: string; page: number }) {
+export function useScholars(q: { cohortId: number | null; status: ScholarStatus | null; keyword: string; page: number; sort?: Sort }) {
   const params = new URLSearchParams({ page: String(q.page), page_size: '20' })
   if (q.cohortId) params.set('cohortId', String(q.cohortId))
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
+  // 열 정렬 sort=name,asc. 백엔드에 아직 없음(11/15 요청, 키 이름 확인 필요). 없으면 서버 기본 순서
+  const sort = sortParam(q.sort ?? null)
+  if (sort) params.set('sort', sort)
   return useQuery({
-    queryKey: ['manager', 'scholars', q.cohortId, q.status, q.keyword, q.page],
+    queryKey: ['manager', 'scholars', q.cohortId, q.status, q.keyword, q.page, sort],
     queryFn: () => api<ScholarPage>(`/scholars?${params}`),
     placeholderData: keepPreviousData,
   })
