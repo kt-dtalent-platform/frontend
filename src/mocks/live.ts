@@ -7,7 +7,7 @@ import { isDemo } from '../lib/env'
 const groups = {
   // 로그인, 내 정보, 비밀번호 변경
   auth: [/^\/auth\//, /^\/me$/],
-  // 장학생 명단, 상세, 등록, 수정, 기수 목록
+  // 장학생 명단, 상세, 등록, 수정, 기수 목록, 학교 검색
   scholars: [/^\/scholars(\/|$)/, /^\/programs\/\d+\/cohorts$/],
   // 장학생: 내 할 일, 제출 입력, 임시 저장, 파일 올리기와 지우기, 제출
   tasks: [/^\/me\/(tasks|submissions)(\/|$)/, /^\/submissions\/\d+\/files\/(presign|\d+\/complete)$/, /^\/files\/\d+$/],
