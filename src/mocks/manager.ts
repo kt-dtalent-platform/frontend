@@ -66,11 +66,11 @@ export function rows(): MockRow[] {
 
 export function requestList(status: string | null, page: number, pageSize: number, sort: string | null = null) {
   const order = ['IN_PROGRESS', 'DRAFT', 'CLOSED']
-  const all = sortRows(
-    rows().filter((r) => !status || r.status === status),
-    sort,
-    { title: (r) => r.title, status: (r) => order.indexOf(r.status), closesAt: (r) => r.closesAt },
-  )
+  // 기본 순서는 백엔드(KT-38)와 같게 진행 중 → 작성 중 → 마감, 같은 상태는 최근에 만든 것 먼저(새로 만든 요청이 앞에 있다)
+  const base = rows()
+    .filter((r) => !status || r.status === status)
+    .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))
+  const all = sortRows(base, sort, { title: (r) => r.title, status: (r) => order.indexOf(r.status), closesAt: (r) => r.closesAt })
   const p = Math.max(1, page)
   return { items: all.slice((p - 1) * pageSize, p * pageSize), page: p, pageSize, total: all.length }
 }
