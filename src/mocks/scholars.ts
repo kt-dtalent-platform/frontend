@@ -81,6 +81,8 @@ export function scholarList(q: URLSearchParams) {
     (r) => (!cohortId || r.cohort.id === cohortId) && (!status || r.status === status) && (!keyword || r.name.includes(keyword) || r.email.includes(keyword)),
   )
   const statusOrder = ['ENROLLED', 'COMPLETED', 'WITHDRAWN']
+  // 기본 순서는 백엔드와 같게 등록 순(ORDER BY u.id). 새로 등록한 장학생은 맨 뒤
+  list.sort((a, b) => a.id - b.id)
   const sorted = sortRows(list, q.get('sort'), {
     name: (r) => r.name,
     cohort: (r) => r.cohort.name,

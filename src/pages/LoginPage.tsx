@@ -9,7 +9,7 @@ import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
 import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
-import { mockOn } from '../lib/env'
+import { liveAuthOn, mockOn } from '../lib/env'
 
 const schema = z.object({
   email: z.email('이메일 형식을 확인하세요.'),
@@ -17,8 +17,8 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-// 개발 서버에서 목업을 쓸 때만 보이는 안내
-const isMock = mockOn
+// 목업 계정으로 로그인할 때만 보이는 안내. 실제 서버로 로그인할 때(VITE_LIVE_API)와 배포 화면에는 나오지 않는다
+const isMock = mockOn && !liveAuthOn
 
 // C01 로그인: 전체 브랜드 플로우 바탕 + 오른쪽 흰 카드
 export function LoginPage() {
@@ -87,11 +87,7 @@ export function LoginPage() {
             {login.isPending ? '확인하는 중' : '로그인'}
           </Button>
           <p className="m-0 text-caption text-ink-3">계정은 재단에서 발급합니다.</p>
-          {isMock && (
-            <p className="m-0 text-caption text-ink-3">
-              목업: admin으로 시작하는 이메일은 담당자 화면으로 갑니다. new로 시작하는 이메일은 첫 로그인(담당자는 newadmin, 임시 비밀번호는 temp로 시작)입니다.
-            </p>
-          )}
+          {isMock && <MockGuide />}
         </form>
       </div>
     </main>
@@ -113,5 +109,28 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       {children}
       {error && <span className="text-caption text-danger-text">{error}</span>}
     </label>
+  )
+}
+
+// 목업(미리보기 사이트, 개발 서버)에서만 보이는 테스트 안내. 처음 보는 사람이 바로 들어가 볼 수 있게
+function MockGuide() {
+  const rows: [string, string][] = [
+    ['담당자 화면', 'admin@kt.com'],
+    ['장학생 화면', 'hong@kt.com'],
+    ['비밀번호', '8자 이상 아무거나'],
+    ['첫 로그인 화면', 'new1@kt.com, 비밀번호 temp1234'],
+  ]
+  return (
+    <section aria-label="테스트 계정 안내" className="flex flex-col gap-2 rounded-md bg-surface-sunken px-4 py-3 text-caption">
+      <p className="m-0 font-semibold text-ink-2">테스트 계정 (연습용 데이터)</p>
+      <dl className="m-0 flex flex-col gap-1">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex gap-3">
+            <dt className="w-24 shrink-0 text-ink-3">{k}</dt>
+            <dd className="m-0 break-all text-ink-2">{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
