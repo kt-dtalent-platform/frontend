@@ -29,11 +29,19 @@ const all = chosen.includes('all')
 const unknown = chosen.filter((g) => g !== 'all' && !(g in groups))
 if (unknown.length) console.warn(`VITE_LIVE_API에 모르는 이름이 있습니다: ${unknown.join(', ')}. 쓸 수 있는 이름: ${Object.keys(groups).join(', ')}, all`)
 
-const patterns = Object.entries(groups)
-  .filter(([name]) => all || chosen.includes(name))
-  .flatMap(([, list]) => list)
+// 같이 켜야 하는 묶음. 실제 서버는 진짜 토큰이 있어야 하므로 어느 묶음이든 auth를 함께 켠다.
+// 개별 검토는 제출 현황(requests)에서 받은 제출 ID로 들어가므로 requests를 함께 켠다(목업 ID로 실제 제출을 고치지 않게).
+// 요청 만들기는 기수 목록(scholars)의 기수 ID를 보내므로 scholars를 함께 켠다
+const needs: Partial<Record<LiveGroup, LiveGroup[]>> = { review: ['requests'], requests: ['scholars'] }
+const picked = new Set<LiveGroup>(all ? (Object.keys(groups) as LiveGroup[]) : chosen.filter((g): g is LiveGroup => g in groups))
+for (const g of [...picked]) for (const d of needs[g] ?? []) picked.add(d)
+if (picked.size) picked.add('auth')
+const added = [...picked].filter((g) => !all && !chosen.includes(g))
+if (added.length) console.warn(`VITE_LIVE_API: 함께 써야 해서 ${added.join(', ')}도 실제 서버로 보냅니다.`)
 
-export const liveGroups = all ? Object.keys(groups) : chosen.filter((g) => g in groups)
+const patterns = [...picked].flatMap((g) => groups[g])
+
+export const liveGroups = [...picked]
 if (liveGroups.length) console.info(`실제 서버로 보내는 API: ${liveGroups.join(', ')}. 나머지는 목업`)
 
 // /v1 뒤의 경로가 실제 서버로 갈 묶음에 들어가는지
