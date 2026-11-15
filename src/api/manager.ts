@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
 // 담당자 화면 API. 둘 다 백엔드 구현 없음(담당 승완). 노션 명세서 모양을 임시로 쓰고,
@@ -53,11 +54,14 @@ export type RequestPage = { items: RequestRow[]; page: number; pageSize: number;
 
 export const PAGE_SIZE = 20
 
-export function useRequests({ status, page }: { status: RequestStatus | null; page: number }) {
+export function useRequests({ status, page, sort }: { status: RequestStatus | null; page: number; sort?: Sort }) {
   const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
   if (status) params.set('status', status)
+  // 열 정렬. 백엔드에 아직 없음(11/15 요청)
+  const order = sortParam(sort ?? null)
+  if (order) params.set('sort', order)
   return useQuery({
-    queryKey: ['manager', 'requests', status, page],
+    queryKey: ['manager', 'requests', status, page, order],
     queryFn: () => api<RequestPage>(`/requests?${params}`),
     placeholderData: keepPreviousData, // 탭·페이지를 바꿀 때 표가 비었다가 다시 차지 않게
   })
