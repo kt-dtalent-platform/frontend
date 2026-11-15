@@ -13,12 +13,13 @@ export function SortHeader({ label, sortKey, sort, onSort, className, disabled }
     <span className={className}>
       <button
         type="button"
-        disabled={disabled}
-        onClick={() => onSort(nextSort(sort, sortKey))}
+        // disabled를 쓰면 누른 버튼이 바로 비활성이 되어 포커스가 사라진다. 불러오는 동안은 누름만 무시한다
+        aria-disabled={disabled || undefined}
+        onClick={() => !disabled && onSort(nextSort(sort, sortKey))}
         aria-label={`${label}, ${state}`}
         className={cn(
           // 바탕 없이 글자색과 화살표로만 상태를 보인다. 표 머리 글자 줄 높이를 그대로 둬서 행 높이가 바뀌지 않게 한다
-          'group inline-flex cursor-pointer items-center gap-1 rounded-xs text-caption hover:text-ink disabled:cursor-default',
+          'group inline-flex cursor-pointer items-center gap-1 rounded-xs text-caption hover:text-ink aria-disabled:cursor-default',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           dir ? 'font-semibold text-ink' : 'text-ink-3',
         )}
