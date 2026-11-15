@@ -2,13 +2,18 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Button } from './Button'
 
-// 쪽 번호(페이지네이션). 가운데에 두고, 쪽이 많으면 처음, 끝, 지금 쪽 앞뒤만 보인다(1 … 4 5 6 … 12)
-function pages(current: number, last: number) {
-  const out: (number | '…')[] = []
-  for (let p = 1; p <= last; p++) {
-    if (p === 1 || p === last || Math.abs(p - current) <= 1) out.push(p)
-    else if (out[out.length - 1] !== '…') out.push('…')
-  }
+// 쪽 번호(페이지네이션). 가운데에 두고 칸 수를 늘 7개로 유지한다(MUI 페이지네이션과 같은 규칙).
+// - 7쪽 이하: 전부 보인다(1 2 3 4 5)
+// - 그보다 많으면: 처음, 끝, 지금 쪽 앞뒤 한 쪽. 앞뒤 끝에 붙으면 다섯 칸을 채운다(1 2 3 4 5 … 10, 1 … 5 6 7 … 10)
+// - 말줄임표는 두 쪽 이상을 줄일 때만 쓴다. 한 쪽만 숨겨질 자리면 그 번호를 보인다
+// 쪽을 옮겨도 칸 수가 같아 화살표와 번호 위치가 흔들리지 않는다
+function pages(current: number, last: number): (number | '…')[] {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1)
+  const start = Math.max(Math.min(current - 1, last - 4), 3)
+  const end = Math.min(Math.max(current + 1, 5), last - 2)
+  const out: (number | '…')[] = [1, start > 3 ? '…' : 2]
+  for (let p = start; p <= end; p++) out.push(p)
+  out.push(end < last - 2 ? '…' : last - 1, last)
   return out
 }
 
