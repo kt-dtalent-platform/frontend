@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, type Ref } from 'react'
 import { useController, type Control, type FieldValues, type Path, type UseControllerProps } from 'react-hook-form'
 import { useSchools } from '../../api/schools'
 import { cn } from '../../lib/cn'
@@ -11,12 +11,15 @@ type Props = FieldA11y & {
   onBlur: () => void
   invalid: boolean
   name?: string
+  ref?: Ref<HTMLInputElement>
+  // 목록에서 고른 이름인지(입력을 멈추고 목록이 닫혔을 때만 알린다). 확인 중이면 null
+  onListedChange?: (listed: boolean | null) => void
 }
 
 // 학교 검색 선택칸(11/15 회의). 입력하면 학교 목록에서 찾아 고르고, 목록에 없으면 쓴 그대로 둔다.
 // 캠퍼스는 학교 이름에 들어 있다(예: 고려대학교 (세종캠퍼스)).
 // 접근성: WAI-ARIA combobox 패턴(입력칸 + listbox). 위아래 화살표로 고르고 Enter, Esc로 닫는다
-export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ...a11y }: Props) {
+export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, onListedChange, ...a11y }: Props) {
   const listId = useId()
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
@@ -29,20 +32,38 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ...a11y
   const query = useSchools(keyword)
   const items = query.data?.items ?? []
   const typed = value.trim()
-  const exact = items.some((s) => s.name === typed)
-  const shown = open && typed.length > 0 && items.length > 0 && !exact
+  // 고른 학교 하나만 맞을 때만 목록을 숨긴다. "고려대학교"를 골라도 "고려대학교 (세종캠퍼스)"는 계속 보이게
+  const onlyExact = items.length === 1 && items[0].name === typed
+  const shown = open && typed.length > 0 && items.length > 0 && !onlyExact
   const optionId = (i: number) => `${listId}-${i}`
+  // 목록이 바뀌면 고르던 위치를 비운다(없는 항목을 가리키지 않게)
+  const [listKey, setListKey] = useState(query.data)
+  if (listKey !== query.data) {
+    setListKey(query.data)
+    setActive(-1)
+  }
 
-  const pick = (name: string) => {
-    onChange(name)
+  // 목록에 있는 학교인지: 입력을 멈추고(keyword가 따라잡고) 목록이 닫혔을 때만 판단한다
+  const settled = !open && keyword === value && !query.isFetching
+  const listed = !typed ? true : settled && query.data ? items.some((s) => s.name === typed) : null
+  useEffect(() => {
+    onListedChange?.(listed)
+  }, [listed, onListedChange])
+
+  const close = () => {
     setOpen(false)
     setActive(-1)
+  }
+  const pick = (name: string) => {
+    onChange(name)
+    close()
   }
 
   return (
     <div className="relative">
       <input
         {...a11y}
+        ref={ref}
         name={name}
         role="combobox"
         aria-expanded={shown}
@@ -60,7 +81,7 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ...a11y
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          setOpen(false)
+          close()
           onBlur()
         }}
         onKeyDown={(e) => {
@@ -69,12 +90,12 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ...a11y
             if (!shown) return setOpen(true)
             const step = e.key === 'ArrowDown' ? 1 : -1
             setActive((i) => (i + step + items.length) % items.length)
-          } else if (e.key === 'Enter' && shown && active >= 0) {
+          } else if (e.key === 'Enter' && shown && items[active]) {
             e.preventDefault()
             pick(items[active].name)
           } else if (e.key === 'Escape' && shown) {
             e.preventDefault()
-            setOpen(false)
+            close()
           }
         }}
       />
@@ -105,14 +126,6 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ...a11y
   )
 }
 
-// 목록에 없는 학교를 직접 쓴 경우 확인을 권한다(막지는 않음)
-function useSchoolUnlisted(value: string) {
-  const k = value.trim()
-  const query = useSchools(k)
-  if (!k || query.isPending || query.isPlaceholderData) return false
-  return !(query.data?.items ?? []).some((s) => s.name === k)
-}
-
 type FieldProps<T extends FieldValues> = {
   control: Control<T>
   name: Path<T>
@@ -124,15 +137,27 @@ type FieldProps<T extends FieldValues> = {
 export function SchoolField<T extends FieldValues>({ control, name, required, rules }: FieldProps<T>) {
   const { field, fieldState } = useController({ control, name, rules })
   const value = String(field.value ?? '')
-  const unlisted = useSchoolUnlisted(value)
+  // 목록에 없는 학교를 직접 쓴 경우 확인을 권한다(막지는 않음)
+  const [listed, setListed] = useState<boolean | null>(true)
   return (
     <LabeledField
       label="학교"
       required={required}
       error={fieldState.error?.message}
-      hint={unlisted ? '목록에 없는 학교예요. 이름이 맞는지 한 번 더 확인하세요.' : '목록에 없으면 그대로 입력하세요.'}
+      hint={listed === false ? '목록에 없는 학교예요. 이름이 맞는지 한 번 더 확인하세요.' : '목록에 없으면 그대로 입력하세요.'}
     >
-      {(p) => <SchoolCombobox {...p} name={field.name} value={value} onChange={field.onChange} onBlur={field.onBlur} invalid={!!fieldState.error} />}
+      {(p) => (
+        <SchoolCombobox
+          {...p}
+          ref={field.ref}
+          name={field.name}
+          value={value}
+          onChange={field.onChange}
+          onBlur={field.onBlur}
+          invalid={!!fieldState.error}
+          onListedChange={setListed}
+        />
+      )}
     </LabeledField>
   )
 }
