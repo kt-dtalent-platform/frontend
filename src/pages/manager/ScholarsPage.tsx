@@ -345,16 +345,17 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
   // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
   return (
-    <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0', picked && 'bg-surface-hover')}>
+    // 마우스를 올리면 고르기 칸까지 줄 전체를 같은 회색으로(요청 관리 목록과 같게)
+    <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0 hover:bg-surface-hover', picked && 'bg-surface-hover')}>
       <label className="-mx-3 flex cursor-pointer items-center self-stretch px-3">
         <Checkbox aria-label={`${s.name} 고르기`} checked={picked} disabled={disabled} onChange={(e) => onPick(e.target.checked)} />
       </label>
       <Link
         to={`/manager/scholars/${s.id}`}
-        className="group flex min-w-0 flex-1 flex-col gap-1 py-3 pr-6 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-2"
+        className="flex min-w-0 flex-1 flex-col gap-1 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-2"
       >
         <span className="flex min-w-0 items-center gap-2 md:w-40">
-          <span className="truncate text-body-strong group-hover:underline">{s.name}</span>
+          <span className="truncate text-body-strong">{s.name}</span>
           {s.accountStatus === 'LOCKED' && <Tag tone="warning">잠김</Tag>}
           {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">로그인 전</Tag>}
           <span className="ml-auto shrink-0 md:hidden">
