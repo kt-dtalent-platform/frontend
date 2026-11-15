@@ -8,6 +8,7 @@ import { ApiError } from '../../api/client'
 import { PHONE, useCreateScholar } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField, SelectBox } from '../../components/form/LabeledField'
+import { SchoolField } from '../../components/form/SchoolCombobox'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -36,7 +37,7 @@ export function ScholarCreatePage() {
     toast(`${done} 님을 등록했어요`)
     navigate('/manager/scholars', { replace: true })
   }, [done, navigate, toast])
-  const { register, handleSubmit, formState, setError } = useForm<Values>({
+  const { register, handleSubmit, formState, setError, control } = useForm<Values>({
     defaultValues: { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' },
     mode: 'onBlur',
   })
@@ -135,19 +136,15 @@ export function ScholarCreatePage() {
 
         <section className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-8 md:px-8">
           <h2 className="m-0 text-title-2">학적</h2>
-          <LabeledField label="학교" required error={e.university?.message}>
-            {(p) => (
-              <input
-                {...p}
-                autoComplete="off"
-                className={cn(fieldControl, fieldBorder(!!e.university))}
-                {...register('university', {
-                  validate: (x) => (x.trim() ? true : '학교를 입력하세요.'),
-                  maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
-                })}
-              />
-            )}
-          </LabeledField>
+          <SchoolField
+            control={control}
+            name="university"
+            required
+            rules={{
+              validate: (x: string) => (x.trim() ? true : '학교를 입력하세요.'),
+              maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
+            }}
+          />
           <div className="grid gap-5 sm:grid-cols-2">
             <LabeledField label="전공" error={e.major?.message}>
               {(p) => (
