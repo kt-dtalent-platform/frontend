@@ -1,3 +1,4 @@
+import { sortRows } from './sort'
 // 담당자 제출 현황·개별 검토 목업. 요청 목록(manager.ts)의 인원·건수에 맞춰 장학생별 제출을 만든다.
 import type { SubmissionStatus } from '../api/types'
 import type { Comparison, StatusFilter, SubmissionDetail, SubmissionRow } from '../api/review'
@@ -104,7 +105,7 @@ function ordered(list: ReturnType<typeof baseRows>) {
   return [...list].sort((a, b) => rank(a.status) - rank(b.status) || (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '') || a.index - b.index)
 }
 
-export function submissionList(requestId: number, status: string | null, keyword: string, page: number, pageSize: number) {
+export function submissionList(requestId: number, status: string | null, keyword: string, page: number, pageSize: number, sort: string | null = null) {
   const req = rows().find((r) => r.id === requestId)
   if (!req) return null
   const all = ordered(withOverrides(baseRows(requestId)))
@@ -115,7 +116,19 @@ export function submissionList(requestId: number, status: string | null, keyword
     revisionRequired: all.filter((r) => r.status === 'REVISION_REQUIRED').length,
     confirmed: all.filter((r) => r.status === 'CONFIRMED').length,
   }
-  const filtered = all.filter((r) => !status || matches(r.status, status as StatusFilter)).filter((r) => !keyword || r.scholarName.includes(keyword))
+  const statusOrder = ['SUBMITTED', 'RESUBMITTED', 'REVISION_REQUIRED', 'DRAFT', 'NOT_SUBMITTED', 'CONFIRMED']
+  const filtered = sortRows(
+    all.filter((r) => !status || matches(r.status, status as StatusFilter)).filter((r) => !keyword || r.scholarName.includes(keyword)),
+    sort,
+    {
+      name: (r) => r.scholarName,
+      cohort: (r) => r.cohortName,
+      university: (r) => r.university,
+      status: (r) => statusOrder.indexOf(r.status),
+      gpa: (r) => r.gpa,
+      submittedAt: (r) => r.submittedAt,
+    },
+  )
   const p = Math.max(1, page)
   return {
     request: { id: req.id, title: req.title, cohortName: req.cohortName, closesAt: req.closesAt },

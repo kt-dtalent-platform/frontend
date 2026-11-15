@@ -1,6 +1,6 @@
 import { ChevronDown, Download, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
 import { useCohorts } from '../../api/manager'
 import { ApiError } from '../../api/client'
@@ -15,6 +15,8 @@ import { buttonClass } from '../../components/ui/buttonClass'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
+import { SortHeader } from '../../components/ui/SortHeader'
+import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
@@ -22,6 +24,7 @@ import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
 import { Checkbox } from '../../components/form/Checkbox'
+import { useToast } from '../../components/ui/useToast'
 
 const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: null, label: '전체' },
@@ -30,7 +33,8 @@ const statuses: { value: ScholarStatus | null; label: string }[] = [
   { value: 'WITHDRAWN', label: '중단' },
 ]
 
-type Notice = { title: string; body: string }
+// 열 이름으로 정렬할 수 있는 열. 서버 정렬 키 이름은 백엔드 확인 필요
+const sortKeys = ['name', 'cohort', 'university', 'status', 'email'] as const
 
 // A05 장학생 명단: 상태, 기수, 이름(이메일) 찾기, 여러 명 골라 상태 바꾸기, 내보내기. 행을 누르면 상세
 export function ScholarsPage() {
@@ -40,6 +44,7 @@ export function ScholarsPage() {
   const cohortId = Number(params.get('cohort')) || null
   const keyword = params.get('q') ?? ''
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
+  const sort = parseSort(params.get('sort'), sortKeys)
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기·메뉴 링크로 주소의 검색어가 바뀌면 입력칸도 맞춘다(안 맞추면 지운 검색어가 다시 들어간다)
   const [seen, setSeen] = useState(keyword)
@@ -49,18 +54,12 @@ export function ScholarsPage() {
   }
   const me = useMe()
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
-  const query = useScholars({ cohortId, status, keyword, page })
+  const query = useScholars({ cohortId, status, keyword, page, sort })
   const data = query.data
 
-  // 등록에서 넘어온 결과 안내를 한 번만 보여 준다
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [notice] = useState(() => (location.state as { notice?: Notice } | null)?.notice)
-  useEffect(() => {
-    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
-  }, [location, navigate])
+  const toast = useToast()
 
-  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number }) => {
+  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     const c = next.cohort === undefined ? cohortId : next.cohort
@@ -68,6 +67,8 @@ export function ScholarsPage() {
     if (s) p.set('status', s)
     if (c) p.set('cohort', String(c))
     if (q) p.set('q', q)
+    const o = sortParam(next.sort === undefined ? sort : next.sort)
+    if (o) p.set('sort', o)
     if ((next.page ?? 1) > 1) p.set('page', String(next.page))
     setParams(p, { replace: true })
   }
@@ -91,13 +92,10 @@ export function ScholarsPage() {
   // 여러 명 고르기: 이 쪽에 보이는 장학생 중에서. 필터나 쪽을 바꾸면 비운다
   const [picked, setPicked] = useState<number[]>([])
   const [listKey, setListKey] = useState(params.toString())
-  const [bulkDone, setBulkDone] = useState<number | null>(null)
   const bulk = useChangeScholarsStatus()
   if (listKey !== params.toString()) {
     setListKey(params.toString())
     setPicked([])
-    // 다른 목록으로 옮기면 지난 결과 안내도 지운다
-    setBulkDone(null)
     if (!bulk.isIdle) bulk.reset()
   }
   // 다음 쪽을 불러오는 동안 남아 있는 이전 행은 고를 수 없게 하고, 지금 쪽에 보이는 사람만 센다
@@ -154,12 +152,6 @@ export function ScholarsPage() {
         </Link>
       </div>
 
-      {notice && (
-        <Banner tone="success" title={notice.title}>
-          {notice.body}
-        </Banner>
-      )}
-
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
         <div className="flex items-center justify-between gap-2">
@@ -200,11 +192,6 @@ export function ScholarsPage() {
 
       {query.isPending && <LoadingCards count={3} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {bulkDone !== null && bulkDone > 0 && (
-        <Banner tone="success" title={`${bulkDone}명의 상태를 바꿨어요`}>
-          바뀐 상태가 명단에 반영됐어요.
-        </Banner>
-      )}
       {bulk.isError && !bulkOpen && (
         <Banner tone="danger" title="상태를 바꾸지 못했어요">
           {bulk.error instanceof ApiError ? bulk.error.message : '잠시 뒤 다시 시도하세요.'}
@@ -242,7 +229,7 @@ export function ScholarsPage() {
                 {sel.length > 0 ? (
                   <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
                     <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
-                    <Button size="compact" onClick={() => (bulk.reset(), setBulkDone(null), setBulkOpen(true))}>
+                    <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
                       상태 바꾸기
                     </Button>
                     <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
@@ -255,21 +242,46 @@ export function ScholarsPage() {
                     <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
                       <span className="text-label text-ink">{data.total}</span>명
                     </span>
-                    <span aria-hidden className="hidden w-40 text-caption text-ink-3 md:block">
-                      이름
-                    </span>
-                    <span aria-hidden className="hidden w-28 text-caption text-ink-3 md:block">
-                      기수
-                    </span>
-                    <span aria-hidden className="hidden w-44 text-caption text-ink-3 md:block">
-                      학교
-                    </span>
-                    <span aria-hidden className="hidden w-56 text-caption text-ink-3 md:block">
-                      상태
-                    </span>
-                    <span aria-hidden className="hidden flex-1 text-caption text-ink-3 md:block">
-                      이메일
-                    </span>
+                    <SortHeader
+                      label="이름"
+                      sortKey="name"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-40 md:block"
+                    />
+                    <SortHeader
+                      label="기수"
+                      sortKey="cohort"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-28 md:block"
+                    />
+                    <SortHeader
+                      label="학교"
+                      sortKey="university"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-44 md:block"
+                    />
+                    <SortHeader
+                      label="상태"
+                      sortKey="status"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-56 md:block"
+                    />
+                    <SortHeader
+                      label="이메일"
+                      sortKey="email"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden flex-1 md:block"
+                    />
                     <span className="hidden text-caption text-ink-3 tabular-nums md:block">
                       <span className="text-label text-ink">{data.total}</span>명
                     </span>
@@ -304,7 +316,7 @@ export function ScholarsPage() {
             bulk.mutate(
               { ...body, scholarIds: sel },
               {
-                onSuccess: (r) => (setBulkOpen(false), setBulkDone(r.updated), setPicked([])),
+                onSuccess: (r) => (setBulkOpen(false), r.updated > 0 && toast(`${r.updated}명의 상태를 바꿨어요`), setPicked([])),
                 onError: () => setBulkOpen(false),
               },
             )

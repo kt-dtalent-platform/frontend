@@ -5,6 +5,8 @@ import { useRequests, type RequestRow, type RequestStatus } from '../../api/mana
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { Banner } from '../../components/ui/Banner'
 import { Pagination } from '../../components/ui/Pagination'
+import { SortHeader } from '../../components/ui/SortHeader'
+import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { buttonClass } from '../../components/ui/buttonClass'
 import type { Notice } from './RequestCreatePage'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -31,7 +33,8 @@ export function RequestsPage() {
   const [params, setParams] = useSearchParams()
   const status = (tabs.find((t) => t.status === params.get('status'))?.status ?? null) as RequestStatus | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
-  const query = useRequests({ status, page })
+  const sort = parseSort(params.get('sort'), ['title', 'status', 'closesAt'])
+  const query = useRequests({ status, page, sort })
   // 요청 만들기에서 넘어온 결과 안내(작성 중으로 저장, 공개). 한 번 보여 준 뒤 기록에서 지워 새로고침하면 사라지게 한다
   const location = useLocation()
   const navigate = useNavigate()
@@ -41,10 +44,12 @@ export function RequestsPage() {
   }, [location, navigate])
   const tab = tabs.find((t) => t.status === status)!
 
-  const go = (next: { status?: RequestStatus | null; page?: number }) => {
+  const go = (next: { status?: RequestStatus | null; page?: number; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     if (s) p.set('status', s)
+    const o = sortParam(next.sort === undefined ? sort : next.sort)
+    if (o) p.set('sort', o)
     const pg = next.page ?? 1
     if (pg > 1) p.set('page', String(pg))
     setParams(p)
@@ -58,11 +63,17 @@ export function RequestsPage() {
   const outOfRange = !!data && !loadingNext && data.total > 0 && data.items.length === 0
   useEffect(() => {
     if (!outOfRange) return
-    const p = new URLSearchParams()
-    if (status) p.set('status', status)
-    if (lastPage > 1) p.set('page', String(lastPage))
-    setParams(p, { replace: true })
-  }, [outOfRange, lastPage, status, setParams])
+    // 지금 주소(상태, 정렬)를 그대로 두고 쪽만 바꾼다
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (lastPage > 1) p.set('page', String(lastPage))
+        else p.delete('page')
+        return p
+      },
+      { replace: true },
+    )
+  }, [outOfRange, lastPage, setParams])
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,13 +101,19 @@ export function RequestsPage() {
         <div className={cn('flex flex-col gap-4', query.isPlaceholderData && 'opacity-60')} aria-busy={query.isPlaceholderData}>
           <div className="overflow-hidden rounded-lg bg-surface">
             {/* 머리 행: 넓은 화면에서만. 좁은 화면은 행 안에서 이름을 붙여 보여 준다 */}
-            <div aria-hidden className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-              <span className="flex-1">요청</span>
-              <span className="w-24">상태</span>
-              <span className="w-48">마감</span>
-              <span className="w-20 text-right">제출</span>
-              <span className="w-20 text-right">검토 대기</span>
-              <span className="w-20 text-right">보완 필요</span>
+            <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
+              <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
+              <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
+              <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
+              <span aria-hidden className="w-24 text-right">
+                제출
+              </span>
+              <span aria-hidden className="w-24 text-right">
+                검토 대기
+              </span>
+              <span aria-hidden className="w-24 text-right">
+                보완 필요
+              </span>
               <span className="w-5" />
             </div>
             <ul className="m-0 list-none p-0">
@@ -137,13 +154,13 @@ function Row({ row }: { row: RequestRow }) {
         <span className="md:w-24">
           <RequestStatusBadge status={row.status} />
         </span>
-        <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-48">
+        <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-52">
           <span className="md:sr-only">마감 </span>
           {formatDue(due)}
           {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-warning-text')}>{dDayText(dDay, overdue)}</span>}
         </span>
         <span className="flex gap-4 text-caption text-ink-3 tabular-nums md:contents">
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">제출 </span>
             {row.targetCount > 0 ? (
               <>
@@ -153,11 +170,11 @@ function Row({ row }: { row: RequestRow }) {
               '대상 미정'
             )}
           </span>
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">검토 대기 </span>
             <span className={cn('text-body', (row.waitingCount ?? 0) > 0 ? 'font-semibold text-ink' : 'text-ink-3')}>{row.waitingCount ?? '–'}</span>
           </span>
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">보완 필요 </span>
             <span className={cn('text-body', row.revisionCount > 0 ? 'text-warning-text' : 'text-ink-3')}>{row.revisionCount}</span>
           </span>

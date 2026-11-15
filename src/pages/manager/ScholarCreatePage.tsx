@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { useToast } from '../../components/ui/useToast'
 
 type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
 
@@ -30,13 +31,12 @@ export function ScholarCreatePage() {
   const create = useCreateScholar()
   // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
   const [done, setDone] = useState<string | null>(null)
+  const toast = useToast()
   useEffect(() => {
-    if (done)
-      navigate('/manager/scholars', {
-        replace: true,
-        state: { notice: { title: `${done} 님을 등록했어요`, body: '처음 로그인하면 비밀번호를 바꾸도록 안내돼요.' } },
-      })
-  }, [done, navigate])
+    if (!done) return
+    toast(`${done} 님을 등록했어요`)
+    navigate('/manager/scholars', { replace: true })
+  }, [done, navigate, toast])
   const { register, handleSubmit, formState, setError, control } = useForm<Values>({
     defaultValues: { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' },
     mode: 'onBlur',

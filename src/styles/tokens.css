@@ -133,6 +133,7 @@
   --container-page-narrow: 400px;
   --spacing-login-card-w: 360px;
   --spacing-dialog-w: 440px;
+  --spacing-toast-max-w: 560px;
 }
 
 /* 간격은 Tailwind 기본(4px 단위)과 같아서 p-4 = 16px, gap-6 = 24px 처럼 쓴다.

@@ -25,6 +25,8 @@ export type Me = {
   email: string
   role: Role
   cohort: { id: number; name: string } | null
+  // 장학생 학교. 백엔드 /me에 아직 없음(11/15 요청)
+  university?: string | null
   accessiblePrograms: { id: number; name: string }[] | null
 }
 

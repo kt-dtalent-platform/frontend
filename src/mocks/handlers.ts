@@ -12,13 +12,36 @@ import { exportCsv, managerDashboard, review, submissionDetail, submissionList }
 const BASE = '/v1'
 
 const ME = {
-  SCHOLAR: { id: 101, name: '홍길동', email: 'hong@kt.com', role: 'SCHOLAR', cohort: { id: 6, name: '2026년 선발' }, accessiblePrograms: null },
+  SCHOLAR: {
+    id: 101,
+    name: '홍길동',
+    email: 'hong@kt.com',
+    role: 'SCHOLAR',
+    cohort: { id: 6, name: '2026년 선발' },
+    university: '한국대학교',
+    accessiblePrograms: null,
+  },
   MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }] },
 } as const
 
-// 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다
-const roleOf = (request: Request) =>
-  request.headers.get('Authorization')?.includes('manager') ? 'MANAGER' : request.headers.get('Authorization') ? 'SCHOLAR' : null
+// 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다.
+// 로그인만 실제 서버(VITE_LIVE_API=auth)일 때는 진짜 토큰(JWT)의 role 값을 읽는다.
+const roleOf = (request: Request): 'MANAGER' | 'SCHOLAR' | null => {
+  const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/, '')
+  if (!token) return null
+  if (token.startsWith('mock-')) return token.includes('manager') ? 'MANAGER' : 'SCHOLAR'
+  return jwtRole(token)
+}
+
+function jwtRole(token: string): 'MANAGER' | 'SCHOLAR' | null {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const role = JSON.parse(atob(payload)).role
+    return role === 'MANAGER' || role === 'SCHOLAR' ? role : null
+  } catch {
+    return null
+  }
+}
 
 const unauthorized = (path: string) => fail(path, 401, 'UNAUTHORIZED', '인증 정보가 없거나 만료되었습니다')
 
@@ -225,7 +248,7 @@ export const handlers = [
     if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 프로그램입니다')
     await delay(250)
     const q = new URL(request.url).searchParams
-    const list = requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    const list = requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20), q.get('sort'))
     // 목업 행의 숫자를 제출 현황과 맞춘다(보완 요청, 확인 완료를 처리하면 목록에도 반영)
     const items = list.items.map((r) => {
       const s = submissionList(r.id, null, '', 1, 1)?.summary
@@ -240,7 +263,14 @@ export const handlers = [
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
     await delay(200)
     const q = new URL(request.url).searchParams
-    const data = submissionList(Number(params.requestId), q.get('status'), q.get('keyword') ?? '', Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    const data = submissionList(
+      Number(params.requestId),
+      q.get('status'),
+      q.get('keyword') ?? '',
+      Number(q.get('page') ?? 1),
+      Number(q.get('page_size') ?? 20),
+      q.get('sort'),
+    )
     return data ? ok(path, data) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
   }),
 

@@ -12,6 +12,8 @@ import { ScholarDetailPage } from '../pages/manager/ScholarDetailPage'
 import { ScholarsPage } from '../pages/manager/ScholarsPage'
 import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
 import { SubmissionReviewPage } from '../pages/manager/SubmissionReviewPage'
+import { MyInfoPage } from '../pages/scholar/MyInfoPage'
+import { MyPasswordPage } from '../pages/scholar/MyPasswordPage'
 import { MyTasksPage } from '../pages/scholar/MyTasksPage'
 import { SubmissionPage } from '../pages/scholar/SubmissionPage'
 import { ManagerLayout } from './layouts/ManagerLayout'
@@ -35,6 +37,8 @@ export const router = createBrowserRouter(
       children: [
         { path: '/tasks', element: <MyTasksPage /> }, // S01
         { path: '/tasks/:requestId', element: <SubmissionPage /> }, // S02
+        { path: '/me', element: <MyInfoPage /> }, // S04 내 정보
+        { path: '/me/password', element: <MyPasswordPage /> }, // S04 비밀번호 변경
       ],
     },
     {
