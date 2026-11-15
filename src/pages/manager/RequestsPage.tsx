@@ -63,11 +63,17 @@ export function RequestsPage() {
   const outOfRange = !!data && !loadingNext && data.total > 0 && data.items.length === 0
   useEffect(() => {
     if (!outOfRange) return
-    const p = new URLSearchParams()
-    if (status) p.set('status', status)
-    if (lastPage > 1) p.set('page', String(lastPage))
-    setParams(p, { replace: true })
-  }, [outOfRange, lastPage, status, setParams])
+    // 지금 주소(상태, 정렬)를 그대로 두고 쪽만 바꾼다
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        if (lastPage > 1) p.set('page', String(lastPage))
+        else p.delete('page')
+        return p
+      },
+      { replace: true },
+    )
+  }, [outOfRange, lastPage, setParams])
 
   return (
     <div className="flex flex-col gap-6">
