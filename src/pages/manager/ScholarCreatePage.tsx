@@ -22,7 +22,7 @@ type Values = { cohortId: string; name: string; email: string; phone: string; un
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const opt = (v: string) => v.trim() || null
 
-// A06 장학생 등록: 한 명씩 등록(백엔드 KT-13 요청 형식 기준). 여러 명 일괄 등록은 MVP 범위 밖
+// A06 장학생 등록: 한 명씩 등록(백엔드 KT-13 요청 형식 기준). 여러 명은 A07 엑셀로 등록
 export function ScholarCreatePage() {
   usePageTitle('장학생 등록')
   const navigate = useNavigate()

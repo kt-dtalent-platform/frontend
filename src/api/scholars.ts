@@ -163,6 +163,18 @@ export type ScholarCreate = {
   studentNo: string | null
 }
 
+// POST /v1/scholars/bulk · 백엔드에 아직 없음(11/15 요청) · FE 연동: Mock
+// 프론트가 엑셀을 읽어 명단만 보낸다. 이미 등록된 이메일이 있으면 409 DUPLICATE_EMAIL, details에 그 이메일 목록(가정, 확인 필요)
+export type ScholarBulkCreate = { cohortId: number; scholars: Omit<ScholarCreate, 'cohortId'>[] }
+
+export function useBulkCreateScholars() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ScholarBulkCreate) => api<{ created: number }>('/scholars/bulk', { method: 'POST', body }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] }),
+  })
+}
+
 export function useCreateScholar() {
   const queryClient = useQueryClient()
   return useMutation({

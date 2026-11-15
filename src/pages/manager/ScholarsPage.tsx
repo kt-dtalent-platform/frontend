@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, FileSpreadsheet, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -146,10 +146,16 @@ export function ScholarsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle>장학생</PageTitle>
-        <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
-          <Plus size={16} strokeWidth={2} aria-hidden />
-          장학생 등록
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/manager/scholars/import" className={buttonClass({ variant: 'secondary', size: 'default' })}>
+            <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
+            엑셀로 등록
+          </Link>
+          <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
+            <Plus size={16} strokeWidth={2} aria-hidden />
+            장학생 등록
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

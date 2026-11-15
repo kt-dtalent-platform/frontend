@@ -1,11 +1,11 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { CreateRequestBody } from '../api/manager'
-import type { ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
+import type { ScholarBulkCreate, ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
-import { changeScholarStatus, createScholar, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
+import { changeScholarStatus, createScholar, createScholarsBulk, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { searchSchools } from './schools'
 import { exportCsv, managerDashboard, review, submissionDetail, submissionList } from './review'
 
@@ -476,6 +476,21 @@ export const handlers = [
     await delay(250)
     const r = changeScholarStatus(Number(params.scholarId), body)
     return r ? ok(path, r) : fail(path, 404, 'SCHOLAR_NOT_FOUND', '장학생을 찾을 수 없습니다.')
+  }),
+
+  // 일괄 등록(백엔드에 아직 없음, 11/15 요청)
+  http.post(`${BASE}/scholars/bulk`, async ({ request }) => {
+    const path = '/v1/scholars/bulk'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const body = (await request.json()) as ScholarBulkCreate
+    if (!body.cohortId || !Array.isArray(body.scholars) || body.scholars.length === 0) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.')
+    await delay(600)
+    const r = createScholarsBulk(body.cohortId, body.scholars)
+    if ('error' in r)
+      return r.error === 'DUPLICATE_EMAIL'
+        ? fail(path, 409, 'DUPLICATE_EMAIL', '이미 등록된 이메일이 있습니다.', r.emails)
+        : fail(path, 404, 'COHORT_NOT_FOUND', '기수를 찾을 수 없습니다.')
+    return ok(path, r)
   }),
 
   http.post(`${BASE}/scholars`, async ({ request }) => {
