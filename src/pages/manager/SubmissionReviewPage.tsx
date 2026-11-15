@@ -68,8 +68,8 @@ function Review({ d }: { d: SubmissionDetail }) {
   const afterAction = (message: string) => {
     // 다음이 없으면 남은 검토 대기 중 아무나(순서 목록을 못 받았거나 지금 건이 목록에 없을 때도)
     const nextId = next ?? ids.find((id) => id !== d.id) ?? null
-    // 순서 목록을 받았을 때만 '남은 게 없다'고 말한다
-    toast(!nextId && queue.isSuccess ? `${message}. 남은 검토 대기가 없어요` : message)
+    // 순서 목록을 받았고 남은 게 없으면 한 문장으로 마무리를 알린다
+    toast(!nextId && queue.isSuccess ? '검토 대기를 모두 처리했어요' : message)
     if (nextId) navigate(`/manager/submissions/${nextId}`, { replace: true })
     else navigate(`/manager/requests/${d.requestId}?status=WAITING`, { replace: true })
   }

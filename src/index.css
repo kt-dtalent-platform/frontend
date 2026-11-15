@@ -69,3 +69,9 @@
     bottom: calc(var(--spacing) * 6);
   }
 }
+/* 담당자 화면은 왼쪽 메뉴를 뺀 본문 가운데. 다른 화면은 변수가 없으니 0 */
+@media (min-width: 64rem) {
+  .toast-host {
+    left: var(--content-left, 0px);
+  }
+}
