@@ -33,13 +33,10 @@ const norm = (v: unknown) =>
     .replace(/\(필수\)|\*/g, '')
     .replace(/\s/g, '')
 
-// 셀 값을 글자로. 숫자로 저장된 연락처는 앞의 0이 빠져 있어 다시 붙인다(1012345678 → 01012345678)
+// 셀 값을 글자로. 숫자로 저장된 연락처는 앞의 0이 빠져 있어 다시 붙인다(국내 번호는 모두 0으로 시작: 1012345678 → 01012345678, 212345678 → 0212345678)
 function text(v: unknown, key: Key): string {
   if (v === null || v === undefined) return ''
-  if (typeof v === 'number' && key === 'phone') {
-    const s = String(v)
-    return s.startsWith('1') && s.length >= 9 ? `0${s}` : s
-  }
+  if (typeof v === 'number' && key === 'phone') return Number.isInteger(v) && v > 0 ? `0${v}` : String(v)
   if (v instanceof Date) return ''
   return String(v).trim()
 }

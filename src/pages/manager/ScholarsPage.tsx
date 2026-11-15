@@ -147,9 +147,10 @@ export function ScholarsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle>장학생</PageTitle>
         <div className="flex items-center gap-2">
-          <Link to="/manager/scholars/import" className={buttonClass({ variant: 'secondary', size: 'default' })}>
+          {/* 휴대폰은 제목 줄이 좁아 아이콘만(이름은 화면 읽기용으로 남긴다) */}
+          <Link to="/manager/scholars/import" className={cn(buttonClass({ variant: 'secondary', size: 'default' }), 'max-md:w-control-default max-md:px-0')}>
             <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
-            일괄 등록
+            <span className="max-md:sr-only">일괄 등록</span>
           </Link>
           <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
             <Plus size={16} strokeWidth={2} aria-hidden />

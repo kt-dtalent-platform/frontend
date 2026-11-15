@@ -174,7 +174,17 @@ export function ScholarImportPage() {
               )}
             >
               <Upload size={24} strokeWidth={1.75} className="text-ink-3" aria-hidden />
-              <span className="text-label text-ink">{reading ? '파일을 읽는 중' : '파일을 여기에 끌어다 놓거나 눌러서 고르세요'}</span>
+              <span className="text-label text-ink">
+                {reading ? (
+                  '파일을 읽는 중'
+                ) : (
+                  <>
+                    {/* 휴대폰은 끌어다 놓을 수 없어서 고르기만 안내 */}
+                    <span className="md:hidden">눌러서 파일을 고르세요</span>
+                    <span className="hidden md:inline">파일을 여기에 끌어다 놓거나 눌러서 고르세요</span>
+                  </>
+                )}
+              </span>
               <span className="text-caption text-ink-3">양식의 이름, 이메일, 학교는 꼭 채워 주세요. 한 번에 {MAX_ROWS}명까지 올릴 수 있어요.</span>
             </label>
           )}
@@ -335,30 +345,32 @@ function PreviewRow({ r }: { r: ImportRow }) {
   )
 }
 
-// 휴대폰: 말풍선 대신 이유를 카드 안에 적는다(누르기 전에는 말풍선을 볼 수 없어서)
+// 휴대폰: 표 대신 카드. 파일의 모든 열을 이름과 함께 보이고, 말풍선 대신 이유를 카드 안에 적는다
 function PreviewCard({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
-  const line = (k: Key, strong = false) => (
-    <span
-      className={cn(
-        'min-w-0 self-start truncate',
-        issueOf(r, k) && 'rounded-sm bg-warning-bg px-1',
-        !r[k] ? 'text-ink-3' : strong ? 'text-body-strong text-ink' : 'text-ink-2',
-      )}
-    >
-      <Value r={r} k={k} />
-    </span>
-  )
   return (
-    <li className="flex flex-col gap-1 border-b border-line-subtle px-6 py-3 last:border-b-0">
+    <li className="flex flex-col gap-2 border-b border-line-subtle px-6 py-4 last:border-b-0">
       <div className="flex items-center gap-2">
-        {bad && <span aria-label="고칠 줄" className="size-1.5 shrink-0 rounded-full bg-warning-dot" />}
-        {line('name', true)}
-        <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">{r.line}번째 줄</span>
+        {bad && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning-dot" />}
+        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') && 'rounded-sm bg-warning-bg px-1', !r.name && 'text-ink-3')}>
+          <Value r={r} k="name" />
+        </span>
+        <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">
+          {r.line}번째 줄{bad && <span className="sr-only">, 고칠 줄</span>}
+        </span>
       </div>
-      {line('email')}
-      {line('university')}
-      {bad && <p className="m-0 text-caption text-ink-2">{r.errors.map((e) => e.message).join(', ')}</p>}
+      <dl className="m-0 flex flex-col gap-1 text-caption">
+        {/* 값이 있거나 고칠 칸만 보여서 카드를 짧게 한다 */}
+        {COLUMNS.filter((c) => c.key !== 'name' && (r[c.key] || issueOf(r, c.key))).map((c) => (
+          <div key={c.key} className="flex gap-3">
+            <dt className="w-12 shrink-0 text-ink-3">{c.label}</dt>
+            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'rounded-sm bg-warning-bg px-1 text-ink' : r[c.key] ? 'text-ink-2' : 'text-ink-3')}>
+              <Value r={r} k={c.key} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {bad && <p className="m-0 text-caption text-ink">{r.errors.map((e) => e.message).join(', ')}</p>}
     </li>
   )
 }
