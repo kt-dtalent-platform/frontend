@@ -98,7 +98,7 @@ function NewCohortDialog({ programId, taken, onDone, onCancel }: { programId: nu
 
   return (
     <FormDialog open title="새 기수 만들기" submitLabel="만들기" busy={create.isPending} onSubmit={() => void submit()} onCancel={onCancel}>
-      <LabeledField label="기수 이름" required hint="장학생을 뽑은 해로 적어요. 예: 2027년 선발" error={error ?? undefined}>
+      <LabeledField label="기수 이름" required hint="장학생을 뽑은 해로 적어요." error={error ?? undefined}>
         {(p) => (
           <input
             {...p}

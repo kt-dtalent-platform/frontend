@@ -1,5 +1,5 @@
-import { CircleAlert, CircleCheck, ChevronLeft, Download, FileSpreadsheet } from 'lucide-react'
-import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { CircleAlert, CircleCheck, ChevronLeft, Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useBulkCreateScholars } from '../../api/scholars'
@@ -173,7 +173,7 @@ export function ScholarImportPage() {
                 dragOver ? 'bg-control-tonal' : 'hover:bg-control-tonal',
               )}
             >
-              <FileSpreadsheet size={24} strokeWidth={1.75} className="text-ink-3" aria-hidden />
+              <Upload size={24} strokeWidth={1.75} className="text-ink-3" aria-hidden />
               <span className="text-label text-ink">{reading ? '파일을 읽는 중' : '파일을 여기에 끌어다 놓거나 눌러서 고르세요'}</span>
               <span className="text-caption text-ink-3">양식의 이름, 이메일, 학교는 꼭 채워 주세요. 한 번에 {MAX_ROWS}명까지 올릴 수 있어요.</span>
             </label>
@@ -201,8 +201,8 @@ export function ScholarImportPage() {
               </h2>
               {bad.length > 0 ? (
                 <p className="m-0 text-caption text-ink-2">
-                  <span className="font-semibold text-warning-text tabular-nums">{bad.length}줄</span>을 고쳐야 등록할 수 있어요. 엑셀에서 고친 뒤 파일을 다시
-                  올려 주세요.
+                  <span className="font-semibold text-warning-text tabular-nums">{bad.length}줄</span>을 엑셀에서 고친 뒤 다시 올려 주세요.
+                  <span className="hidden md:inline"> 주황 칸에 마우스를 올리면 이유가 보여요.</span>
                 </p>
               ) : (
                 <p className="m-0 inline-flex items-center gap-1 text-caption text-ink-2">
@@ -241,11 +241,16 @@ export function ScholarImportPage() {
                 <th scope="col" className="py-2 pr-4 text-right font-normal">
                   줄
                 </th>
-                {COLUMNS.map((c) => (
-                  <th key={c.key} scope="col" className="py-2 pr-4 font-normal">
-                    {c.label}
-                  </th>
-                ))}
+                {COLUMNS.map((c) => {
+                  // 열마다 고칠 칸 수(엑셀에서 어느 열을 보면 되는지)
+                  const n = rows.filter((r) => issueOf(r, c.key)).length
+                  return (
+                    <th key={c.key} scope="col" className="py-2 pr-4 font-normal">
+                      {c.label}
+                      {n > 0 && <span className="ml-1 font-semibold text-warning-text tabular-nums">{n}</span>}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -280,54 +285,76 @@ export function ScholarImportPage() {
 
 const issueOf = (r: ImportRow, key: Key) => r.errors.some((e) => e.field === key)
 
-// 칸 값. 문제가 있는 칸은 주황 글자, 빈 필수 칸은 "비어 있음"
-function Cell({ r, k }: { r: ImportRow; k: Key }) {
+// 칸 값. 빈 칸은 "–", 빈 필수 칸은 "비어 있음"
+function Value({ r, k }: { r: ImportRow; k: Key }) {
   const value = r[k]
-  const issue = issueOf(r, k)
-  if (!value) return <span className={issue ? 'text-warning-text' : 'text-ink-3'}>{issue ? '비어 있음' : '–'}</span>
-  return <span className={cn('block truncate', issue ? 'font-semibold text-warning-text' : k === 'name' ? 'text-ink' : 'text-ink-2')}>{value}</span>
+  if (!value) return <>{issueOf(r, k) ? '비어 있음' : '–'}</>
+  return <>{value}</>
+}
+
+// 표 칸. 문제가 있는 칸은 옅은 주황 바탕으로 표시하고, 마우스를 올리거나 키보드로 오면 이유를 말풍선으로 보인다.
+// 줄 높이는 늘 같다(이유를 줄 아래에 펼치지 않는다). Flatfile, OneSchema 같은 가져오기 화면의 칸 단위 표시와 같은 방식
+function Cell({ r, k }: { r: ImportRow; k: Key }) {
+  const tipId = useId()
+  const issues = r.errors.filter((e) => e.field === k)
+  if (issues.length === 0)
+    return (
+      <span className={cn('block truncate', !r[k] ? 'text-ink-3' : k === 'name' ? 'text-ink' : 'text-ink-2')}>
+        <Value r={r} k={k} />
+      </span>
+    )
+  return (
+    <span
+      tabIndex={0}
+      aria-describedby={tipId}
+      className="group relative -mx-2 flex min-w-0 items-center rounded-sm bg-warning-bg px-2 py-0.5 text-warning-text outline-none focus-visible:outline-2 focus-visible:outline-focus"
+    >
+      <span className="truncate">
+        <Value r={r} k={k} />
+      </span>
+      <span
+        id={tipId}
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-0 z-(--z-popover) mb-1 hidden rounded-md bg-ink px-3 py-1.5 text-caption whitespace-nowrap text-surface shadow-pop group-hover:block group-focus-visible:block"
+      >
+        {issues.map((e) => e.message).join(', ')}
+      </span>
+    </span>
+  )
 }
 
 function PreviewRow({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
   return (
-    <>
-      <tr className={cn('align-middle', !bad && 'border-b border-line-subtle last:border-b-0')}>
-        <td className="py-2.5 pl-8">{bad && <CircleAlert size={16} strokeWidth={2} className="text-warning-text" aria-label="고칠 줄" />}</td>
-        <td className="py-2.5 pr-4 text-right text-caption text-ink-3 tabular-nums">{r.line}</td>
-        {COLUMNS.map((c) => (
-          <td key={c.key} className={cn('py-2.5 pr-4', (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums')}>
-            <Cell r={r} k={c.key} />
-          </td>
-        ))}
-      </tr>
-      {bad && (
-        // 고칠 이유는 줄 바로 아래에 본문 색으로(색은 아이콘과 문제 칸에만)
-        <tr className="border-b border-line-subtle">
-          <td />
-          <td />
-          <td colSpan={COLUMNS.length} className="pr-8 pb-3 text-caption text-ink-2">
-            {r.errors.map((e) => e.message).join(', ')}
-          </td>
-        </tr>
-      )}
-    </>
+    <tr className="border-b border-line-subtle last:border-b-0">
+      <td className="py-2 pl-8">{bad && <CircleAlert size={16} strokeWidth={2} className="text-warning-text" aria-label="고칠 줄" />}</td>
+      <td className="py-2 pr-4 text-right text-caption text-ink-3 tabular-nums">{r.line}</td>
+      {COLUMNS.map((c) => (
+        <td key={c.key} className={cn('py-2 pr-4', (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums')}>
+          <Cell r={r} k={c.key} />
+        </td>
+      ))}
+    </tr>
   )
 }
 
+// 휴대폰: 말풍선 대신 이유를 카드 안에 적는다(누르기 전에는 말풍선을 볼 수 없어서)
 function PreviewCard({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
+  const line = (k: Key, strong = false) => (
+    <span className={cn('min-w-0 truncate', issueOf(r, k) ? 'text-warning-text' : !r[k] ? 'text-ink-3' : strong ? 'text-body-strong text-ink' : 'text-ink-2')}>
+      <Value r={r} k={k} />
+    </span>
+  )
   return (
     <li className="flex flex-col gap-1 border-b border-line-subtle px-6 py-3 last:border-b-0">
       <div className="flex items-center gap-2">
         {bad && <CircleAlert size={16} strokeWidth={2} className="shrink-0 text-warning-text" aria-label="고칠 줄" />}
-        <span className="min-w-0 truncate text-body-strong">
-          <Cell r={r} k="name" />
-        </span>
+        {line('name', true)}
         <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">{r.line}번째 줄</span>
       </div>
-      <Cell r={r} k="email" />
-      <Cell r={r} k="university" />
+      {line('email')}
+      {line('university')}
       {bad && <p className="m-0 text-caption text-ink-2">{r.errors.map((e) => e.message).join(', ')}</p>}
     </li>
   )
