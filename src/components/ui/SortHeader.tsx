@@ -17,7 +17,8 @@ export function SortHeader({ label, sortKey, sort, onSort, className, disabled }
         onClick={() => onSort(nextSort(sort, sortKey))}
         aria-label={`${label}, ${state}`}
         className={cn(
-          'group -mx-1.5 inline-flex h-control-compact cursor-pointer items-center gap-1 rounded-sm px-1.5 text-caption hover:bg-control-tonal-hover hover:text-ink disabled:cursor-default',
+          // 바탕 없이 글자색과 화살표로만 상태를 보인다. 표 머리 글자 줄 높이를 그대로 둬서 행 높이가 바뀌지 않게 한다
+          'group inline-flex cursor-pointer items-center gap-1 rounded-xs text-caption hover:text-ink disabled:cursor-default',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           dir ? 'font-semibold text-ink' : 'text-ink-3',
         )}
