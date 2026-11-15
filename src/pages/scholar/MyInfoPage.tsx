@@ -44,7 +44,7 @@ export function MyInfoPage() {
           </Link>
         </>
       )}
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   )
 }

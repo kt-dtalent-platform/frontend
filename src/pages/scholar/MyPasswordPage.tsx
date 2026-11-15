@@ -11,7 +11,8 @@ export function MyPasswordPage() {
   usePageTitle('비밀번호 변경')
   const me = useMe()
   const navigate = useNavigate()
-  const back = () => navigate('/me')
+  // 기록에 쌓지 않고 바꾼다. 쌓으면 내 정보에서 뒤로 가기를 눌렀을 때 빈 비밀번호 폼이 다시 열린다
+  const back = () => navigate('/me', { replace: true })
   return (
     <div className="mx-auto flex w-full max-w-login-card-w flex-col gap-6">
       <Link to="/me" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
@@ -21,7 +22,12 @@ export function MyPasswordPage() {
       {me.isPending && <LoadingCards count={1} />}
       {me.isError && <ErrorState error={me.error} onRetry={() => me.refetch()} />}
       {me.data && (
-        <PasswordChangeForm email={me.data.email} mode="change" onCancel={back} onDone={() => navigate('/me', { state: { toast: '비밀번호를 바꿨어요' } })} />
+        <PasswordChangeForm
+          email={me.data.email}
+          mode="change"
+          onCancel={back}
+          onDone={() => navigate('/me', { replace: true, state: { toast: '비밀번호를 바꿨어요' } })}
+        />
       )}
     </div>
   )
