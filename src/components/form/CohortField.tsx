@@ -73,40 +73,52 @@ export function CohortField({ value, onChange, onBlur, error, name }: Props) {
   )
 }
 
+// 연도만 받고 이름은 "2027년 선발"로 만든다. 기존 기수 이름 규칙을 지키고 입력을 줄인다(11/15)
+const cohortName = (year: string) => `${year}년 선발`
+
 function NewCohortDialog({ programId, taken, onDone, onCancel }: { programId: number; taken: string[]; onDone: (id: number) => void; onCancel: () => void }) {
   const create = useCreateCohort(programId)
   const toast = useToast()
-  // 새해 기수 이름을 미리 채워 둔다(예: 2027년 선발). 기존 이름 규칙을 따른다
-  const [name, setName] = useState(() => `${new Date().getFullYear() + 1}년 선발`)
+  const [year, setYear] = useState(() => String(new Date().getFullYear() + 1))
   const [error, setError] = useState<string | null>(null)
 
   const submit = async () => {
-    const v = name.trim()
-    if (!v) return setError('기수 이름을 입력하세요.')
-    if (v.length > 50) return setError('50자 안으로 입력하세요.')
-    if (taken.includes(v)) return setError('이미 있는 기수예요.')
+    const y = year.trim()
+    if (!/^\d{4}$/.test(y) || Number(y) < 2000 || Number(y) > 2100) return setError('선발 연도를 네 자리 숫자로 입력하세요.')
+    const name = cohortName(y)
+    if (taken.includes(name)) return setError(`${name} 기수가 이미 있어요.`)
     try {
-      const c = await create.mutateAsync({ name: v })
+      const c = await create.mutateAsync({ name })
       toast(`${c.name} 기수를 만들었어요`)
       onDone(c.id)
     } catch (err) {
       setError(
-        err instanceof ApiError && err.code === 'DUPLICATE_COHORT' ? '이미 있는 기수예요.' : err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.',
+        err instanceof ApiError && err.code === 'DUPLICATE_COHORT'
+          ? `${name} 기수가 이미 있어요.`
+          : err instanceof ApiError
+            ? err.message
+            : '잠시 뒤 다시 시도하세요.',
       )
     }
   }
 
   return (
     <FormDialog open title="새 기수 만들기" submitLabel="만들기" busy={create.isPending} onSubmit={() => void submit()} onCancel={onCancel}>
-      <LabeledField label="기수 이름" required hint="장학생을 뽑은 해로 적어요." error={error ?? undefined}>
+      <LabeledField label="선발 연도" required hint={`기수 이름은 '${cohortName(year || '0000')}'로 만들어져요.`} error={error ?? undefined}>
         {(p) => (
-          <input
-            {...p}
-            value={name}
-            maxLength={50}
-            onChange={(e) => (setName(e.target.value), setError(null))}
-            className={cn(fieldControl, fieldBorder(!!error))}
-          />
+          // 숫자 칸 바로 뒤에 '년 선발'(칸 밖 글자). 칸은 네 자리에 맞춘 폭
+          <div className="flex items-center gap-2">
+            <input
+              {...p}
+              value={year}
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={4}
+              onChange={(e) => (setYear(e.target.value.replace(/\D/g, '')), setError(null))}
+              className={cn(fieldControl, fieldBorder(!!error), 'w-28 tabular-nums')}
+            />
+            <span className="text-ink">년 선발</span>
+          </div>
         )}
       </LabeledField>
     </FormDialog>
