@@ -1,3 +1,4 @@
+import { sortRows } from './sort'
 // 담당자 화면 목업. 모양은 노션 명세서(옛 자료)에서 MVP 범위만 가져왔다(확인 필요).
 import type { Cohort, CreateRequestBody, RequestRow, RequestTemplate } from '../api/manager'
 import { dueIn } from './db'
@@ -63,8 +64,13 @@ export function rows(): MockRow[] {
   return [...created(), ...list].map((r) => (ed[r.id] ? { ...r, ...ed[r.id].row } : r))
 }
 
-export function requestList(status: string | null, page: number, pageSize: number) {
-  const all = rows().filter((r) => !status || r.status === status)
+export function requestList(status: string | null, page: number, pageSize: number, sort: string | null = null) {
+  const order = ['IN_PROGRESS', 'DRAFT', 'CLOSED']
+  const all = sortRows(
+    rows().filter((r) => !status || r.status === status),
+    sort,
+    { title: (r) => r.title, status: (r) => order.indexOf(r.status), closesAt: (r) => r.closesAt },
+  )
   const p = Math.max(1, page)
   return { items: all.slice((p - 1) * pageSize, p * pageSize), page: p, pageSize, total: all.length }
 }

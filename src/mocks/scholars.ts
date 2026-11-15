@@ -1,3 +1,4 @@
+import { sortRows } from './sort'
 // 장학생 목업. 응답 모양은 백엔드 KT-10~13 기준. 등록·수정은 sessionStorage에 남긴다.
 import type { AccountStatus, ScholarCreate, ScholarDetail, ScholarItem, ScholarUpdate, StatusChange, StatusInfo, WithdrawalReason } from '../api/scholars'
 import { now } from './db'
@@ -79,7 +80,15 @@ export function scholarList(q: URLSearchParams) {
   const list = all().filter(
     (r) => (!cohortId || r.cohort.id === cohortId) && (!status || r.status === status) && (!keyword || r.name.includes(keyword) || r.email.includes(keyword)),
   )
-  const items: ScholarItem[] = list.slice((page - 1) * size, page * size).map((r) => ({
+  const statusOrder = ['ENROLLED', 'COMPLETED', 'WITHDRAWN']
+  const sorted = sortRows(list, q.get('sort'), {
+    name: (r) => r.name,
+    cohort: (r) => r.cohort.name,
+    university: (r) => r.university,
+    status: (r) => statusOrder.indexOf(r.status),
+    email: (r) => r.email,
+  })
+  const items: ScholarItem[] = sorted.slice((page - 1) * size, page * size).map((r) => ({
     id: r.id,
     name: r.name,
     email: r.email,

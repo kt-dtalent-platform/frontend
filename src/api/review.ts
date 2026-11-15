@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { sortParam, type Sort } from '../lib/sort'
 import { ApiError, BASE_URL, api } from './client'
 import { tokenStore } from './token'
 import type { SubmissionStatus } from './types'
@@ -33,13 +34,16 @@ export type SubmissionPage = {
 // 화면의 상태 칩. 검토 대기는 SUBMITTED·RESUBMITTED를 함께 센다
 export type StatusFilter = 'NOT_SUBMITTED' | 'WAITING' | 'REVISION_REQUIRED' | 'CONFIRMED'
 
-export function useRequestSubmissions(requestId: number, q: { status: StatusFilter | null; keyword: string; page: number; pageSize?: number }) {
+export function useRequestSubmissions(requestId: number, q: { status: StatusFilter | null; keyword: string; page: number; pageSize?: number; sort?: Sort }) {
   const pageSize = q.pageSize ?? 20
   const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
+  // 열 정렬. 백엔드에 아직 없음(11/15 요청). 없으면 서버 기본 순서(검토 대기 먼저)
+  const order = sortParam(q.sort ?? null)
+  if (order) params.set('sort', order)
   return useQuery({
-    queryKey: ['manager', 'submissions', requestId, q.status, q.keyword, q.page, pageSize],
+    queryKey: ['manager', 'submissions', requestId, q.status, q.keyword, q.page, pageSize, order],
     queryFn: () => api<SubmissionPage>(`/requests/${requestId}/submissions?${params}`),
     placeholderData: keepPreviousData,
   })

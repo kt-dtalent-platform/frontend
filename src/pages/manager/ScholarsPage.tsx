@@ -15,6 +15,8 @@ import { buttonClass } from '../../components/ui/buttonClass'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
+import { SortHeader } from '../../components/ui/SortHeader'
+import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
@@ -32,6 +34,9 @@ const statuses: { value: ScholarStatus | null; label: string }[] = [
 
 type Notice = { title: string; body: string }
 
+// 열 이름으로 정렬할 수 있는 열. 서버 정렬 키 이름은 백엔드 확인 필요
+const sortKeys = ['name', 'cohort', 'university', 'status', 'email'] as const
+
 // A05 장학생 명단: 상태, 기수, 이름(이메일) 찾기, 여러 명 골라 상태 바꾸기, 내보내기. 행을 누르면 상세
 export function ScholarsPage() {
   usePageTitle('장학생')
@@ -40,6 +45,7 @@ export function ScholarsPage() {
   const cohortId = Number(params.get('cohort')) || null
   const keyword = params.get('q') ?? ''
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
+  const sort = parseSort(params.get('sort'), sortKeys)
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기·메뉴 링크로 주소의 검색어가 바뀌면 입력칸도 맞춘다(안 맞추면 지운 검색어가 다시 들어간다)
   const [seen, setSeen] = useState(keyword)
@@ -49,7 +55,7 @@ export function ScholarsPage() {
   }
   const me = useMe()
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
-  const query = useScholars({ cohortId, status, keyword, page })
+  const query = useScholars({ cohortId, status, keyword, page, sort })
   const data = query.data
 
   // 등록에서 넘어온 결과 안내를 한 번만 보여 준다
@@ -60,7 +66,7 @@ export function ScholarsPage() {
     if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
   }, [location, navigate])
 
-  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number }) => {
+  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     const c = next.cohort === undefined ? cohortId : next.cohort
@@ -68,6 +74,8 @@ export function ScholarsPage() {
     if (s) p.set('status', s)
     if (c) p.set('cohort', String(c))
     if (q) p.set('q', q)
+    const o = sortParam(next.sort === undefined ? sort : next.sort)
+    if (o) p.set('sort', o)
     if ((next.page ?? 1) > 1) p.set('page', String(next.page))
     setParams(p, { replace: true })
   }
@@ -255,21 +263,46 @@ export function ScholarsPage() {
                     <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
                       <span className="text-label text-ink">{data.total}</span>명
                     </span>
-                    <span aria-hidden className="hidden w-40 text-caption text-ink-3 md:block">
-                      이름
-                    </span>
-                    <span aria-hidden className="hidden w-28 text-caption text-ink-3 md:block">
-                      기수
-                    </span>
-                    <span aria-hidden className="hidden w-44 text-caption text-ink-3 md:block">
-                      학교
-                    </span>
-                    <span aria-hidden className="hidden w-56 text-caption text-ink-3 md:block">
-                      상태
-                    </span>
-                    <span aria-hidden className="hidden flex-1 text-caption text-ink-3 md:block">
-                      이메일
-                    </span>
+                    <SortHeader
+                      label="이름"
+                      sortKey="name"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-40 md:block"
+                    />
+                    <SortHeader
+                      label="기수"
+                      sortKey="cohort"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-28 md:block"
+                    />
+                    <SortHeader
+                      label="학교"
+                      sortKey="university"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-44 md:block"
+                    />
+                    <SortHeader
+                      label="상태"
+                      sortKey="status"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-56 md:block"
+                    />
+                    <SortHeader
+                      label="이메일"
+                      sortKey="email"
+                      sort={sort}
+                      onSort={(o) => set({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden flex-1 md:block"
+                    />
                     <span className="hidden text-caption text-ink-3 tabular-nums md:block">
                       <span className="text-label text-ink">{data.total}</span>명
                     </span>

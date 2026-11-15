@@ -8,6 +8,8 @@ import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { Pagination } from '../../components/ui/Pagination'
+import { SortHeader } from '../../components/ui/SortHeader'
+import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -43,6 +45,7 @@ export function RequestSubmissionsPage() {
   const status = (filters.find((f) => f.value === params.get('status'))?.value ?? null) as StatusFilter | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const keyword = params.get('q') ?? ''
+  const sort = parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt'])
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기 등으로 주소의 검색어가 바뀌면 입력칸도 맞춘다
   const [seen, setSeen] = useState(keyword)
@@ -50,7 +53,7 @@ export function RequestSubmissionsPage() {
     setSeen(keyword)
     setTyped(keyword)
   }
-  const query = useRequestSubmissions(requestId, { status, keyword, page })
+  const query = useRequestSubmissions(requestId, { status, keyword, page, sort })
   const data = query.data
   usePageTitle(data ? `${data.request.title} 제출 현황` : '제출 현황')
 
@@ -62,12 +65,14 @@ export function RequestSubmissionsPage() {
     if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
   }, [location, navigate])
 
-  const go = (next: { status?: StatusFilter | null; page?: number; q?: string }) => {
+  const go = (next: { status?: StatusFilter | null; page?: number; q?: string; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     const q = next.q ?? keyword
     if (s) p.set('status', s)
     if (q) p.set('q', q)
+    const o = sortParam(next.sort === undefined ? sort : next.sort)
+    if (o) p.set('sort', o)
     if ((next.page ?? 1) > 1) p.set('page', String(next.page))
     setParams(p, { replace: true })
   }
@@ -197,13 +202,20 @@ export function RequestSubmissionsPage() {
           ) : (
             <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
-                <div aria-hidden className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                  <span className="flex-1">이름</span>
-                  <span className="w-28">기수</span>
-                  <span className="w-44">학교</span>
-                  <span className="w-48">상태</span>
-                  <span className="w-20 text-right">평점</span>
-                  <span className="w-28 text-right">제출</span>
+                <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
+                  <SortHeader label="이름" sortKey="name" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
+                  <SortHeader label="기수" sortKey="cohort" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28" />
+                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-44" />
+                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-48" />
+                  <SortHeader label="평점" sortKey="gpa" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-20 text-right" />
+                  <SortHeader
+                    label="제출"
+                    sortKey="submittedAt"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-28 text-right"
+                  />
                   <span className="w-5" />
                 </div>
                 <ul className="m-0 list-none p-0">

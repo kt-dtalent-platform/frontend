@@ -224,7 +224,7 @@ export const handlers = [
     if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 프로그램입니다')
     await delay(250)
     const q = new URL(request.url).searchParams
-    const list = requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    const list = requestList(q.get('status'), Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20), q.get('sort'))
     // 목업 행의 숫자를 제출 현황과 맞춘다(보완 요청, 확인 완료를 처리하면 목록에도 반영)
     const items = list.items.map((r) => {
       const s = submissionList(r.id, null, '', 1, 1)?.summary
@@ -239,7 +239,14 @@ export const handlers = [
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')
     await delay(200)
     const q = new URL(request.url).searchParams
-    const data = submissionList(Number(params.requestId), q.get('status'), q.get('keyword') ?? '', Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20))
+    const data = submissionList(
+      Number(params.requestId),
+      q.get('status'),
+      q.get('keyword') ?? '',
+      Number(q.get('page') ?? 1),
+      Number(q.get('page_size') ?? 20),
+      q.get('sort'),
+    )
     return data ? ok(path, data) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
   }),
 
