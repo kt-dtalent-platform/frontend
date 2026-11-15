@@ -98,14 +98,14 @@ export function RequestsPage() {
             <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
               <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
               <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
-              <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-48" />
-              <span aria-hidden className="w-20 text-right">
+              <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
+              <span aria-hidden className="w-24 text-right">
                 제출
               </span>
-              <span aria-hidden className="w-20 text-right">
+              <span aria-hidden className="w-24 text-right">
                 검토 대기
               </span>
-              <span aria-hidden className="w-20 text-right">
+              <span aria-hidden className="w-24 text-right">
                 보완 필요
               </span>
               <span className="w-5" />
@@ -148,13 +148,13 @@ function Row({ row }: { row: RequestRow }) {
         <span className="md:w-24">
           <RequestStatusBadge status={row.status} />
         </span>
-        <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-48">
+        <span className="text-caption whitespace-nowrap text-ink-3 tabular-nums md:w-52">
           <span className="md:sr-only">마감 </span>
           {formatDue(due)}
           {row.status === 'IN_PROGRESS' && <span className={cn('ml-1', urgent && 'font-semibold text-warning-text')}>{dDayText(dDay, overdue)}</span>}
         </span>
         <span className="flex gap-4 text-caption text-ink-3 tabular-nums md:contents">
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">제출 </span>
             {row.targetCount > 0 ? (
               <>
@@ -164,11 +164,11 @@ function Row({ row }: { row: RequestRow }) {
               '대상 미정'
             )}
           </span>
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">검토 대기 </span>
             <span className={cn('text-body', (row.waitingCount ?? 0) > 0 ? 'font-semibold text-ink' : 'text-ink-3')}>{row.waitingCount ?? '–'}</span>
           </span>
-          <span className="md:w-20 md:text-right">
+          <span className="md:w-24 md:text-right">
             <span className="md:sr-only">보완 필요 </span>
             <span className={cn('text-body', row.revisionCount > 0 ? 'text-warning-text' : 'text-ink-3')}>{row.revisionCount}</span>
           </span>
