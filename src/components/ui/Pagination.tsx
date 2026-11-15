@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Button } from './Button'
 
-// 쪽 번호. 가운데에 두고, 쪽이 많으면 처음, 끝, 지금 쪽 앞뒤만 보인다(1 … 4 5 6 … 12)
+// 쪽 번호(페이지네이션). 가운데에 두고, 쪽이 많으면 처음, 끝, 지금 쪽 앞뒤만 보인다(1 … 4 5 6 … 12)
 function pages(current: number, last: number) {
   const out: (number | '…')[] = []
   for (let p = 1; p <= last; p++) {
@@ -21,7 +21,7 @@ export function Pagination({ page, lastPage, disabled, onChange }: { page: numbe
       </Button>
       {pages(page, lastPage).map((p, i) =>
         p === '…' ? (
-          <span key={`gap-${i}`} aria-hidden className="w-8 text-center text-caption text-ink-3">
+          <span key={`gap-${i}`} aria-hidden className="inline-flex h-control-compact min-w-control-compact items-center justify-center text-ink-3">
             …
           </span>
         ) : (
@@ -33,10 +33,11 @@ export function Pagination({ page, lastPage, disabled, onChange }: { page: numbe
             disabled={disabled}
             onClick={() => p !== page && onChange(p)}
             className={cn(
-              'h-control-compact min-w-control-compact rounded-md px-2 text-label-sm disabled:cursor-not-allowed',
+              'h-control-compact min-w-control-compact rounded-md px-2 text-body disabled:cursor-not-allowed',
+              // 지금 쪽은 옅은 회색 바탕 + 굵은 글자. 검은 칸은 화면 맨 아래에서 가장 눈에 띄어 주요 버튼처럼 보였다(11/15)
               p === page
-                ? 'bg-action text-on-action'
-                : 'text-ink-2 hover:bg-surface-hover active:bg-surface-sunken disabled:text-ink-disabled disabled:hover:bg-transparent',
+                ? 'bg-control-tonal font-semibold text-ink'
+                : 'text-ink-3 hover:bg-control-tonal-hover hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent',
             )}
           >
             {p}
