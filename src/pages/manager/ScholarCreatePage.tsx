@@ -1,13 +1,12 @@
 import { ChevronLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
-import { useMe } from '../../api/auth'
-import { useCohorts } from '../../api/manager'
 import { ApiError } from '../../api/client'
 import { PHONE, useCreateScholar } from '../../api/scholars'
+import { CohortField } from '../../components/form/CohortField'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
-import { LabeledField, SelectBox } from '../../components/form/LabeledField'
+import { LabeledField } from '../../components/form/LabeledField'
 import { SchoolField } from '../../components/form/SchoolCombobox'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
@@ -22,12 +21,10 @@ type Values = { cohortId: string; name: string; email: string; phone: string; un
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const opt = (v: string) => v.trim() || null
 
-// A06 장학생 등록: 한 명씩 등록(백엔드 KT-13 요청 형식 기준). 여러 명은 A07 엑셀로 등록
+// A06 장학생 등록: 한 명씩 등록(백엔드 KT-13 요청 형식 기준). 여러 명은 A07 일괄 등록
 export function ScholarCreatePage() {
   usePageTitle('장학생 등록')
   const navigate = useNavigate()
-  const me = useMe()
-  const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
   const create = useCreateScholar()
   // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
   const [done, setDone] = useState<string | null>(null)
@@ -76,24 +73,14 @@ export function ScholarCreatePage() {
         <UnsavedChangesGuard when={formState.isDirty && !done} />
         <section className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-8 md:px-8">
           <h2 className="m-0 text-title-2">기본 정보</h2>
-          <LabeledField label="기수" required error={e.cohortId?.message}>
-            {(p) => (
-              <SelectBox>
-                <select
-                  {...p}
-                  className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(!!e.cohortId))}
-                  {...register('cohortId', { required: '기수를 고르세요.' })}
-                >
-                  <option value="">기수 선택</option>
-                  {cohorts.data?.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </SelectBox>
+          <Controller
+            control={control}
+            name="cohortId"
+            rules={{ required: '기수를 고르세요.' }}
+            render={({ field }) => (
+              <CohortField name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} error={e.cohortId?.message} />
             )}
-          </LabeledField>
+          />
           <LabeledField label="이름" required error={e.name?.message}>
             {(p) => (
               <input

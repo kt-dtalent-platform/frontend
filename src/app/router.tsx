@@ -60,7 +60,7 @@ export const router = createBrowserRouter(
         { path: 'submissions', element: <Navigate to="/manager/requests" replace /> },
         { path: 'scholars', element: <ScholarsPage /> }, // A05
         { path: 'scholars/new', element: <ScholarCreatePage /> }, // A06
-        { path: 'scholars/import', element: <ScholarImportPage /> }, // A07 엑셀로 일괄 등록
+        { path: 'scholars/import', element: <ScholarImportPage /> }, // A07 장학생 일괄 등록(엑셀)
         { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A05 상세
       ],
     },

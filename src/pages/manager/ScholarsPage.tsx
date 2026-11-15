@@ -149,7 +149,7 @@ export function ScholarsPage() {
         <div className="flex items-center gap-2">
           <Link to="/manager/scholars/import" className={buttonClass({ variant: 'secondary', size: 'default' })}>
             <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
-            엑셀로 등록
+            일괄 등록
           </Link>
           <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
             <Plus size={16} strokeWidth={2} aria-hidden />

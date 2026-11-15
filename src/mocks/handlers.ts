@@ -3,7 +3,7 @@ import type { CreateRequestBody } from '../api/manager'
 import type { ScholarBulkCreate, ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
-import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
+import { cohorts, createCohort, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, createScholarsBulk, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { searchSchools } from './schools'
@@ -339,6 +339,17 @@ export const handlers = [
     const path = '/v1/request-templates'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     return ok(path, { items: templates })
+  }),
+
+  // 기수 만들기(백엔드에 아직 없음, 11/15 요청)
+  http.post(`${BASE}/programs/:programId/cohorts`, async ({ params, request }) => {
+    const path = `/v1/programs/${params.programId}/cohorts`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    const name = String(((await request.json()) as { name?: string }).name ?? '').trim()
+    if (!name || name.length > 50) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', ['name'])
+    await delay(300)
+    const r = createCohort(name)
+    return 'error' in r ? fail(path, 409, 'DUPLICATE_COHORT', '이미 있는 기수 이름입니다.') : ok(path, r)
   }),
 
   http.get(`${BASE}/programs/:programId/cohorts`, ({ params, request }) => {

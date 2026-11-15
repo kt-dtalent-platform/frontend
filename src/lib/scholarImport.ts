@@ -7,12 +7,14 @@ import { PHONE } from '../api/scholars'
 export const MAX_ROWS = 500
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
+export type Key = 'name' | 'email' | 'university' | 'phone' | 'major' | 'studentNo'
+// 문제가 있는 칸과 이유. 화면은 그 칸을 표시하고 줄 아래에 이유를 적는다
+export type RowIssue = { field: Key; message: string }
+
 export type ImportRow = Omit<ScholarCreate, 'cohortId'> & {
   line: number // 엑셀 줄 번호(제목 줄이 1)
-  errors: string[]
+  errors: RowIssue[]
 }
-
-type Key = 'name' | 'email' | 'university' | 'phone' | 'major' | 'studentNo'
 
 // 열 이름은 순서와 상관없이 찾는다. *, (필수), 띄어쓰기는 무시
 const HEADERS: Record<Key, string[]> = {
@@ -81,22 +83,22 @@ export function parseScholarSheet(data: unknown[][]): ParseResult {
 
   const seen = new Map<string, number>()
   for (const r of rows) {
-    const e = r.errors
-    if (!r.name) e.push('이름이 비어 있어요')
-    else if (r.name.length > 50) e.push('이름은 50자까지 쓸 수 있어요')
-    if (!r.email) e.push('이메일이 비어 있어요')
-    else if (!EMAIL.test(r.email)) e.push('이메일 형식이 아니에요')
+    const add = (field: Key, message: string) => r.errors.push({ field, message })
+    if (!r.name) add('name', '이름이 비어 있어요')
+    else if (r.name.length > 50) add('name', '이름은 50자까지 쓸 수 있어요')
+    if (!r.email) add('email', '이메일이 비어 있어요')
+    else if (!EMAIL.test(r.email)) add('email', '이메일 형식이 아니에요')
     else {
       const key = r.email.toLowerCase()
       const first = seen.get(key)
-      if (first) e.push(`${first}번째 줄과 이메일이 같아요`)
+      if (first) add('email', `${first}번째 줄과 이메일이 같아요`)
       else seen.set(key, r.line)
     }
-    if (!r.university) e.push('학교가 비어 있어요')
-    else if (r.university.length > 100) e.push('학교는 100자까지 쓸 수 있어요')
-    if (r.phone && !PHONE.test(r.phone)) e.push('연락처는 숫자와 -만 쓸 수 있어요')
-    if (r.major && r.major.length > 100) e.push('전공은 100자까지 쓸 수 있어요')
-    if (r.studentNo && r.studentNo.length > 30) e.push('학번은 30자까지 쓸 수 있어요')
+    if (!r.university) add('university', '학교가 비어 있어요')
+    else if (r.university.length > 100) add('university', '학교는 100자까지 쓸 수 있어요')
+    if (r.phone && !PHONE.test(r.phone)) add('phone', '연락처는 숫자와 -만 쓸 수 있어요')
+    if (r.major && r.major.length > 100) add('major', '전공은 100자까지 쓸 수 있어요')
+    if (r.studentNo && r.studentNo.length > 30) add('studentNo', '학번은 30자까지 쓸 수 있어요')
   }
   return { rows, fileError: null }
 }
