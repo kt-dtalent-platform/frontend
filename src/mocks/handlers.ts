@@ -6,6 +6,7 @@ import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, r
 import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
+import { searchSchools } from './schools'
 import { exportCsv, managerDashboard, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/v1'
@@ -365,6 +366,15 @@ export const handlers = [
   }),
 
   // 담당자: 장학생 명단·상세·수정·등록, 기수 목록
+  // 학교 검색(백엔드에 아직 없음, 11/15 요청)
+  http.get(`${BASE}/schools`, async ({ request }) => {
+    const path = '/v1/schools'
+    if (!roleOf(request)) return unauthorized(path)
+    await delay(150)
+    const q = new URL(request.url).searchParams
+    return ok(path, searchSchools(q.get('keyword') ?? '', Number(q.get('size') ?? 8)))
+  }),
+
   http.get(`${BASE}/scholars`, async ({ request }) => {
     const path = '/v1/scholars'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')

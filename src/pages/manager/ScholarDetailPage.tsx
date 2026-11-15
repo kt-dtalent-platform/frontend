@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client'
 import { PHONE, withdrawalText, useChangeScholarStatus, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
+import { SchoolField } from '../../components/form/SchoolCombobox'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -138,7 +139,7 @@ type Values = { name: string; phone: string; university: string; major: string }
 
 function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 'unchanged' | null) => void }) {
   const update = useUpdateScholar(s.id)
-  const { register, handleSubmit, formState, setError } = useForm<Values>({
+  const { register, handleSubmit, formState, setError, control } = useForm<Values>({
     defaultValues: { name: s.name, phone: '', university: s.university, major: s.major ?? '' },
     mode: 'onBlur',
   })
@@ -188,20 +189,15 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
             />
           )}
         </LabeledField>
-        <LabeledField label="학교" error={e.university?.message}>
-          {(p) => (
-            <input
-              {...p}
-              autoComplete="off"
-              className={cn(fieldControl, fieldBorder(!!e.university))}
-              {...register('university', {
-                // 백엔드가 빈 값으로 지우기를 아직 지원하지 않는다
-                validate: (x) => (x.trim() || !s.university ? true : '학교는 비워 둘 수 없어요.'),
-                maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
-              })}
-            />
-          )}
-        </LabeledField>
+        <SchoolField
+          control={control}
+          name="university"
+          rules={{
+            // 백엔드가 빈 값으로 지우기를 아직 지원하지 않는다
+            validate: (x: string) => (x.trim() || !s.university ? true : '학교는 비워 둘 수 없어요.'),
+            maxLength: { value: 100, message: '100자 안으로 입력하세요.' },
+          }}
+        />
         <LabeledField label="전공" error={e.major?.message}>
           {(p) => (
             <input
