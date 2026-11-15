@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { downloadExport, submissionExportColumns, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, toDate } from '../../lib/time'
@@ -56,14 +56,6 @@ export function RequestSubmissionsPage() {
   const query = useRequestSubmissions(requestId, { status, keyword, page, sort })
   const data = query.data
   usePageTitle(data ? `${data.request.title} 제출 현황` : '제출 현황')
-
-  // 마지막 검토를 마치고 넘어왔으면 결과를 한 번 보여 준다
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [notice] = useState(() => (location.state as { notice?: { title: string; body: string } } | null)?.notice)
-  useEffect(() => {
-    if (location.state) navigate(location.pathname + location.search, { replace: true, state: null })
-  }, [location, navigate])
 
   const go = (next: { status?: StatusFilter | null; page?: number; q?: string; sort?: Sort }) => {
     const p = new URLSearchParams()
@@ -130,12 +122,6 @@ export function RequestSubmissionsPage() {
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         요청 관리
       </Link>
-
-      {notice && (
-        <Banner tone="success" title={notice.title}>
-          {notice.body}
-        </Banner>
-      )}
 
       {query.isPending && <LoadingCards count={3} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}

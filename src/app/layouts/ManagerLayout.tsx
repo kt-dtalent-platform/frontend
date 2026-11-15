@@ -124,6 +124,14 @@ function MobileNav() {
 // C02 담당자: 왼쪽 메뉴(232) + 넓은 본문(1200). 1024px 미만은 메뉴를 접는다.
 export function ManagerLayout() {
   const [compact, toggleCompact] = useCompactNav()
+  // 완료 알림을 왼쪽 메뉴를 뺀 본문 가운데에 두도록 메뉴 폭을 알려 준다(1024px 이상에서만 쓰임)
+  useEffect(() => {
+    const root = document.documentElement.style
+    root.setProperty('--content-left', `var(--spacing-${compact ? 'sidebar-rail' : 'sidebar-w'})`)
+    return () => {
+      root.removeProperty('--content-left')
+    }
+  }, [compact])
   return (
     <div className="flex min-h-dvh">
       <aside
