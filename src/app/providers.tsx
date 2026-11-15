@@ -2,6 +2,7 @@ import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-qu
 import { useState, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { tokenStore } from '../api/token'
+import { ToastProvider } from '../components/ui/Toast'
 import { appUrl } from '../lib/env'
 
 // 401(로그인 만료)이면 토큰을 지우고 로그인 화면으로 보낸다.
@@ -29,5 +30,9 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       }),
   )
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={client}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
 }

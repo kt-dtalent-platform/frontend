@@ -16,6 +16,7 @@ import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
+import { useToast } from '../../components/ui/useToast'
 
 // A05 장학생 상세: 기본 정보 보기, 이름, 연락처, 학교, 전공 고치기(백엔드 KT-11, 12 기준), 상태 바꾸기
 export function ScholarDetailPage() {
@@ -40,7 +41,10 @@ export function ScholarDetailPage() {
 function Detail({ s }: { s: ScholarDetail }) {
   const [editing, setEditing] = useState(false)
   const [changing, setChanging] = useState(false)
-  const [result, setResult] = useState<'saved' | 'unchanged' | 'status' | null>(null)
+  const toast = useToast()
+  const done = (r: 'saved' | 'unchanged' | 'status' | null) => {
+    if (r) toast({ saved: '정보를 수정했어요', unchanged: '바뀐 내용이 없어요', status: '상태를 바꿨어요' }[r])
+  }
   const changeStatus = useChangeScholarStatus(s.id)
   return (
     <>
@@ -54,7 +58,7 @@ function Detail({ s }: { s: ScholarDetail }) {
           onCancel={() => setChanging(false)}
           onSubmit={(body) =>
             changeStatus.mutate(body, {
-              onSuccess: () => (setChanging(false), setResult('status')),
+              onSuccess: () => (setChanging(false), done('status')),
               // 실패하면 대화상자를 닫고 아래 안내로 알린다
               onError: () => setChanging(false),
             })
@@ -66,21 +70,6 @@ function Detail({ s }: { s: ScholarDetail }) {
           {changeStatus.error instanceof ApiError ? changeStatus.error.message : '잠시 뒤 다시 시도하세요.'}
         </Banner>
       )}
-      {result === 'status' && (
-        <Banner tone="success" title="상태를 바꿨어요">
-          바뀐 상태가 명단에도 반영됐어요.
-        </Banner>
-      )}
-      {result === 'saved' && (
-        <Banner tone="success" title="정보를 고쳤어요">
-          바뀐 내용이 명단에도 반영됐어요.
-        </Banner>
-      )}
-      {result === 'unchanged' && (
-        <Banner tone="info" title="바뀐 내용이 없어요">
-          저장할 것이 없어 그대로 두었어요.
-        </Banner>
-      )}
       {/* 상태와 기본 정보를 구역으로 나누고 각 구역 머리에 작은 고치기 버튼(32px)을 둔다(11/12).
           상태는 수료 연도, 중단 사유를 함께 받아야 해서 정보 수정과 따로 바꾼다 */}
       <section aria-labelledby={`status-${s.id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
@@ -89,7 +78,7 @@ function Detail({ s }: { s: ScholarDetail }) {
             상태
           </h2>
           {!editing && (
-            <Button size="compact" onClick={() => (setResult(null), changeStatus.reset(), setChanging(true))}>
+            <Button size="compact" onClick={() => (changeStatus.reset(), setChanging(true))}>
               상태 바꾸기
             </Button>
           )}
@@ -101,14 +90,14 @@ function Detail({ s }: { s: ScholarDetail }) {
         </div>
       </section>
       {editing ? (
-        <EditForm s={s} onDone={(r) => (setEditing(false), setResult(r))} />
+        <EditForm s={s} onDone={(r) => (setEditing(false), done(r))} />
       ) : (
         <section aria-labelledby={`info-${s.id}`} className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-6 md:px-8">
           <div className="flex items-center justify-between gap-4">
             <h2 id={`info-${s.id}`} className="m-0 text-title-2">
               기본 정보
             </h2>
-            <Button size="compact" onClick={() => (setResult(null), setEditing(true))}>
+            <Button size="compact" onClick={() => setEditing(true)}>
               정보 수정
             </Button>
           </div>

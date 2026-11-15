@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, ExternalLink, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import {
   useConfirm,
@@ -26,8 +26,7 @@ import { formatBytes, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { Checkbox } from '../../components/form/Checkbox'
-
-type Notice = { title: string; body: string }
+import { useToast } from '../../components/ui/useToast'
 
 // A02 개별 검토: 왼쪽 서류 원본 + 오른쪽 입력값과 서류 비교 → 확인 완료 또는 보완 요청. 끝나면 같은 요청의 다음 검토 대기로
 export function SubmissionReviewPage() {
@@ -48,12 +47,7 @@ export function SubmissionReviewPage() {
 
 function Review({ d }: { d: SubmissionDetail }) {
   const navigate = useNavigate()
-  const location = useLocation()
-  // 바로 앞 제출을 처리하고 넘어왔으면 그 결과를 한 번 보여 준다
-  const [notice] = useState(() => (location.state as { notice?: Notice } | null)?.notice)
-  useEffect(() => {
-    if ((location.state as { notice?: Notice } | null)?.notice) navigate(location.pathname, { replace: true, state: null })
-  }, [location, navigate])
+  const toast = useToast()
 
   // 검토 순서: 같은 요청의 검토 대기 전체(이전·다음). 한 요청 대상은 수백 명 안이라 한 번에 받는다
   const queue = useRequestSubmissions(d.requestId, { status: 'WAITING', keyword: '', page: 1, pageSize: 500 })
@@ -71,16 +65,13 @@ function Review({ d }: { d: SubmissionDetail }) {
   const mismatched = (d.analysis?.comparisons ?? []).filter((c) => c.result !== 'MATCH')
 
   // 처리한 뒤: 남은 검토 대기가 있으면 다음 사람으로, 없으면 제출 현황으로
-  const afterAction = (notice: Notice) => {
+  const afterAction = (message: string) => {
     // 다음이 없으면 남은 검토 대기 중 아무나(순서 목록을 못 받았거나 지금 건이 목록에 없을 때도)
     const nextId = next ?? ids.find((id) => id !== d.id) ?? null
-    if (nextId) navigate(`/manager/submissions/${nextId}`, { replace: true, state: { notice } })
-    else
-      navigate(`/manager/requests/${d.requestId}?status=WAITING`, {
-        replace: true,
-        // 순서 목록을 받았을 때만 '남은 게 없다'고 말한다
-        state: { notice: queue.isSuccess ? { ...notice, body: `${notice.body} 남은 검토 대기가 없어요.` } : notice },
-      })
+    // 순서 목록을 받았고 남은 게 없으면 한 문장으로 마무리를 알린다
+    toast(!nextId && queue.isSuccess ? '검토 대기를 모두 처리했어요' : message)
+    if (nextId) navigate(`/manager/submissions/${nextId}`, { replace: true })
+    else navigate(`/manager/requests/${d.requestId}?status=WAITING`, { replace: true })
   }
 
   const onConfirm = () =>
@@ -89,7 +80,7 @@ function Review({ d }: { d: SubmissionDetail }) {
       {
         onSuccess: () => {
           setConfirming(false)
-          afterAction({ title: `${d.scholar.name} 확인 완료`, body: '장학생에게 결과가 보여요.' })
+          afterAction(`${d.scholar.name} 님 제출을 확인했어요`)
         },
         onError: () => setConfirming(false),
       },
@@ -110,12 +101,6 @@ function Review({ d }: { d: SubmissionDetail }) {
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         {d.requestTitle}
       </Link>
-
-      {notice && (
-        <Banner tone="success" title={notice.title}>
-          {notice.body}
-        </Banner>
-      )}
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -223,7 +208,7 @@ function Review({ d }: { d: SubmissionDetail }) {
             {
               onSuccess: () => {
                 setRevising(false)
-                afterAction({ title: `${d.scholar.name}에게 보완 요청을 보냈어요`, body: `${labelsOf(d, fieldKeys)} 항목만 다시 받아요.` })
+                afterAction(`${d.scholar.name} 님에게 보완 요청을 보냈어요`)
               },
               onError: () => setRevising(false),
             },

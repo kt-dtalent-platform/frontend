@@ -26,8 +26,9 @@ import { cn } from '../../lib/cn'
 import { kstParts, kstToday, kstToUtc } from '../../lib/time'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { Radio } from '../../components/form/Radio'
+import { useToast } from '../../components/ui/useToast'
 
-export type Notice = { tone: 'success' | 'warning'; title: string; body: string }
+export type Notice = { tone: 'warning'; title: string; body: string }
 
 type Values = {
   templateId: string
@@ -159,7 +160,8 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const publish = usePublishRequest()
   const [confirming, setConfirming] = useState(false)
   // 저장이 끝나 이동할 곳. 이동 확인 창이 뜨지 않도록 렌더 뒤에 이동한다
-  const [leaving, setLeaving] = useState<{ status: RequestStatus; notice: Notice } | null>(null)
+  // 끝난 일(toast)은 완료 알림으로, 다시 해야 할 일(notice, 공개 실패)은 목록 위 안내로
+  const [leaving, setLeaving] = useState<{ status: RequestStatus; toast?: string; notice?: Notice } | null>(null)
   const [today] = useState(kstToday)
   const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
   const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({
@@ -169,10 +171,13 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   })
   const errors = formState.errors
 
+  const toast = useToast()
   useEffect(() => {
+    if (!leaving) return
+    if (leaving.toast) toast(leaving.toast)
     // replace: 뒤로 가기로 빈 만들기 화면에 돌아오지 않게
-    if (leaving) navigate(`/manager/requests?status=${leaving.status}`, { replace: true, state: { notice: leaving.notice } })
-  }, [leaving, navigate])
+    navigate(`/manager/requests?status=${leaving.status}`, { replace: true, state: leaving.notice ? { notice: leaving.notice } : null })
+  }, [leaving, navigate, toast])
 
   const [templateId, cohortId] = useWatch({ control, name: ['templateId', 'cohortId'] })
   const template = templates.find((t) => String(t.id) === templateId)
@@ -212,10 +217,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const onSaveDraft = handleSubmit(async (v) => {
     try {
       await save(v)
-      setLeaving({
-        status: 'DRAFT',
-        notice: { tone: 'success', title: '작성 중으로 저장했어요', body: `"${v.title.trim()}" 요청은 공개하기 전까지 장학생에게 보이지 않아요.` },
-      })
+      setLeaving({ status: 'DRAFT', toast: '작성 중으로 저장했어요' })
     } catch (error) {
       showServerErrors(error)
     }
@@ -237,11 +239,8 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
     try {
       const id = await save(v)
       try {
-        const result = await publish.mutateAsync(id)
-        setLeaving({
-          status: 'IN_PROGRESS',
-          notice: { tone: 'success', title: '요청을 공개했어요', body: `"${v.title.trim()}" 요청이 장학생 ${result.targetCount}명의 내 할 일에 보여요.` },
-        })
+        await publish.mutateAsync(id)
+        setLeaving({ status: 'IN_PROGRESS', toast: '요청을 공개했어요' })
       } catch {
         // 만들기는 됐고 공개만 실패: 같은 요청을 다시 만들지 않도록 작성 중 목록으로 보낸다
         setLeaving({
