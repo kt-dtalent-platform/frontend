@@ -189,6 +189,8 @@ export function useCreateScholar() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: ScholarCreate) => api<ScholarCreated>('/scholars', { method: 'POST', body }),
+    // 응답에 임시 비밀번호가 있어 끝난 요청 기록을 캐시에 남기지 않는다
+    gcTime: 0,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] }),
   })
 }
