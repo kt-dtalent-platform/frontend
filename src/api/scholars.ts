@@ -62,8 +62,12 @@ export type ScholarItem = StatusInfo & {
 }
 export type ScholarPage = { items: ScholarItem[]; page: number; pageSize: number; total: number }
 
-export function useScholars(q: { cohortId: number | null; status: ScholarStatus | null; keyword: string; page: number; sort?: Sort }) {
-  const params = new URLSearchParams({ page: String(q.page), page_size: '20' })
+// 한 쪽에 보일 수. 백엔드 page_size는 1~100
+export const SCHOLAR_PAGE_SIZES = [20, 50, 100] as const
+
+export function useScholars(q: { cohortId: number | null; status: ScholarStatus | null; keyword: string; page: number; pageSize?: number; sort?: Sort }) {
+  const pageSize = q.pageSize ?? SCHOLAR_PAGE_SIZES[0]
+  const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.cohortId) params.set('cohortId', String(q.cohortId))
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
@@ -71,7 +75,7 @@ export function useScholars(q: { cohortId: number | null; status: ScholarStatus 
   const sort = sortParam(q.sort ?? null)
   if (sort) params.set('sort', sort)
   return useQuery({
-    queryKey: ['manager', 'scholars', q.cohortId, q.status, q.keyword, q.page, sort],
+    queryKey: ['manager', 'scholars', q.cohortId, q.status, q.keyword, q.page, pageSize, sort],
     queryFn: () => api<ScholarPage>(`/scholars?${params}`),
     placeholderData: keepPreviousData,
   })

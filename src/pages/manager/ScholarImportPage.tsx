@@ -1,5 +1,5 @@
-import { CircleCheck, ChevronLeft, Download, FileSpreadsheet, Upload } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type DragEvent } from 'react'
+import { ChevronLeft, Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useBulkCreateScholars } from '../../api/scholars'
@@ -8,7 +8,6 @@ import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { buttonClass } from '../../components/ui/buttonClass'
-import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { useToast } from '../../components/ui/useToast'
 import { cn } from '../../lib/cn'
@@ -19,14 +18,16 @@ import { usePageTitle } from '../../lib/usePageTitle'
 const TEMPLATE = appUrl('/templates/scholar-import.xlsx')
 const FILE_INPUT = 'scholar-import-file'
 
-// 미리보기 열. 파일에 있는 값을 모두 보여 줘서 등록 전에 눈으로 확인하게 한다
-const COLUMNS: { key: Key; label: string; width: string }[] = [
-  { key: 'name', label: '이름', width: 'w-1/8' },
-  { key: 'email', label: '이메일', width: 'w-1/4' },
-  { key: 'university', label: '학교', width: 'w-1/5' },
-  { key: 'phone', label: '연락처', width: 'w-1/8' },
-  { key: 'major', label: '전공', width: 'w-1/8' },
-  { key: 'studentNo', label: '학번', width: '' },
+// 미리보기 표의 열. 폭은 내용 길이에 맞춘 비율(이메일, 학교가 가장 길다). 줄 번호 열만 고정 폭
+// error: 고칠 줄 표(맨 끝 '고칠 점' 열이 남는 폭을 받는다), ready: 등록할 명단 표(이메일 열이 남는 폭을 받는다).
+// 비율 합을 줄 번호 열(64px)과 남는 열이 들어갈 만큼 낮게 둬서 표가 카드 밖으로 넘치지 않게 한다. 표는 xl(1280px) 이상에서만, 그보다 좁으면 카드
+const COLUMNS: { key: Key; label: string; error: string; ready: string }[] = [
+  { key: 'name', label: '이름', error: 'w-1/12', ready: 'w-1/9' },
+  { key: 'email', label: '이메일', error: 'w-1/5', ready: '' },
+  { key: 'university', label: '학교', error: 'w-1/6', ready: 'w-1/5' },
+  { key: 'phone', label: '연락처', error: 'w-1/9', ready: 'w-1/8' },
+  { key: 'major', label: '전공', error: 'w-1/10', ready: 'w-1/8' },
+  { key: 'studentNo', label: '학번', error: 'w-1/12', ready: 'w-1/9' },
 ]
 
 // A07 장학생 일괄 등록(11/15). 양식 엑셀을 고르면 화면에서 바로 읽어 칸마다 검사하고,
@@ -46,7 +47,6 @@ export function ScholarImportPage() {
   const [rows, setRows] = useState<ImportRow[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
-  const [onlyBad, setOnlyBad] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
   // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
@@ -57,7 +57,6 @@ export function ScholarImportPage() {
   }, [done, navigate, toast])
 
   const bad = rows.filter((r) => r.errors.length > 0)
-  const shown = onlyBad ? bad : rows
   const busy = reading || bulk.isPending || done !== null
 
   const readFile = async (file: File | undefined) => {
@@ -66,18 +65,13 @@ export function ScholarImportPage() {
     setRows([])
     setFileError(null)
     setServerError(null)
-    setOnlyBad(false)
     if (!/\.xlsx$/i.test(file.name)) return setFileError('엑셀(.xlsx) 파일만 올릴 수 있어요. 양식 파일을 받아 쓰세요.')
     setReading(true)
     try {
       const { readXlsx } = await import('../../lib/readXlsx')
       const result = parseScholarSheet(readXlsx(await file.arrayBuffer()))
       if (result.fileError) setFileError(result.fileError)
-      else {
-        setRows(result.rows)
-        // 확인할 줄이 있으면 그 줄부터 보여 준다
-        setOnlyBad(result.rows.some((r) => r.errors.length > 0))
-      }
+      else setRows(result.rows)
     } catch {
       setFileError('파일을 읽지 못했어요. 엑셀에서 다시 저장한 뒤 올려 주세요.')
     } finally {
@@ -104,14 +98,13 @@ export function ScholarImportPage() {
       setDone(r.created)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE_EMAIL' && Array.isArray(err.details)) {
-        // 이미 등록된 이메일을 해당 칸에 표시하고 그 줄만 보이게 한다
+        // 이미 등록된 이메일은 고칠 목록에 넣는다
         const taken = new Set((err.details as unknown[]).map((x) => String(x).toLowerCase()))
         setRows((prev) =>
           prev.map((r): ImportRow =>
             taken.has(r.email.toLowerCase()) ? { ...r, errors: [...r.errors, { field: 'email', message: '이미 등록된 이메일이에요' }] } : r,
           ),
         )
-        setOnlyBad(true)
       } else setServerError(err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.')
     }
   }
@@ -202,73 +195,7 @@ export function ScholarImportPage() {
         </Banner>
       )}
 
-      {rows.length > 0 && (
-        <section aria-labelledby="preview" className="flex flex-col rounded-lg bg-surface">
-          <div className="flex flex-col gap-3 border-b border-line-subtle px-6 py-4 md:flex-row md:items-center md:justify-between md:px-8">
-            <div className="flex flex-col gap-1">
-              <h2 id="preview" className="m-0 text-title-2">
-                미리보기
-              </h2>
-              {bad.length > 0 ? (
-                <p className="m-0 text-caption text-ink-2">
-                  <span className="font-semibold text-ink tabular-nums">{bad.length}줄</span>을 엑셀에서 고친 뒤 다시 올려 주세요.
-                  <span className="hidden md:inline"> 표시된 칸에 마우스를 올리면 이유가 보여요.</span>
-                </p>
-              ) : (
-                <p className="m-0 inline-flex items-center gap-1 text-caption text-ink-2">
-                  <CircleCheck size={16} strokeWidth={2} className="text-success-text" aria-hidden />
-                  {rows.length}명 모두 등록할 수 있어요
-                </p>
-              )}
-            </div>
-            {bad.length > 0 && (
-              <FilterChips
-                label="보기"
-                value={onlyBad}
-                onChange={setOnlyBad}
-                items={[
-                  { value: true, label: '고칠 줄', count: bad.length },
-                  { value: false, label: '전체', count: rows.length },
-                ]}
-              />
-            )}
-          </div>
-
-          {/* PC: 표 */}
-          <table className="hidden w-full table-fixed border-collapse md:table">
-            <colgroup>
-              <col className="w-20" />
-              {COLUMNS.map((c) => (
-                <col key={c.key} className={c.width} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
-                <th scope="col" className="py-3 pr-4 pl-8 font-normal">
-                  줄
-                </th>
-                {COLUMNS.map((c) => (
-                  <th key={c.key} scope="col" className="px-4 py-3 font-normal last:pr-8">
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => (
-                <PreviewRow key={r.line} r={r} />
-              ))}
-            </tbody>
-          </table>
-
-          {/* 휴대폰: 카드 목록 */}
-          <ul className="m-0 list-none p-0 md:hidden">
-            {shown.map((r) => (
-              <PreviewCard key={r.line} r={r} />
-            ))}
-          </ul>
-        </section>
-      )}
+      {rows.length > 0 && (bad.length > 0 ? <IssueList rows={bad} total={rows.length} /> : <ReadyList rows={rows} />)}
 
       {rows.length > 0 && (
         <div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">
@@ -284,93 +211,125 @@ export function ScholarImportPage() {
   )
 }
 
-const issueOf = (r: ImportRow, key: Key) => r.errors.some((e) => e.field === key)
+const issueOf = (r: ImportRow, k: Key) => r.errors.some((e) => e.field === k)
 
-// 칸 값. 빈 칸은 "–", 빈 필수 칸은 "비어 있음"
-function Value({ r, k }: { r: ImportRow; k: Key }) {
-  const value = r[k]
-  if (!value) return <>{issueOf(r, k) ? '비어 있음' : '–'}</>
-  return <>{value}</>
-}
-
-// 표 칸. 문제가 있는 칸만 옅은 주황 바탕으로 표시한다(글자는 본문 색).
-// 이유는 마우스를 올리거나 키보드로 오면 칸 위에 작은 말풍선으로. 줄 높이는 늘 같다(Flatfile, OneSchema 같은 가져오기 화면의 칸 단위 표시)
-function Cell({ r, k }: { r: ImportRow; k: Key }) {
-  const tipId = useId()
-  const issues = r.errors.filter((e) => e.field === k)
-  if (issues.length === 0)
-    return (
-      <span className={cn('block truncate', !r[k] ? 'text-ink-3' : k === 'name' ? 'text-ink' : 'text-ink-2')}>
-        <Value r={r} k={k} />
-      </span>
-    )
+// 미리보기 표. 고칠 줄 표와 등록할 명단 표가 같이 쓴다(열 순서, 여백, 글자 크기가 같다)
+// 고칠 줄 표: 문제 칸은 빨간 글자(빈 칸은 '빈칸'), 이유는 맨 끝 '고칠 점' 열에. 칸 바탕색과 말풍선은 쓰지 않는다(11/17)
+function PreviewTable({ rows, mode }: { rows: ImportRow[]; mode: 'error' | 'ready' }) {
+  const error = mode === 'error'
   return (
-    <span
-      tabIndex={0}
-      aria-describedby={tipId}
-      className="group relative -mx-2 flex min-w-0 items-center rounded-sm bg-warning-bg px-2 text-ink outline-none focus-visible:outline-2 focus-visible:outline-focus"
-    >
-      <span className={cn('truncate', !r[k] && 'text-ink-3')}>
-        <Value r={r} k={k} />
-      </span>
-      <span
-        id={tipId}
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-0 z-(--z-popover) mb-2 hidden rounded-sm bg-ink px-2 py-1 text-caption whitespace-nowrap text-surface shadow-pop group-hover:block group-focus-visible:block"
-      >
-        {issues.map((e) => e.message).join(', ')}
-      </span>
-    </span>
+    <table className="hidden w-full table-fixed border-collapse xl:table">
+      <colgroup>
+        <col className="w-16" />
+        {COLUMNS.map((c) => (
+          <col key={c.key} className={error ? c.error : c.ready} />
+        ))}
+        {error && <col />}
+      </colgroup>
+      <thead>
+        <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
+          <th scope="col" className="py-3 pr-2 pl-8 font-normal">
+            줄
+          </th>
+          {COLUMNS.map((c) => (
+            <th key={c.key} scope="col" className="px-4 py-3 font-normal last:pr-8">
+              {c.label}
+            </th>
+          ))}
+          {error && (
+            <th scope="col" className="py-3 pr-8 pl-4 font-normal">
+              고칠 점
+            </th>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.line} className="border-b border-line-subtle align-top last:border-b-0">
+            <td className="py-3 pr-2 pl-8 text-ink-3 tabular-nums">{r.line}</td>
+            {COLUMNS.map((c) => {
+              const bad = issueOf(r, c.key)
+              const value = r[c.key]
+              return (
+                <td
+                  key={c.key}
+                  title={value || undefined}
+                  className={cn(
+                    'truncate px-4 py-3 last:pr-8',
+                    bad ? 'text-danger-text' : !value ? 'text-ink-3' : c.key === 'name' ? 'text-ink' : 'text-ink-2',
+                    (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums',
+                  )}
+                >
+                  {value || (bad ? '빈칸' : '–')}
+                </td>
+              )
+            })}
+            {error && <td className="py-3 pr-8 pl-4 text-ink">{r.errors.map((e) => e.message).join(', ')}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
-function PreviewRow({ r }: { r: ImportRow }) {
-  const bad = r.errors.length > 0
-  return (
-    <tr className="border-b border-line-subtle last:border-b-0">
-      {/* 고칠 줄은 줄 번호 앞에 작은 주황 점 하나만 */}
-      <td className="py-3 pr-4 pl-8 text-caption text-ink-3 tabular-nums">
-        <span className="inline-flex items-center gap-2">
-          <span aria-hidden className={cn('size-1.5 rounded-full', bad ? 'bg-warning-dot' : 'bg-transparent')} />
-          {r.line}
-          {bad && <span className="sr-only">고칠 줄</span>}
-        </span>
-      </td>
-      {COLUMNS.map((c) => (
-        <td key={c.key} className={cn('px-4 py-3 last:pr-8', (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums')}>
-          <Cell r={r} k={c.key} />
-        </td>
-      ))}
-    </tr>
-  )
-}
-
-// 휴대폰: 표 대신 카드. 파일의 모든 열을 이름과 함께 보이고, 말풍선 대신 이유를 카드 안에 적는다
+// 휴대폰 카드. 이름과 엑셀 줄, 값이 있거나 고칠 칸을 이름표와 함께. 고칠 칸은 빨간 글자, 이유는 카드 아래
 function PreviewCard({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
   return (
     <li className="flex flex-col gap-2 border-b border-line-subtle px-6 py-4 last:border-b-0">
-      <div className="flex items-center gap-2">
-        {bad && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning-dot" />}
-        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') && 'rounded-sm bg-warning-bg px-1', !r.name && 'text-ink-3')}>
-          <Value r={r} k="name" />
-        </span>
-        <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">
-          {r.line}번째 줄{bad && <span className="sr-only">, 고칠 줄</span>}
-        </span>
+      <div className="flex items-baseline gap-2">
+        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') ? 'text-danger-text' : 'text-ink')}>{r.name || '이름 빈칸'}</span>
+        <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">{r.line}번째 줄</span>
       </div>
       <dl className="m-0 flex flex-col gap-1 text-caption">
-        {/* 값이 있거나 고칠 칸만 보여서 카드를 짧게 한다 */}
         {COLUMNS.filter((c) => c.key !== 'name' && (r[c.key] || issueOf(r, c.key))).map((c) => (
           <div key={c.key} className="flex gap-3">
             <dt className="w-12 shrink-0 text-ink-3">{c.label}</dt>
-            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'rounded-sm bg-warning-bg px-1 text-ink' : r[c.key] ? 'text-ink-2' : 'text-ink-3')}>
-              <Value r={r} k={c.key} />
-            </dd>
+            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'text-danger-text' : 'text-ink-2')}>{r[c.key] || '빈칸'}</dd>
           </div>
         ))}
       </dl>
       {bad && <p className="m-0 text-caption text-ink">{r.errors.map((e) => e.message).join(', ')}</p>}
     </li>
+  )
+}
+
+// 고칠 것이 있을 때: 고칠 줄만 모든 열과 함께 보인다. 어느 칸이 문제인지 표에서 바로 보이게(11/17)
+function IssueList({ rows, total }: { rows: ImportRow[]; total: number }) {
+  return (
+    <section aria-labelledby="issues" className="flex flex-col rounded-lg bg-surface">
+      <div className="flex flex-col gap-1 border-b border-line-subtle px-6 py-4 md:px-8">
+        <h2 id="issues" className="m-0 text-title-2">
+          <span className="tabular-nums">{rows.length}</span>줄을 고쳐야 해요
+        </h2>
+        <p className="m-0 text-caption text-ink-2">전체 {total}줄 중 빨간 글자를 엑셀에서 고친 뒤 다시 올려 주세요.</p>
+      </div>
+      <PreviewTable rows={rows} mode="error" />
+      <ul className="m-0 list-none p-0 xl:hidden">
+        {rows.map((r) => (
+          <PreviewCard key={r.line} r={r} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// 고칠 것이 없을 때: 등록할 명단
+function ReadyList({ rows }: { rows: ImportRow[] }) {
+  return (
+    <section aria-labelledby="ready" className="flex flex-col rounded-lg bg-surface">
+      <div className="flex flex-col gap-1 border-b border-line-subtle px-6 py-4 md:px-8">
+        <h2 id="ready" className="m-0 text-title-2">
+          <span className="tabular-nums">{rows.length}</span>명을 등록해요
+        </h2>
+        <p className="m-0 text-caption text-ink-2">이름과 이메일이 맞는지 한 번 더 보세요.</p>
+      </div>
+      <PreviewTable rows={rows} mode="ready" />
+      <ul className="m-0 list-none p-0 xl:hidden">
+        {rows.map((r) => (
+          <PreviewCard key={r.line} r={r} />
+        ))}
+      </ul>
+    </section>
   )
 }

@@ -1,4 +1,4 @@
-import { ChevronDown, Download, FileSpreadsheet, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client'
 import { downloadFile } from '../../api/review'
 import {
   scholarExportColumns,
+  SCHOLAR_PAGE_SIZES,
   scholarStatuses,
   useChangeScholarsStatus,
   useScholars,
@@ -18,8 +19,9 @@ import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
+import { MenuButton } from '../../components/ui/MenuButton'
 import { Pagination } from '../../components/ui/Pagination'
-import { buttonClass } from '../../components/ui/buttonClass'
+import { PageSizeSelect } from '../../components/ui/PageSizeSelect'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
@@ -48,6 +50,8 @@ export function ScholarsPage() {
   const keyword = params.get('q') ?? ''
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const sort = parseSort(params.get('sort'), sortKeys)
+  // 한 쪽에 보일 수(?size=50). 목록에 없는 값이면 기본 20
+  const pageSize = SCHOLAR_PAGE_SIZES.find((n) => n === Number(params.get('size'))) ?? SCHOLAR_PAGE_SIZES[0]
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기·메뉴 링크로 주소의 검색어가 바뀌면 입력칸도 맞춘다(안 맞추면 지운 검색어가 다시 들어간다)
   const [seen, setSeen] = useState(keyword)
@@ -57,12 +61,12 @@ export function ScholarsPage() {
   }
   const me = useMe()
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
-  const query = useScholars({ cohortId, status, keyword, page, sort })
+  const query = useScholars({ cohortId, status, keyword, page, pageSize, sort })
   const data = query.data
 
   const toast = useToast()
 
-  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; sort?: Sort }) => {
+  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; size?: number; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     const c = next.cohort === undefined ? cohortId : next.cohort
@@ -72,6 +76,8 @@ export function ScholarsPage() {
     if (q) p.set('q', q)
     const o = sortParam(next.sort === undefined ? sort : next.sort)
     if (o) p.set('sort', o)
+    const z = next.size ?? pageSize
+    if (z !== SCHOLAR_PAGE_SIZES[0]) p.set('size', String(z))
     if ((next.page ?? 1) > 1) p.set('page', String(next.page))
     setParams(p, { replace: true })
   }
@@ -154,20 +160,7 @@ export function ScholarsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageTitle>장학생</PageTitle>
-        <div className="flex items-center gap-2">
-          {/* 휴대폰은 제목 줄이 좁아 아이콘만(이름은 화면 읽기용으로 남긴다) */}
-          <Link to="/manager/scholars/import" className={cn(buttonClass({ variant: 'secondary', size: 'default' }), 'max-md:w-control-default max-md:px-0')}>
-            <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
-            <span className="max-md:sr-only">일괄 등록</span>
-          </Link>
-          <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
-            <Plus size={16} strokeWidth={2} aria-hidden />
-            장학생 등록
-          </Link>
-        </div>
-      </div>
+      <PageTitle>장학생</PageTitle>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
@@ -175,8 +168,9 @@ export function ScholarsPage() {
           <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
           <div className="md:hidden">{exportButton}</div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:flex md:w-auto">
-          <div className="relative md:w-36">
+        {/* 기수는 '2025년 선발'이 들어가는 만큼만, 남는 폭은 찾기 칸에 */}
+        <div className="flex gap-2">
+          <div className="relative w-36 shrink-0 md:w-32">
             <select
               aria-label="기수"
               value={cohortId ? String(cohortId) : ''}
@@ -192,7 +186,7 @@ export function ScholarsPage() {
             </select>
             <ChevronDown size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
           </div>
-          <div className="relative md:w-56">
+          <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
             <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
             <input
               type="search"
@@ -230,96 +224,128 @@ export function ScholarsPage() {
           )
         ) : (
           <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
-            <div className="overflow-hidden rounded-lg bg-surface">
-              {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
-              <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
-                {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
-                <label className="-mx-3 flex cursor-pointer items-center self-stretch px-3">
-                  <Checkbox
-                    aria-label="이 쪽 장학생 모두 고르기"
-                    disabled={loadingNext}
-                    checked={allPicked}
-                    indeterminate={sel.length > 0 && !allPicked}
-                    onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
-                  />
-                </label>
-                {sel.length > 0 ? (
-                  <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
-                    <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
-                    <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
-                      상태 바꾸기
-                    </Button>
-                    <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
-                      고르기 해제
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    {/* 휴대폰: 열 이름이 없어 인원 수만. PC: 열 이름을 두고 인원 수는 오른쪽 끝 */}
-                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
-                      <span className="text-label text-ink">{data.total}</span>명
-                    </span>
-                    <SortHeader
-                      label="이름"
-                      sortKey="name"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
+            {/* 인원 수는 표 위 왼쪽. 표 머리 오른쪽 끝은 눈이 잘 가지 않는다 */}
+            <div className="flex flex-col gap-2">
+              <p className="m-0 text-caption text-ink-2 tabular-nums">
+                총 <span className="text-label text-ink">{data.total}</span>명
+              </p>
+              <div className="overflow-hidden rounded-lg bg-surface">
+                {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
+                <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
+                  {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
+                  <label className="-mx-3 flex cursor-pointer items-center gap-3 self-stretch px-3">
+                    <Checkbox
+                      aria-label="이 쪽 장학생 모두 고르기"
                       disabled={loadingNext}
-                      className="hidden w-40 md:block"
+                      checked={allPicked}
+                      indeterminate={sel.length > 0 && !allPicked}
+                      onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
                     />
-                    <SortHeader
-                      label="기수"
-                      sortKey="cohort"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
+                    {/* 휴대폰은 열 이름이 없어 무엇을 고르는 상자인지 글로 */}
+                    {sel.length === 0 && (
+                      <span aria-hidden className="text-caption text-ink-2 md:hidden">
+                        모두 고르기
+                      </span>
+                    )}
+                  </label>
+                  {sel.length > 0 ? (
+                    <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
+                      <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
+                      <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
+                        상태 바꾸기
+                      </Button>
+                      <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
+                        고르기 해제
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <SortHeader
+                        label="이름"
+                        sortKey="name"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-40 md:block"
+                      />
+                      <SortHeader
+                        label="기수"
+                        sortKey="cohort"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-28 md:block"
+                      />
+                      <SortHeader
+                        label="학교"
+                        sortKey="university"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-44 md:block"
+                      />
+                      <SortHeader
+                        label="상태"
+                        sortKey="status"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-56 md:block"
+                      />
+                      <SortHeader
+                        label="이메일"
+                        sortKey="email"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden flex-1 md:block"
+                      />
+                    </>
+                  )}
+                </div>
+                <ul className="m-0 list-none p-0">
+                  {data.items.map((s) => (
+                    <Row
+                      key={s.id}
+                      s={s}
                       disabled={loadingNext}
-                      className="hidden w-28 md:block"
+                      picked={sel.includes(s.id)}
+                      onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))}
                     />
-                    <SortHeader
-                      label="학교"
-                      sortKey="university"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden w-44 md:block"
-                    />
-                    <SortHeader
-                      label="상태"
-                      sortKey="status"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden w-56 md:block"
-                    />
-                    <SortHeader
-                      label="이메일"
-                      sortKey="email"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden flex-1 md:block"
-                    />
-                    <span className="hidden text-caption text-ink-3 tabular-nums md:block">
-                      <span className="text-label text-ink">{data.total}</span>명
-                    </span>
-                  </>
-                )}
+                  ))}
+                </ul>
               </div>
-              <ul className="m-0 list-none p-0">
-                {data.items.map((s) => (
-                  <Row
-                    key={s.id}
-                    s={s}
-                    disabled={loadingNext}
-                    picked={sel.includes(s.id)}
-                    onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))}
-                  />
-                ))}
-              </ul>
             </div>
-            <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
           </div>
         ))}
+
+      {/* 목록 아래: 쪽 번호는 가운데, 몇 명씩 보기와 장학생 등록은 오른쪽. 휴대폰은 위아래로
+          장학생 등록은 1년에 한 번쯤이라 위가 아닌 아래에 둔다(11/17). 한 명 / 엑셀로 여러 명을 메뉴 하나로 묶는다
+          같은 줄의 칸과 버튼은 높이를 32px(compact)로 맞춘다(Ant Design 쪽 번호와 같은 규칙) */}
+      {/* 등록 메뉴는 목록을 불러오는 중이거나 오류여도 보인다. 흐림은 쪽 번호와 몇 명씩 보기에만
+          PC: 왼쪽 빈 칸과 오른쪽 묶음이 같은 몫을 나눠 쪽 번호가 가운데. 좁으면 오른쪽 묶음이 자리를 먼저 차지해 겹치지 않는다 */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="hidden md:block md:flex-1 md:basis-0" />
+        <div className={cn('self-center', loadingNext && 'opacity-60')}>
+          {data && data.items.length > 0 && <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />}
+        </div>
+        <div className="flex items-center justify-end gap-2 md:flex-1 md:basis-0">
+          {data && data.total > SCHOLAR_PAGE_SIZES[0] && (
+            <div className={cn(loadingNext && 'opacity-60')}>
+              <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
+            </div>
+          )}
+          <MenuButton
+            label="장학생 등록"
+            icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+            placement="top"
+            items={[
+              { to: '/manager/scholars/new', label: '한 명 등록', description: '이름, 이메일, 학교를 직접 적어요' },
+              { to: '/manager/scholars/import', label: '엑셀로 여러 명 등록', description: '양식에 채운 명단을 올려요' },
+            ]}
+          />
+        </div>
+      </div>
 
       {bulkOpen && (
         <ScholarStatusDialog
