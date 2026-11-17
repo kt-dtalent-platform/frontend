@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client'
 import { downloadFile } from '../../api/review'
 import {
   scholarExportColumns,
+  SCHOLAR_PAGE_SIZES,
   scholarStatuses,
   useChangeScholarsStatus,
   useScholars,
@@ -19,6 +20,7 @@ import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
 import { Pagination } from '../../components/ui/Pagination'
+import { PageSizeSelect } from '../../components/ui/PageSizeSelect'
 import { buttonClass } from '../../components/ui/buttonClass'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
@@ -48,6 +50,8 @@ export function ScholarsPage() {
   const keyword = params.get('q') ?? ''
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const sort = parseSort(params.get('sort'), sortKeys)
+  // 한 쪽에 보일 수(?size=50). 목록에 없는 값이면 기본 20
+  const pageSize = SCHOLAR_PAGE_SIZES.find((n) => n === Number(params.get('size'))) ?? SCHOLAR_PAGE_SIZES[0]
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기·메뉴 링크로 주소의 검색어가 바뀌면 입력칸도 맞춘다(안 맞추면 지운 검색어가 다시 들어간다)
   const [seen, setSeen] = useState(keyword)
@@ -57,12 +61,12 @@ export function ScholarsPage() {
   }
   const me = useMe()
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
-  const query = useScholars({ cohortId, status, keyword, page, sort })
+  const query = useScholars({ cohortId, status, keyword, page, pageSize, sort })
   const data = query.data
 
   const toast = useToast()
 
-  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; sort?: Sort }) => {
+  const set = (next: { status?: ScholarStatus | null; cohort?: number | null; q?: string; page?: number; size?: number; sort?: Sort }) => {
     const p = new URLSearchParams()
     const s = next.status === undefined ? status : next.status
     const c = next.cohort === undefined ? cohortId : next.cohort
@@ -72,6 +76,8 @@ export function ScholarsPage() {
     if (q) p.set('q', q)
     const o = sortParam(next.sort === undefined ? sort : next.sort)
     if (o) p.set('sort', o)
+    const z = next.size ?? pageSize
+    if (z !== SCHOLAR_PAGE_SIZES[0]) p.set('size', String(z))
     if ((next.page ?? 1) > 1) p.set('page', String(next.page))
     setParams(p, { replace: true })
   }
@@ -332,7 +338,17 @@ export function ScholarsPage() {
                 </ul>
               </div>
             </div>
-            <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
+            {/* 쪽 번호는 가운데, 한 쪽에 보일 수는 오른쪽. 휴대폰은 위아래로 */}
+            <div className="flex flex-col items-center gap-3 md:grid md:grid-cols-3">
+              <div className="md:col-start-2">
+                <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
+              </div>
+              {data.total > SCHOLAR_PAGE_SIZES[0] && (
+                <div className="md:justify-self-end">
+                  <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
