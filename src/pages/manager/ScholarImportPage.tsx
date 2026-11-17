@@ -308,9 +308,9 @@ function Cell({ r, k }: { r: ImportRow; k: Key }) {
     <span
       tabIndex={0}
       aria-describedby={tipId}
-      className="group relative -mx-2 flex min-w-0 items-center rounded-sm bg-warning-bg px-2 text-ink outline-none focus-visible:outline-2 focus-visible:outline-focus"
+      className="group relative -mx-2 flex min-w-0 items-center rounded-sm bg-danger-bg px-2 text-ink outline-none focus-visible:outline-2 focus-visible:outline-focus"
     >
-      <span className={cn('truncate', !r[k] && 'text-ink-3')}>
+      <span className={cn('truncate', !r[k] && 'text-danger-text')}>
         <Value r={r} k={k} />
       </span>
       <span
@@ -328,10 +328,10 @@ function PreviewRow({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
   return (
     <tr className="border-b border-line-subtle last:border-b-0">
-      {/* 고칠 줄은 줄 번호 앞에 작은 주황 점 하나만 */}
+      {/* 고칠 줄은 줄 번호 앞에 작은 빨간 점 하나만. 문제 칸은 연한 빨강 바탕(표 계산 프로그램과 가져오기 도구에서 흔한 방식) */}
       <td className="py-3 pr-4 pl-8 text-caption text-ink-3 tabular-nums">
         <span className="inline-flex items-center gap-2">
-          <span aria-hidden className={cn('size-1.5 rounded-full', bad ? 'bg-warning-dot' : 'bg-transparent')} />
+          <span aria-hidden className={cn('size-1.5 rounded-full', bad ? 'bg-danger-text' : 'bg-transparent')} />
           {r.line}
           {bad && <span className="sr-only">고칠 줄</span>}
         </span>
@@ -345,14 +345,15 @@ function PreviewRow({ r }: { r: ImportRow }) {
   )
 }
 
-// 휴대폰: 표 대신 카드. 파일의 모든 열을 이름과 함께 보이고, 말풍선 대신 이유를 카드 안에 적는다
+// 휴대폰: 표 대신 카드. 값이 있거나 고칠 칸을 이름과 함께 보이고, 말풍선 대신 이유를 카드 안에 적는다
+// 오류 표시는 입력 폼과 같은 말: 문제 값과 이유를 빨간 글자로(바탕색 상자는 두지 않는다)
 function PreviewCard({ r }: { r: ImportRow }) {
   const bad = r.errors.length > 0
   return (
     <li className="flex flex-col gap-2 border-b border-line-subtle px-6 py-4 last:border-b-0">
       <div className="flex items-center gap-2">
-        {bad && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning-dot" />}
-        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') && 'rounded-sm bg-warning-bg px-1', !r.name && 'text-ink-3')}>
+        {bad && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-danger-text" />}
+        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') && 'text-danger-text')}>
           <Value r={r} k="name" />
         </span>
         <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">
@@ -364,13 +365,13 @@ function PreviewCard({ r }: { r: ImportRow }) {
         {COLUMNS.filter((c) => c.key !== 'name' && (r[c.key] || issueOf(r, c.key))).map((c) => (
           <div key={c.key} className="flex gap-3">
             <dt className="w-12 shrink-0 text-ink-3">{c.label}</dt>
-            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'rounded-sm bg-warning-bg px-1 text-ink' : r[c.key] ? 'text-ink-2' : 'text-ink-3')}>
+            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'text-danger-text' : 'text-ink-2')}>
               <Value r={r} k={c.key} />
             </dd>
           </div>
         ))}
       </dl>
-      {bad && <p className="m-0 text-caption text-ink">{r.errors.map((e) => e.message).join(', ')}</p>}
+      {bad && <p className="m-0 text-caption text-danger-text">{r.errors.map((e) => e.message).join(', ')}</p>}
     </li>
   )
 }

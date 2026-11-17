@@ -64,6 +64,10 @@
 .toast-host {
   bottom: calc(var(--spacing) * 4 + env(safe-area-inset-bottom));
 }
+/* 휴대폰 아래 오른쪽에 떠 있는 버튼(장학생 등록). 아이폰 홈 막대를 피한다 */
+.fab-pos {
+  bottom: calc(var(--spacing) * 4 + env(safe-area-inset-bottom));
+}
 @media (min-width: 48rem) {
   .toast-host {
     bottom: calc(var(--spacing) * 6);

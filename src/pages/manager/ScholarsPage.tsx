@@ -153,7 +153,8 @@ export function ScholarsPage() {
   )
 
   return (
-    <div className="flex flex-col gap-6">
+    // 휴대폰은 아래 떠 있는 등록 버튼이 마지막 줄과 쪽 번호를 가리지 않게 아래 여백을 둔다
+    <div className="flex flex-col gap-6 max-md:pb-20">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle>장학생</PageTitle>
         <div className="flex items-center gap-2">
@@ -162,12 +163,20 @@ export function ScholarsPage() {
             <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
             <span className="max-md:sr-only">일괄 등록</span>
           </Link>
-          <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
+          {/* PC는 제목 줄 오른쪽(관리 화면에서 가장 흔한 자리). 휴대폰은 아래 오른쪽에 떠 있는 버튼으로 */}
+          <Link to="/manager/scholars/new" className={cn(buttonClass({ variant: 'primary', size: 'default' }), 'max-md:hidden')}>
             <Plus size={16} strokeWidth={2} aria-hidden />
             장학생 등록
           </Link>
         </div>
       </div>
+      <Link
+        to="/manager/scholars/new"
+        className={cn(buttonClass({ variant: 'primary', size: 'md' }), 'fab-pos fixed right-4 z-(--z-sticky) rounded-full shadow-pop md:hidden')}
+      >
+        <Plus size={16} strokeWidth={2} aria-hidden />
+        장학생 등록
+      </Link>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
@@ -175,8 +184,9 @@ export function ScholarsPage() {
           <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
           <div className="md:hidden">{exportButton}</div>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:flex md:w-auto">
-          <div className="relative md:w-36">
+        {/* 기수는 '2025년 선발'이 들어가는 만큼만, 남는 폭은 찾기 칸에 */}
+        <div className="flex gap-2">
+          <div className="relative w-36 shrink-0 md:w-32">
             <select
               aria-label="기수"
               value={cohortId ? String(cohortId) : ''}
@@ -192,7 +202,7 @@ export function ScholarsPage() {
             </select>
             <ChevronDown size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
           </div>
-          <div className="relative md:w-56">
+          <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
             <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
             <input
               type="search"
@@ -230,92 +240,97 @@ export function ScholarsPage() {
           )
         ) : (
           <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
-            <div className="overflow-hidden rounded-lg bg-surface">
-              {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
-              <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
-                {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
-                <label className="-mx-3 flex cursor-pointer items-center self-stretch px-3">
-                  <Checkbox
-                    aria-label="이 쪽 장학생 모두 고르기"
-                    disabled={loadingNext}
-                    checked={allPicked}
-                    indeterminate={sel.length > 0 && !allPicked}
-                    onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
-                  />
-                </label>
-                {sel.length > 0 ? (
-                  <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
-                    <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
-                    <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
-                      상태 바꾸기
-                    </Button>
-                    <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
-                      고르기 해제
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    {/* 휴대폰: 열 이름이 없어 인원 수만. PC: 열 이름을 두고 인원 수는 오른쪽 끝 */}
-                    <span className="flex-1 text-caption text-ink-3 tabular-nums md:hidden">
-                      <span className="text-label text-ink">{data.total}</span>명
-                    </span>
-                    <SortHeader
-                      label="이름"
-                      sortKey="name"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
+            {/* 인원 수는 표 위 왼쪽. 표 머리 오른쪽 끝은 눈이 잘 가지 않는다 */}
+            <div className="flex flex-col gap-2">
+              <p className="m-0 text-caption text-ink-2 tabular-nums">
+                총 <span className="text-label text-ink">{data.total}</span>명
+              </p>
+              <div className="overflow-hidden rounded-lg bg-surface">
+                {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
+                <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
+                  {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
+                  <label className="-mx-3 flex cursor-pointer items-center gap-3 self-stretch px-3">
+                    <Checkbox
+                      aria-label="이 쪽 장학생 모두 고르기"
                       disabled={loadingNext}
-                      className="hidden w-40 md:block"
+                      checked={allPicked}
+                      indeterminate={sel.length > 0 && !allPicked}
+                      onChange={(e) => setPicked(e.target.checked ? pageIds : [])}
                     />
-                    <SortHeader
-                      label="기수"
-                      sortKey="cohort"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
+                    {/* 휴대폰은 열 이름이 없어 무엇을 고르는 상자인지 글로 */}
+                    {sel.length === 0 && (
+                      <span aria-hidden className="text-caption text-ink-2 md:hidden">
+                        모두 고르기
+                      </span>
+                    )}
+                  </label>
+                  {sel.length > 0 ? (
+                    <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
+                      <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
+                      <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
+                        상태 바꾸기
+                      </Button>
+                      <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
+                        고르기 해제
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <SortHeader
+                        label="이름"
+                        sortKey="name"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-40 md:block"
+                      />
+                      <SortHeader
+                        label="기수"
+                        sortKey="cohort"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-28 md:block"
+                      />
+                      <SortHeader
+                        label="학교"
+                        sortKey="university"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-44 md:block"
+                      />
+                      <SortHeader
+                        label="상태"
+                        sortKey="status"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-56 md:block"
+                      />
+                      <SortHeader
+                        label="이메일"
+                        sortKey="email"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden flex-1 md:block"
+                      />
+                    </>
+                  )}
+                </div>
+                <ul className="m-0 list-none p-0">
+                  {data.items.map((s) => (
+                    <Row
+                      key={s.id}
+                      s={s}
                       disabled={loadingNext}
-                      className="hidden w-28 md:block"
+                      picked={sel.includes(s.id)}
+                      onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))}
                     />
-                    <SortHeader
-                      label="학교"
-                      sortKey="university"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden w-44 md:block"
-                    />
-                    <SortHeader
-                      label="상태"
-                      sortKey="status"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden w-56 md:block"
-                    />
-                    <SortHeader
-                      label="이메일"
-                      sortKey="email"
-                      sort={sort}
-                      onSort={(o) => set({ sort: o })}
-                      disabled={loadingNext}
-                      className="hidden flex-1 md:block"
-                    />
-                    <span className="hidden text-caption text-ink-3 tabular-nums md:block">
-                      <span className="text-label text-ink">{data.total}</span>명
-                    </span>
-                  </>
-                )}
+                  ))}
+                </ul>
               </div>
-              <ul className="m-0 list-none p-0">
-                {data.items.map((s) => (
-                  <Row
-                    key={s.id}
-                    s={s}
-                    disabled={loadingNext}
-                    picked={sel.includes(s.id)}
-                    onPick={(on) => setPicked((p) => (on ? [...p, s.id] : p.filter((x) => x !== s.id)))}
-                  />
-                ))}
-              </ul>
             </div>
             <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
           </div>
