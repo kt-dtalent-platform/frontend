@@ -91,7 +91,7 @@ export const handlers = [
     const todo = (s: string) => s === 'NOT_SUBMITTED' || s === 'DRAFT' || s === 'REVISION_REQUIRED'
     const items = taskList()
       .filter((t) => filter === 'ALL' || todo(t.status))
-      .sort((a, b) => a.requestDueAt.localeCompare(b.requestDueAt))
+      .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
     return ok('/v1/me/tasks', { items })
   }),
 
@@ -419,7 +419,7 @@ export const handlers = [
     const { scholarIds, ...change } = (await request.json()) as StatusChange & { scholarIds: number[] }
     const bad = [
       !scholarIds?.length && 'scholarIds',
-      !['ENROLLED', 'COMPLETED', 'WITHDRAWN'].includes(change.status) && 'status',
+      !['ENROLLED', 'LEAVE', 'COMPLETED', 'WITHDRAWN'].includes(change.status) && 'status',
       change.status === 'COMPLETED' && !change.completedYear && 'completedYear',
       change.status === 'WITHDRAWN' && !change.withdrawalReason && 'withdrawalReason',
       change.withdrawalReason === 'OTHER' && !change.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
@@ -467,7 +467,7 @@ export const handlers = [
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as StatusChange
     const bad = [
-      !['ENROLLED', 'COMPLETED', 'WITHDRAWN'].includes(body.status) && 'status',
+      !['ENROLLED', 'LEAVE', 'COMPLETED', 'WITHDRAWN'].includes(body.status) && 'status',
       body.status === 'COMPLETED' && !body.completedYear && 'completedYear',
       body.status === 'WITHDRAWN' && !body.withdrawalReason && 'withdrawalReason',
       body.withdrawalReason === 'OTHER' && !body.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',

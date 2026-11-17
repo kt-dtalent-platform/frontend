@@ -209,7 +209,7 @@ export function taskList() {
     return {
       requestId: id,
       title: f.request.title,
-      requestDueAt: f.request.requestDueAt,
+      dueAt: f.request.requestDueAt,
       status: f.submission?.status ?? 'NOT_SUBMITTED',
       revisionReason: f.revision?.reason ?? null,
     }

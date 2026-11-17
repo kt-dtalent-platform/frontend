@@ -69,7 +69,7 @@ export function useRequests({ status, page, sort }: { status: RequestStatus | nu
 
 // ── 요청 만들기 ──────────────────────────────────────────
 
-// GET /v1/request-templates · 담당 정윤 · 백엔드 PR #21(KT-15) 기준: items[{id, code, name, fields}]
+// GET /v1/request-templates · 백엔드 KT-15 기준: items[{id, code, name, fields}]
 // fields는 DB default_fields(JSON) 그대로라 모양이 정해지지 않았다. 화면에서는 label·fieldType만 쓴다(확인 필요).
 export type TemplateField = { fieldKey: string; label: string; fieldType: string; required?: boolean }
 export type RequestTemplate = { id: number; code: string; name: string; fields: TemplateField[] }

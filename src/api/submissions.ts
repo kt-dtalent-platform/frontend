@@ -26,7 +26,7 @@ export type FormField = {
 export type AnswerValue = string | number | boolean | string[] | null
 export type Answers = Record<string, AnswerValue>
 
-// GET /me/submissions/{requestId} · 담당 정윤 · 백엔드 PR #26(KT-17) 기준
+// GET /me/submissions/{requestId} · 백엔드 KT-17 기준
 // 백엔드 조회 결과(SubmissionFormData)를 그대로 받는다. 응답 모양이 확정되면 이 타입과 toForm만 고친다.
 export type RawSubmissionForm = {
   request: { id: number; title: string; description: string | null; requestDueAt: string; status: 'IN_PROGRESS' | 'CLOSED' }
@@ -84,7 +84,7 @@ export function useSubmissionForm(requestId: number) {
   })
 }
 
-// PUT /me/submissions/{requestId}/draft · 담당 정윤 · 백엔드 구현 없음(명세서 기준 임시, 확인 필요)
+// PUT /me/submissions/{requestId}/draft · 백엔드 구현 전이라 노션 명세서 모양을 임시로 쓴다(확인 필요)
 export type DraftResult = { submissionId: number; status: SubmissionStatus; savedAt: string; version: number }
 
 export function useSaveDraft(requestId: number) {
@@ -101,7 +101,7 @@ export function useSaveDraft(requestId: number) {
   })
 }
 
-// 제출: POST /me/submissions/{requestId}/submit (정윤)
+// 제출: POST /me/submissions/{requestId}/submit
 // 보완 후 다시 제출: POST .../resubmit (승완). 보완 요청된 항목만 보낸다.
 // 둘 다 백엔드 구현 없음(노션 명세서 모양을 임시로 씀, 확인 필요)
 export type SubmitResult = {
