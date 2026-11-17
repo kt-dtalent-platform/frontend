@@ -157,7 +157,7 @@ export const scholarExportColumns = [
       { key: 'status', label: '상태', default: true },
       { key: 'completedYear', label: '수료 연도', default: true },
       { key: 'withdrawalReason', label: '중단 사유', default: true },
-      { key: 'withdrawalReasonDetail', label: '중단 상세 사유' },
+      { key: 'withdrawalReasonDetail', label: '중단 상세 사유', default: true },
       { key: 'accountStatus', label: '로그인 상태' },
     ],
   },
