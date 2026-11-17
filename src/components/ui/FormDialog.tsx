@@ -39,6 +39,8 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
+    // body로 뺀(포털) 대화상자도 React 이벤트는 부모 폼으로 올라간다. 바깥 폼이 같이 제출되지 않게 막는다
+    e.stopPropagation()
     if (!busy) onSubmit()
   }
 
