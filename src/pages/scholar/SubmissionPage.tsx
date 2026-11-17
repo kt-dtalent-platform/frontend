@@ -23,6 +23,7 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
+import { RevisionNote } from '../../components/ui/RevisionNote'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
 import { daysUntil, isPastDue } from '../../api/tasks'
@@ -270,11 +271,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         </p>
       </header>
 
-      {isRevision && form.revision && (
-        <Banner tone="warning" title="보완 요청이 있어요">
-          {form.revision.reason} 표시된 항목만 고칠 수 있어요.
-        </Banner>
-      )}
+      {isRevision && form.revision && <RevisionNote reason={form.revision.reason} hint="아래에 '고칠 항목'이라고 표시된 칸만 고칠 수 있어요." />}
       {late && (
         <Banner tone="danger" title="마감이 지났어요">
           지금 제출해도 받지만 지연 제출로 표시돼요.

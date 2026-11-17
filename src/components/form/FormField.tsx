@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import type { UseFormRegister } from 'react-hook-form'
 import type { AnswerValue, FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
-import { Tag } from '../ui/Tag'
 import { FileField, type FileHandlers } from './FileField'
 import { fieldBase, fieldControl } from './fieldClass'
 import { Checkbox } from './Checkbox'
@@ -139,7 +138,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         <label className="flex min-h-control-default items-center gap-3">
           <Checkbox disabled={!editable} aria-invalid={!!error} aria-describedby={describedBy} {...register(field.fieldKey)} />
           <span className="text-label">{field.label}</span>
-          {highlight && <Tag tone="warning">보완 요청</Tag>}
+          {highlight && <span className="text-caption font-semibold text-warning-text">고칠 항목</span>}
         </label>
         {field.helpText && (
           <p id={`${id}-help`} className="m-0 pl-8 text-caption text-ink-3">
@@ -169,7 +168,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             </>
           )}
         </label>
-        {highlight && <Tag tone="warning">보완 요청</Tag>}
+        {highlight && <span className="text-caption font-semibold text-warning-text">고칠 항목</span>}
         {!editable && <Lock size={16} strokeWidth={2} className="text-ink-3" role="img" aria-label="수정할 수 없음" />}
       </div>
       {input}

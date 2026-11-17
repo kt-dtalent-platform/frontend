@@ -9,7 +9,7 @@ type MockRow = Omit<RequestRow, 'waitingCount'>
 const opened = (days: number) => dueIn(-days).replace('23:59:59', '09:00:00')
 
 // 성적은 기수와 상관없이 학기마다 전원에게 한 번 받는다(11/12). 계절학기, 추가 제출은 두지 않는다.
-// 진행 중 1, 작성 중 1, 마감 2. 2026년 선발은 2026학년도부터 받는다.
+// 진행 중 2, 작성 중 1, 마감 2. 2026년 선발은 2026학년도부터 받는다.
 export function rows(): MockRow[] {
   const base = { templateCode: 'GRADE_CERTIFICATE', cohortName: null }
   const list: MockRow[] = [
@@ -28,10 +28,21 @@ export function rows(): MockRow[] {
       ...base,
       id: 40,
       title: '2026학년도 2학기 성적증명서 제출',
+      status: 'IN_PROGRESS',
+      publishedAt: opened(1),
+      closesAt: dueIn(21),
+      targetCount: 94,
+      submittedCount: 8,
+      revisionCount: 0,
+    },
+    {
+      ...base,
+      id: 42,
+      title: '2027학년도 1학기 성적증명서 제출',
       status: 'DRAFT',
       publishedAt: null,
       // 작성 중이어도 마감은 정해 둔다(백엔드 requests.closes_at NOT NULL)
-      closesAt: dueIn(40),
+      closesAt: dueIn(150),
       targetCount: 0,
       submittedCount: 0,
       revisionCount: 0,
