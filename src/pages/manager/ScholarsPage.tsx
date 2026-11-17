@@ -1,4 +1,4 @@
-import { ChevronDown, Download, FileSpreadsheet, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -19,9 +19,9 @@ import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { ExportDialog, type ExportChoice } from '../../components/ui/ExportDialog'
+import { MenuButton } from '../../components/ui/MenuButton'
 import { Pagination } from '../../components/ui/Pagination'
 import { PageSizeSelect } from '../../components/ui/PageSizeSelect'
-import { buttonClass } from '../../components/ui/buttonClass'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
@@ -159,30 +159,8 @@ export function ScholarsPage() {
   )
 
   return (
-    // 휴대폰은 아래 떠 있는 등록 버튼이 마지막 줄과 쪽 번호를 가리지 않게 아래 여백을 둔다
-    <div className="flex flex-col gap-6 max-md:pb-20">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageTitle>장학생</PageTitle>
-        <div className="flex items-center gap-2">
-          {/* 휴대폰은 제목 줄이 좁아 아이콘만(이름은 화면 읽기용으로 남긴다) */}
-          <Link to="/manager/scholars/import" className={cn(buttonClass({ variant: 'secondary', size: 'default' }), 'max-md:w-control-default max-md:px-0')}>
-            <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
-            <span className="max-md:sr-only">일괄 등록</span>
-          </Link>
-          {/* PC는 제목 줄 오른쪽(관리 화면에서 가장 흔한 자리). 휴대폰은 아래 오른쪽에 떠 있는 버튼으로 */}
-          <Link to="/manager/scholars/new" className={cn(buttonClass({ variant: 'primary', size: 'default' }), 'max-md:hidden')}>
-            <Plus size={16} strokeWidth={2} aria-hidden />
-            장학생 등록
-          </Link>
-        </div>
-      </div>
-      <Link
-        to="/manager/scholars/new"
-        className={cn(buttonClass({ variant: 'primary', size: 'md' }), 'fab-pos fixed right-4 z-(--z-sticky) rounded-full shadow-pop md:hidden')}
-      >
-        <Plus size={16} strokeWidth={2} aria-hidden />
-        장학생 등록
-      </Link>
+    <div className="flex flex-col gap-6">
+      <PageTitle>장학생</PageTitle>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
@@ -338,19 +316,33 @@ export function ScholarsPage() {
                 </ul>
               </div>
             </div>
-            {/* 쪽 번호는 가운데, 한 쪽에 보일 수는 오른쪽. 휴대폰은 위아래로 */}
-            <div className="flex flex-col items-center gap-3 md:grid md:grid-cols-3">
-              <div className="md:col-start-2">
-                <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />
-              </div>
-              {data.total > SCHOLAR_PAGE_SIZES[0] && (
-                <div className="md:justify-self-end">
-                  <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
-                </div>
-              )}
-            </div>
           </div>
         ))}
+
+      {/* 목록 아래: 쪽 번호는 가운데, 몇 명씩 보기와 장학생 등록은 오른쪽. 휴대폰은 위아래로
+          장학생 등록은 1년에 한 번쯤이라 위가 아닌 아래에 둔다(11/17). 한 명 / 엑셀로 여러 명을 메뉴 하나로 묶는다
+          같은 줄의 칸과 버튼은 높이를 32px(compact)로 맞춘다(Ant Design 쪽 번호와 같은 규칙) */}
+      {data && (
+        <div className={cn('flex flex-col items-center gap-3 md:grid md:grid-cols-3', loadingNext && 'opacity-60')}>
+          <div className="md:col-start-2">
+            {data.items.length > 0 && <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />}
+          </div>
+          <div className="flex items-center gap-2 md:justify-self-end">
+            {data.total > SCHOLAR_PAGE_SIZES[0] && (
+              <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
+            )}
+            <MenuButton
+              label="장학생 등록"
+              icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+              placement="top"
+              items={[
+                { to: '/manager/scholars/new', label: '한 명 등록', description: '이름, 이메일, 학교를 직접 적어요' },
+                { to: '/manager/scholars/import', label: '엑셀로 여러 명 등록', description: '양식에 채운 명단을 올려요' },
+              ]}
+            />
+          </div>
+        </div>
+      )}
 
       {bulkOpen && (
         <ScholarStatusDialog

@@ -18,15 +18,17 @@ import { usePageTitle } from '../../lib/usePageTitle'
 const TEMPLATE = appUrl('/templates/scholar-import.xlsx')
 const FILE_INPUT = 'scholar-import-file'
 
-// 등록할 명단 표의 열. 파일에 있는 값을 모두 보여 줘서 등록 전에 눈으로 확인하게 한다
-const COLUMNS: { key: Key; label: string; width: string }[] = [
-  { key: 'name', label: '이름', width: 'w-1/8' },
-  { key: 'email', label: '이메일', width: 'w-1/4' },
-  { key: 'university', label: '학교', width: 'w-1/5' },
-  { key: 'phone', label: '연락처', width: 'w-1/8' },
-  { key: 'major', label: '전공', width: 'w-1/8' },
-  { key: 'studentNo', label: '학번', width: '' },
+// 미리보기 표의 열. 폭은 내용 길이에 맞춘 비율(이메일, 학교가 가장 길다). 줄 번호 열만 고정 폭
+// error: 고칠 줄 표(맨 끝에 고칠 점 열이 붙는다), ready: 등록할 명단 표. 각 표의 비율 합은 줄 번호 열을 뺀 약 94%
+const COLUMNS: { key: Key; label: string; error: string; ready: string }[] = [
+  { key: 'name', label: '이름', error: 'w-1/12', ready: 'w-1/9' },
+  { key: 'email', label: '이메일', error: 'w-1/5', ready: 'w-1/4' },
+  { key: 'university', label: '학교', error: 'w-1/6', ready: 'w-1/5' },
+  { key: 'phone', label: '연락처', error: 'w-1/9', ready: 'w-1/8' },
+  { key: 'major', label: '전공', error: 'w-1/10', ready: 'w-1/8' },
+  { key: 'studentNo', label: '학번', error: 'w-1/12', ready: '' },
 ]
+const REASON_WIDTH = 'w-1/5'
 
 // A07 장학생 일괄 등록(11/15). 양식 엑셀을 고르면 화면에서 바로 읽어 칸마다 검사하고,
 // 문제가 없을 때만 명단을 백엔드로 보낸다. 엑셀 읽기(fflate로 압축 풀기)는 파일을 고를 때만 불러온다
@@ -209,76 +211,110 @@ export function ScholarImportPage() {
   )
 }
 
-const labelOf = (k: Key) => COLUMNS.find((c) => c.key === k)?.label ?? k
+const issueOf = (r: ImportRow, k: Key) => r.errors.some((e) => e.field === k)
 
-// 고칠 것이 있을 때: 고칠 목록만 보인다(11/17). 엑셀로 돌아가 위에서부터 고치기 좋게 문제 하나에 한 줄, 엑셀 줄 순서.
-// 화면에서 고치는 도구(Flatfile 등)처럼 표에 칸 색칠을 하지 않고, 가져오기 결과 목록(HubSpot)처럼 줄, 항목, 값, 이유를 글로 적는다
-function IssueList({ rows, total }: { rows: ImportRow[]; total: number }) {
-  const issues = rows.flatMap((r) =>
-    r.errors.map((e, i) => ({ id: `${r.line}-${i}`, line: r.line, label: labelOf(e.field), value: r[e.field], message: e.message })),
+// 미리보기 표. 고칠 줄 표와 등록할 명단 표가 같이 쓴다(열 순서, 여백, 글자 크기가 같다)
+// 고칠 줄 표: 문제 칸은 빨간 글자(빈 칸은 '빈칸'), 이유는 맨 끝 '고칠 점' 열에. 칸 바탕색과 말풍선은 쓰지 않는다(11/17)
+function PreviewTable({ rows, mode }: { rows: ImportRow[]; mode: 'error' | 'ready' }) {
+  const error = mode === 'error'
+  return (
+    <table className="hidden w-full table-fixed border-collapse md:table">
+      <colgroup>
+        <col className="w-16" />
+        {COLUMNS.map((c) => (
+          <col key={c.key} className={error ? c.error : c.ready} />
+        ))}
+        {error && <col className={REASON_WIDTH} />}
+      </colgroup>
+      <thead>
+        <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
+          <th scope="col" className="py-3 pr-2 pl-8 font-normal">
+            줄
+          </th>
+          {COLUMNS.map((c) => (
+            <th key={c.key} scope="col" className="px-4 py-3 font-normal last:pr-8">
+              {c.label}
+            </th>
+          ))}
+          {error && (
+            <th scope="col" className="py-3 pr-8 pl-4 font-normal">
+              고칠 점
+            </th>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.line} className="border-b border-line-subtle align-top last:border-b-0">
+            <td className="py-3 pr-2 pl-8 text-ink-3 tabular-nums">{r.line}</td>
+            {COLUMNS.map((c) => {
+              const bad = issueOf(r, c.key)
+              const value = r[c.key]
+              return (
+                <td
+                  key={c.key}
+                  title={value || undefined}
+                  className={cn(
+                    'truncate px-4 py-3 last:pr-8',
+                    bad ? 'text-danger-text' : !value ? 'text-ink-3' : c.key === 'name' ? 'text-ink' : 'text-ink-2',
+                    (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums',
+                  )}
+                >
+                  {value || (bad ? '빈칸' : '–')}
+                </td>
+              )
+            })}
+            {error && <td className="py-3 pr-8 pl-4 text-ink">{r.errors.map((e) => e.message).join(', ')}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
+}
+
+// 휴대폰 카드. 이름과 엑셀 줄, 값이 있거나 고칠 칸을 이름표와 함께. 고칠 칸은 빨간 글자, 이유는 카드 아래
+function PreviewCard({ r }: { r: ImportRow }) {
+  const bad = r.errors.length > 0
+  return (
+    <li className="flex flex-col gap-2 border-b border-line-subtle px-6 py-4 last:border-b-0">
+      <div className="flex items-baseline gap-2">
+        <span className={cn('min-w-0 truncate text-body-strong', issueOf(r, 'name') ? 'text-danger-text' : 'text-ink')}>{r.name || '이름 빈칸'}</span>
+        <span className="ml-auto shrink-0 text-caption text-ink-3 tabular-nums">{r.line}번째 줄</span>
+      </div>
+      <dl className="m-0 flex flex-col gap-1 text-caption">
+        {COLUMNS.filter((c) => c.key !== 'name' && (r[c.key] || issueOf(r, c.key))).map((c) => (
+          <div key={c.key} className="flex gap-3">
+            <dt className="w-12 shrink-0 text-ink-3">{c.label}</dt>
+            <dd className={cn('m-0 min-w-0 truncate', issueOf(r, c.key) ? 'text-danger-text' : 'text-ink-2')}>{r[c.key] || '빈칸'}</dd>
+          </div>
+        ))}
+      </dl>
+      {bad && <p className="m-0 text-caption text-ink">{r.errors.map((e) => e.message).join(', ')}</p>}
+    </li>
+  )
+}
+
+// 고칠 것이 있을 때: 고칠 줄만 모든 열과 함께 보인다. 어느 칸이 문제인지 표에서 바로 보이게(11/17)
+function IssueList({ rows, total }: { rows: ImportRow[]; total: number }) {
   return (
     <section aria-labelledby="issues" className="flex flex-col rounded-lg bg-surface">
       <div className="flex flex-col gap-1 border-b border-line-subtle px-6 py-4 md:px-8">
         <h2 id="issues" className="m-0 text-title-2">
           <span className="tabular-nums">{rows.length}</span>줄을 고쳐야 해요
         </h2>
-        <p className="m-0 text-caption text-ink-2">전체 {total}줄 중이에요. 엑셀에서 고친 뒤 다시 올려 주세요.</p>
+        <p className="m-0 text-caption text-ink-2">전체 {total}줄 중 빨간 칸을 엑셀에서 고친 뒤 다시 올려 주세요.</p>
       </div>
-
-      {/* PC: 표 */}
-      <table className="hidden w-full table-fixed border-collapse md:table">
-        <colgroup>
-          <col className="w-20" />
-          <col className="w-28" />
-          <col className="w-1/3" />
-          <col />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
-            <th scope="col" className="py-3 pr-4 pl-8 font-normal">
-              줄
-            </th>
-            <th scope="col" className="px-4 py-3 font-normal">
-              항목
-            </th>
-            <th scope="col" className="px-4 py-3 font-normal">
-              적힌 값
-            </th>
-            <th scope="col" className="py-3 pr-8 pl-4 font-normal">
-              고칠 점
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {issues.map((x) => (
-            <tr key={x.id} className="border-b border-line-subtle last:border-b-0">
-              <td className="py-3 pr-4 pl-8 text-ink-2 tabular-nums">{x.line}</td>
-              <td className="px-4 py-3 text-ink">{x.label}</td>
-              <td className={cn('truncate px-4 py-3', x.value ? 'text-ink-2' : 'text-ink-3')}>{x.value || '빈칸'}</td>
-              <td className="py-3 pr-8 pl-4 text-ink">{x.message}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* 휴대폰: 목록 */}
+      <PreviewTable rows={rows} mode="error" />
       <ul className="m-0 list-none p-0 md:hidden">
-        {issues.map((x) => (
-          <li key={x.id} className="flex flex-col gap-1 border-b border-line-subtle px-6 py-4 last:border-b-0">
-            <span className="text-caption text-ink-3 tabular-nums">
-              {x.line}번째 줄 · {x.label}
-            </span>
-            <span className="text-body text-ink">{x.message}</span>
-            <span className={cn('truncate text-caption', x.value ? 'text-ink-2' : 'text-ink-3')}>적힌 값: {x.value || '빈칸'}</span>
-          </li>
+        {rows.map((r) => (
+          <PreviewCard key={r.line} r={r} />
         ))}
       </ul>
     </section>
   )
 }
 
-// 고칠 것이 없을 때: 등록할 명단. 장학생 명단과 같은 평범한 표
+// 고칠 것이 없을 때: 등록할 명단
 function ReadyList({ rows }: { rows: ImportRow[] }) {
   return (
     <section aria-labelledby="ready" className="flex flex-col rounded-lg bg-surface">
@@ -288,51 +324,10 @@ function ReadyList({ rows }: { rows: ImportRow[] }) {
         </h2>
         <p className="m-0 text-caption text-ink-2">이름과 이메일이 맞는지 한 번 더 보세요.</p>
       </div>
-
-      {/* PC: 표 */}
-      <table className="hidden w-full table-fixed border-collapse md:table">
-        <colgroup>
-          {COLUMNS.map((c) => (
-            <col key={c.key} className={c.width} />
-          ))}
-        </colgroup>
-        <thead>
-          <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
-            {COLUMNS.map((c) => (
-              <th key={c.key} scope="col" className="px-4 py-3 font-normal first:pl-8 last:pr-8">
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.line} className="border-b border-line-subtle last:border-b-0">
-              {COLUMNS.map((c) => (
-                <td
-                  key={c.key}
-                  className={cn(
-                    'truncate px-4 py-3 first:pl-8 last:pr-8',
-                    c.key === 'name' ? 'text-ink' : r[c.key] ? 'text-ink-2' : 'text-ink-3',
-                    (c.key === 'phone' || c.key === 'studentNo') && 'tabular-nums',
-                  )}
-                >
-                  {r[c.key] || '–'}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* 휴대폰: 카드 목록. 이름 아래 값이 있는 칸만 */}
+      <PreviewTable rows={rows} mode="ready" />
       <ul className="m-0 list-none p-0 md:hidden">
         {rows.map((r) => (
-          <li key={r.line} className="flex flex-col gap-1 border-b border-line-subtle px-6 py-4 last:border-b-0">
-            <span className="text-body-strong text-ink">{r.name}</span>
-            <span className="truncate text-caption text-ink-2">{r.email}</span>
-            <span className="truncate text-caption text-ink-3">{[r.university, r.major, r.studentNo, r.phone].filter(Boolean).join(' · ')}</span>
-          </li>
+          <PreviewCard key={r.line} r={r} />
         ))}
       </ul>
     </section>
