@@ -3,7 +3,7 @@ import { api } from './client'
 import { tokenStore } from './token'
 import type { Me, Role } from './types'
 
-// POST /auth/login · 담당 승완 · FE 연동: Mock (모양은 백엔드 #29, #45 기준)
+// POST /auth/login · FE 연동: Mock (모양은 백엔드 #29, #45 기준)
 export type LoginBody = { email: string; password: string }
 export type LoginResult = { accessToken: string; refreshToken?: string | null; role: Role; name: string; passwordChangeRequired: boolean }
 
@@ -19,7 +19,7 @@ export function useLogin() {
   })
 }
 
-// GET /me · 담당 승완 · FE 연동: Mock
+// GET /me · FE 연동: Mock
 export function useMe() {
   return useQuery({
     queryKey: ['me'],
@@ -46,7 +46,7 @@ export function useLogout() {
   })
 }
 
-// PATCH /auth/password · 담당 승완 · 백엔드 #45 · FE 연동: Mock
+// PATCH /auth/password · 백엔드 #45 · FE 연동: Mock
 // 오류: 400 PASSWORD_MISMATCH(현재 비밀번호 틀림), SAME_AS_CURRENT(기존과 같음), INVALID_REQUEST(8~64자 아님)
 export type PasswordChange = { currentPassword: string; newPassword: string }
 

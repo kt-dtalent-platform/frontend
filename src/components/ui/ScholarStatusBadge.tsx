@@ -12,7 +12,8 @@ const styles: Record<ScholarStatus, { label: string; box: string; dot: string }>
 }
 
 export function ScholarStatusBadge({ status }: { status: ScholarStatus }) {
-  const s = styles[status]
+  // 모르는 값이 오면 명단이 깨지지 않게 값 그대로 회색으로 보인다
+  const s = styles[status] ?? { label: status, box: 'bg-neutral-bg text-neutral-text', dot: 'bg-neutral-dot' }
   return (
     <span className={cn('inline-flex h-badge-h items-center gap-1.5 rounded-sm px-2 text-overline tracking-normal', s.box)}>
       <span aria-hidden className={cn('size-1.5 rounded-full', s.dot)} />

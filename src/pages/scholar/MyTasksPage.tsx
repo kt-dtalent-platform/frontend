@@ -72,7 +72,7 @@ function TaskCard({ task }: { task: MyTask }) {
           </div>
           <h2 className="m-0 text-title-2">{task.title}</h2>
           <p className="m-0 flex gap-3 text-caption text-ink-3 tabular-nums">
-            <span>마감 {formatDue(task.requestDueAt)}</span>
+            <span>마감 {formatDue(task.dueAt)}</span>
             {!done && <span className={cn((late || soon) && 'font-semibold text-warning-text')}>{dDayText(task.dDay, task.overdue)}</span>}
           </p>
         </div>
