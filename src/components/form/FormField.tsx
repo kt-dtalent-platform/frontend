@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import type { UseFormRegister } from 'react-hook-form'
 import type { AnswerValue, FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
-import { Tag } from '../ui/Tag'
 import { FileField, type FileHandlers } from './FileField'
 import { fieldBase, fieldControl } from './fieldClass'
 import { Checkbox } from './Checkbox'
@@ -28,7 +27,8 @@ const control = fieldControl
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
 export function FormField({ field, register, editable, highlight, error, hint, value, files, fileHandlers }: Props) {
   const id = `f-${field.fieldKey}`
-  const describedBy = [field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
+  // 고칠 항목 표시도 입력칸 설명으로 읽히게 한다(스크린 리더가 칸마다 '고칠 항목'을 듣도록)
+  const describedBy = [highlight && `${id}-mark`, field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
   const border = error ? 'border-danger-line' : 'border-line-control'
   const rules = formatRules(field)
   const required = field.required && editable
@@ -139,7 +139,11 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         <label className="flex min-h-control-default items-center gap-3">
           <Checkbox disabled={!editable} aria-invalid={!!error} aria-describedby={describedBy} {...register(field.fieldKey)} />
           <span className="text-label">{field.label}</span>
-          {highlight && <Tag tone="warning">보완 요청</Tag>}
+          {highlight && (
+            <span id={`${id}-mark`} className="text-caption font-semibold text-warning-text">
+              고칠 항목
+            </span>
+          )}
         </label>
         {field.helpText && (
           <p id={`${id}-help`} className="m-0 pl-8 text-caption text-ink-3">
@@ -169,7 +173,11 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             </>
           )}
         </label>
-        {highlight && <Tag tone="warning">보완 요청</Tag>}
+        {highlight && (
+          <span id={`${id}-mark`} className="text-caption font-semibold text-warning-text">
+            고칠 항목
+          </span>
+        )}
         {!editable && <Lock size={16} strokeWidth={2} className="text-ink-3" role="img" aria-label="수정할 수 없음" />}
       </div>
       {input}

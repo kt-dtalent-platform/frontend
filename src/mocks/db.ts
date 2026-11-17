@@ -76,7 +76,7 @@ export function saveDraft(requestId: number, answers: Answers) {
 }
 
 export function requestOfSubmission(submissionId: number) {
-  return [31, 28].find((id) => current(id).exists && current(id).id === submissionId)
+  return [40, 31, 28].find((id) => current(id).exists && current(id).id === submissionId)
 }
 
 export function fieldOf(requestId: number, fieldKey: string) {
@@ -98,7 +98,7 @@ export function canChangeFile(requestId: number, fieldKey: string) {
 }
 
 export function fileOwner(fileId: number) {
-  for (const id of [31, 28]) {
+  for (const id of [40, 31, 28]) {
     const file = current(id).files.find((f) => f.id === fileId)
     if (file) return { requestId: id, fieldKey: file.fieldKey }
   }
@@ -106,7 +106,7 @@ export function fileOwner(fileId: number) {
 }
 
 export function removeFile(fileId: number) {
-  for (const id of [31, 28]) {
+  for (const id of [40, 31, 28]) {
     const prev = current(id)
     if (prev.files.some((f) => f.id === fileId)) {
       write(id, { ...prev, files: prev.files.filter((f) => f.id !== fileId) })
@@ -142,7 +142,7 @@ export function submit(requestId: number, answers: Answers, resubmit: boolean) {
 }
 
 // 장학생 홍길동(2026년 선발)의 제출 요청. MVP는 성적증명서 제출만 다룬다.
-// 31: 보완 필요, 28: 확인 완료
+// 40: 새로 제출할 요청(아직 안 냄), 31: 보완 필요, 28: 확인 완료
 const gradeFields: RawSubmissionForm['fields'] = [
   { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 4.5 } },
   {
@@ -169,6 +169,19 @@ const gradeFields: RawSubmissionForm['fields'] = [
 
 function forms(): Record<number, RawSubmissionForm> {
   return {
+    40: {
+      request: {
+        id: 40,
+        title: '2026학년도 2학기 성적증명서 제출',
+        description: '2학기 성적을 입력하고 성적증명서를 올려 주세요.',
+        requestDueAt: dueIn(21),
+        status: 'IN_PROGRESS',
+      },
+      fields: gradeFields,
+      submission: null,
+      files: [],
+      revision: null,
+    },
     31: {
       request: {
         id: 31,
@@ -204,7 +217,7 @@ export function getForm(requestId: number): RawSubmissionForm | undefined {
 }
 
 export function taskList() {
-  return [31, 28].map((id) => {
+  return [40, 31, 28].map((id) => {
     const f = getForm(id)!
     return {
       requestId: id,

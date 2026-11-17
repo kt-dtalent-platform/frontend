@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { useMyTasks, type MyTask } from '../../api/tasks'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
+import { RevisionNote } from '../../components/ui/RevisionNote'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
@@ -79,9 +80,8 @@ function TaskCard({ task }: { task: MyTask }) {
         <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
       </div>
       {task.revisionReason && (
-        <div className="mt-4 flex flex-col gap-1 rounded-md bg-warning-bg px-4 py-3 text-warning-text">
-          <span className="font-semibold">보완 사유</span>
-          <span>{task.revisionReason}</span>
+        <div className="mt-5 border-t border-line-subtle pt-4">
+          <RevisionNote reason={task.revisionReason} />
         </div>
       )}
     </Link>
