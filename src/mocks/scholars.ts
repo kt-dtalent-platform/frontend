@@ -9,7 +9,8 @@ const GIVEN = ['민서', '서준', '하은', '도윤', '지우', '시우', '서�
 const SCHOOLS = ['한국대학교', '서울과학기술대학교', '부산대학교', '경북대학교', '충남대학교', '전남대학교']
 const MAJORS = ['컴퓨터공학과', '전자공학과', '산업공학과', '데이터사이언스학과', '경영학과']
 
-type Row = ScholarDetail & { accountStatus: AccountStatus; phone: string | null }
+// studentNo: 등록할 때 받은 학번. 처음부터 있는 목업 줄은 없어서 내보낼 때 id로 만든다
+type Row = ScholarDetail & { accountStatus: AccountStatus; phone: string | null; studentNo?: string | null }
 const KEY = 'kt-dtalent:mock-scholars'
 // 기수는 요청 만들기 목업과 같은 목록을 쓴다
 
@@ -143,6 +144,7 @@ export function createScholar(body: ScholarCreate) {
     maskedPhone: mask(body.phone),
     university: body.university ?? '',
     major: body.major,
+    studentNo: body.studentNo,
     cohort: { id: cohort.id, name: cohort.name },
     status: 'ENROLLED',
     completedYear: null,
@@ -170,7 +172,7 @@ export function exportScholarsCsv(statuses: string[], cohortId: number | null, c
     cohort: ['기수', (r) => r.cohort.name],
     university: ['학교', (r) => r.university],
     major: ['학과', (r) => r.major ?? ''],
-    studentNo: ['학번', (r) => String(20230000 + r.id)],
+    studentNo: ['학번', (r) => r.studentNo ?? String(20230000 + r.id)],
     email: ['이메일', (r) => r.email],
     phone: ['연락처', (r) => r.phone ?? ''],
     status: ['상태', (r) => label[r.status] ?? r.status],
