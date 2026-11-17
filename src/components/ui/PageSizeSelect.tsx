@@ -18,7 +18,7 @@ export function PageSizeSelect({
   onChange: (size: number) => void
 }) {
   return (
-    <div className="relative w-32">
+    <div className="relative w-36">
       <select
         aria-label="한 쪽에 보일 수"
         value={value}

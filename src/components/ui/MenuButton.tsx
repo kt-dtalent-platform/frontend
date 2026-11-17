@@ -8,7 +8,7 @@ export type MenuItem = { to: string; label: string; description?: string }
 
 // 누르면 고를 수 있는 항목이 펼쳐지는 버튼(메뉴 버튼). 같은 일을 하는 방법이 여럿일 때 버튼 하나로 묶는다
 // 예: 장학생 등록 → 한 명 / 엑셀로 여러 명(Carbon Menu button: 같은 무게의 만들기 방법을 한곳에)
-// 접근성: WAI-ARIA menu button 패턴. 위아래 화살표로 옮기고 Esc로 닫으면 버튼으로 돌아간다
+// 접근성: WAI-ARIA menu button 패턴. 버튼에서 ↓↑로 열고, 위아래 화살표·Home·End로 옮기고, Esc로 닫으면 버튼으로 돌아간다
 // placement: 화면 아래에 있는 버튼이면 위로 펼친다
 export function MenuButton({
   label,
@@ -27,6 +27,8 @@ export function MenuButton({
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
+  // 열릴 때 초점을 둘 항목(버튼에서 ↑를 누르면 마지막 항목)
+  const [start, setStart] = useState<'first' | 'last'>('first')
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([])
@@ -41,10 +43,10 @@ export function MenuButton({
     return () => document.removeEventListener('pointerdown', onDown)
   }, [open])
 
-  // 열리면 첫 항목으로 초점을 옮긴다
+  // 열리면 첫 항목(또는 마지막 항목)으로 초점을 옮긴다
   useEffect(() => {
-    if (open) itemRefs.current[0]?.focus()
-  }, [open])
+    if (open) itemRefs.current[start === 'first' ? 0 : items.length - 1]?.focus()
+  }, [open, start, items.length])
 
   const close = () => {
     setOpen(false)
@@ -59,7 +61,14 @@ export function MenuButton({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (setStart('first'), setOpen((o) => !o))}
+        // APG 메뉴 버튼: ↓는 첫 항목, ↑는 마지막 항목으로 열린다
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+          e.preventDefault()
+          setStart(e.key === 'ArrowDown' ? 'first' : 'last')
+          setOpen(true)
+        }}
         className={buttonClass({ variant, size })}
       >
         {icon}
@@ -80,6 +89,9 @@ export function MenuButton({
             e.preventDefault()
             const step = e.key === 'ArrowDown' ? 1 : -1
             itemRefs.current[(i + step + items.length) % items.length]?.focus()
+          } else if (e.key === 'Home' || e.key === 'End') {
+            e.preventDefault()
+            itemRefs.current[e.key === 'Home' ? 0 : items.length - 1]?.focus()
           } else if (e.key === 'Tab') setOpen(false)
         }}
         className={cn(
@@ -94,6 +106,8 @@ export function MenuButton({
                 itemRefs.current[i] = el
               }}
               role="menuitem"
+              // 항목은 화살표로만 옮겨 다닌다(Tab 순서에서 뺀다)
+              tabIndex={-1}
               to={item.to}
               onClick={() => setOpen(false)}
               className="flex flex-col gap-0.5 rounded-sm px-3 py-2 text-ink no-underline outline-none hover:bg-control-tonal-hover focus-visible:bg-control-tonal-hover"

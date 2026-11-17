@@ -322,27 +322,30 @@ export function ScholarsPage() {
       {/* 목록 아래: 쪽 번호는 가운데, 몇 명씩 보기와 장학생 등록은 오른쪽. 휴대폰은 위아래로
           장학생 등록은 1년에 한 번쯤이라 위가 아닌 아래에 둔다(11/17). 한 명 / 엑셀로 여러 명을 메뉴 하나로 묶는다
           같은 줄의 칸과 버튼은 높이를 32px(compact)로 맞춘다(Ant Design 쪽 번호와 같은 규칙) */}
-      {data && (
-        <div className={cn('flex flex-col items-center gap-3 md:grid md:grid-cols-3', loadingNext && 'opacity-60')}>
-          <div className="md:col-start-2">
-            {data.items.length > 0 && <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />}
-          </div>
-          <div className="flex items-center gap-2 md:justify-self-end">
-            {data.total > SCHOLAR_PAGE_SIZES[0] && (
-              <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
-            )}
-            <MenuButton
-              label="장학생 등록"
-              icon={<Plus size={16} strokeWidth={2} aria-hidden />}
-              placement="top"
-              items={[
-                { to: '/manager/scholars/new', label: '한 명 등록', description: '이름, 이메일, 학교를 직접 적어요' },
-                { to: '/manager/scholars/import', label: '엑셀로 여러 명 등록', description: '양식에 채운 명단을 올려요' },
-              ]}
-            />
-          </div>
+      {/* 등록 메뉴는 목록을 불러오는 중이거나 오류여도 보인다. 흐림은 쪽 번호와 몇 명씩 보기에만
+          PC: 왼쪽 빈 칸과 오른쪽 묶음이 같은 몫을 나눠 쪽 번호가 가운데. 좁으면 오른쪽 묶음이 자리를 먼저 차지해 겹치지 않는다 */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="hidden md:block md:flex-1 md:basis-0" />
+        <div className={cn('self-center', loadingNext && 'opacity-60')}>
+          {data && data.items.length > 0 && <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => set({ page: p })} />}
         </div>
-      )}
+        <div className="flex items-center justify-end gap-2 md:flex-1 md:basis-0">
+          {data && data.total > SCHOLAR_PAGE_SIZES[0] && (
+            <div className={cn(loadingNext && 'opacity-60')}>
+              <PageSizeSelect value={pageSize} options={SCHOLAR_PAGE_SIZES} unit="명" disabled={loadingNext} onChange={(n) => set({ size: n })} />
+            </div>
+          )}
+          <MenuButton
+            label="장학생 등록"
+            icon={<Plus size={16} strokeWidth={2} aria-hidden />}
+            placement="top"
+            items={[
+              { to: '/manager/scholars/new', label: '한 명 등록', description: '이름, 이메일, 학교를 직접 적어요' },
+              { to: '/manager/scholars/import', label: '엑셀로 여러 명 등록', description: '양식에 채운 명단을 올려요' },
+            ]}
+          />
+        </div>
+      </div>
 
       {bulkOpen && (
         <ScholarStatusDialog

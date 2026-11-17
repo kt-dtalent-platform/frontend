@@ -19,16 +19,16 @@ const TEMPLATE = appUrl('/templates/scholar-import.xlsx')
 const FILE_INPUT = 'scholar-import-file'
 
 // 미리보기 표의 열. 폭은 내용 길이에 맞춘 비율(이메일, 학교가 가장 길다). 줄 번호 열만 고정 폭
-// error: 고칠 줄 표(맨 끝에 고칠 점 열이 붙는다), ready: 등록할 명단 표. 각 표의 비율 합은 줄 번호 열을 뺀 약 94%
+// error: 고칠 줄 표(맨 끝 '고칠 점' 열이 남는 폭을 받는다), ready: 등록할 명단 표(이메일 열이 남는 폭을 받는다).
+// 비율 합을 줄 번호 열(64px)과 남는 열이 들어갈 만큼 낮게 둬서 표가 카드 밖으로 넘치지 않게 한다. 표는 xl(1280px) 이상에서만, 그보다 좁으면 카드
 const COLUMNS: { key: Key; label: string; error: string; ready: string }[] = [
   { key: 'name', label: '이름', error: 'w-1/12', ready: 'w-1/9' },
-  { key: 'email', label: '이메일', error: 'w-1/5', ready: 'w-1/4' },
+  { key: 'email', label: '이메일', error: 'w-1/5', ready: '' },
   { key: 'university', label: '학교', error: 'w-1/6', ready: 'w-1/5' },
   { key: 'phone', label: '연락처', error: 'w-1/9', ready: 'w-1/8' },
   { key: 'major', label: '전공', error: 'w-1/10', ready: 'w-1/8' },
-  { key: 'studentNo', label: '학번', error: 'w-1/12', ready: '' },
+  { key: 'studentNo', label: '학번', error: 'w-1/12', ready: 'w-1/9' },
 ]
-const REASON_WIDTH = 'w-1/5'
 
 // A07 장학생 일괄 등록(11/15). 양식 엑셀을 고르면 화면에서 바로 읽어 칸마다 검사하고,
 // 문제가 없을 때만 명단을 백엔드로 보낸다. 엑셀 읽기(fflate로 압축 풀기)는 파일을 고를 때만 불러온다
@@ -218,13 +218,13 @@ const issueOf = (r: ImportRow, k: Key) => r.errors.some((e) => e.field === k)
 function PreviewTable({ rows, mode }: { rows: ImportRow[]; mode: 'error' | 'ready' }) {
   const error = mode === 'error'
   return (
-    <table className="hidden w-full table-fixed border-collapse md:table">
+    <table className="hidden w-full table-fixed border-collapse xl:table">
       <colgroup>
         <col className="w-16" />
         {COLUMNS.map((c) => (
           <col key={c.key} className={error ? c.error : c.ready} />
         ))}
-        {error && <col className={REASON_WIDTH} />}
+        {error && <col />}
       </colgroup>
       <thead>
         <tr className="border-b border-line-subtle text-left text-caption text-ink-3">
@@ -302,10 +302,10 @@ function IssueList({ rows, total }: { rows: ImportRow[]; total: number }) {
         <h2 id="issues" className="m-0 text-title-2">
           <span className="tabular-nums">{rows.length}</span>줄을 고쳐야 해요
         </h2>
-        <p className="m-0 text-caption text-ink-2">전체 {total}줄 중 빨간 칸을 엑셀에서 고친 뒤 다시 올려 주세요.</p>
+        <p className="m-0 text-caption text-ink-2">전체 {total}줄 중 빨간 글자를 엑셀에서 고친 뒤 다시 올려 주세요.</p>
       </div>
       <PreviewTable rows={rows} mode="error" />
-      <ul className="m-0 list-none p-0 md:hidden">
+      <ul className="m-0 list-none p-0 xl:hidden">
         {rows.map((r) => (
           <PreviewCard key={r.line} r={r} />
         ))}
@@ -325,7 +325,7 @@ function ReadyList({ rows }: { rows: ImportRow[] }) {
         <p className="m-0 text-caption text-ink-2">이름과 이메일이 맞는지 한 번 더 보세요.</p>
       </div>
       <PreviewTable rows={rows} mode="ready" />
-      <ul className="m-0 list-none p-0 md:hidden">
+      <ul className="m-0 list-none p-0 xl:hidden">
         {rows.map((r) => (
           <PreviewCard key={r.line} r={r} />
         ))}
