@@ -35,7 +35,64 @@
   }
 }
 
-/* 화면에 들어올 때 한 번 쓰는 움직임 */
+/* 업무 화면 움직임(#51, 11/17). 길이·곡선은 tokens.json motion. transform과 opacity만 움직인다.
+   들어올 때만 움직이고 사라질 때는 바로 닫는다(사용자가 닫은 것이라 기다리게 하지 않는다).
+   fill은 backwards: 끝난 뒤 transform을 남기지 않아 안쪽 fixed 요소의 기준이 바뀌지 않게 */
+@theme {
+  --animate-page-in: page-in var(--motion-moderate) var(--ease-enter) backwards;
+  --animate-pop-down: pop-down var(--motion-moderate) var(--ease-enter) backwards;
+  --animate-pop-up: pop-up var(--motion-moderate) var(--ease-enter) backwards;
+  --animate-dialog-in: dialog-in var(--motion-slow) var(--ease-enter) backwards;
+  --animate-fade-in: fade-in var(--motion-moderate) var(--ease-enter) backwards;
+  --animate-toast-in: toast-in var(--motion-slow) var(--ease-enter) backwards;
+}
+
+/* 화면 전환: 본문이 4px 아래에서 나타남 */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* 아래로 펼치는 목록(콤보박스)은 위에서, 위로 펼치는 메뉴는 아래에서. 누른 곳에서 나오는 것처럼 */
+@keyframes pop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* 대화상자: 96%에서 커지며 나타남, 뒤 배경은 페이드 */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 토스트: 8px 아래에서 올라옴 */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 첫 화면(로그인)에서 한 번 쓰는 움직임 */
 @keyframes rise {
   from {
     opacity: 0;
@@ -57,6 +114,7 @@
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

@@ -46,7 +46,7 @@ function ToastHost({ toast, onClose }: { toast: { id: number; message: string } 
           key={toast.id}
           onPointerEnter={(e) => e.pointerType === 'mouse' && setPaused(true)}
           onPointerLeave={() => setPaused(false)}
-          className="pointer-events-none m-0 w-full md:pointer-events-auto rounded-md bg-ink px-5 py-3 text-body text-surface shadow-pop md:w-auto md:max-w-toast-max-w"
+          className="pointer-events-none m-0 w-full animate-toast-in md:pointer-events-auto rounded-md bg-ink px-5 py-3 text-body text-surface shadow-pop md:w-auto md:max-w-toast-max-w"
         >
           {toast.message}
         </p>

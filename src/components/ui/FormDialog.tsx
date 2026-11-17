@@ -54,7 +54,7 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
         e.preventDefault()
         if (!busy) onCancel()
       }}
-      className="mx-4 my-auto w-auto max-w-dialog-w rounded-lg bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim md:mx-auto md:w-full"
+      className="mx-4 my-auto w-auto max-w-dialog-w rounded-lg bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim open:animate-dialog-in backdrop:animate-fade-in md:mx-auto md:w-full"
     >
       <form onSubmit={submit} noValidate className="flex flex-col gap-4 p-6">
         <h2 id={titleId} className="m-0 text-title-2">

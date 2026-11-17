@@ -42,9 +42,17 @@ for (const s of t.size.tokens) {
   else add(`spacing-${s.name}`, s.value)
 }
 
+// 움직임: 곡선은 ease-enter 처럼 Tailwind 유틸리티로, 길이는 duration-(--motion-slow) 처럼 변수로 쓴다
+lines.push('', '  --ease-*: initial;')
+for (const m of t.motion.tokens) if (m.name.startsWith('ease-')) add(m.name, m.value)
+// 버튼 등 transition-colors의 기본 길이와 곡선
+add('default-transition-duration', t.motion.tokens.find((m) => m.name === 'motion-fast').value)
+add('default-transition-timing-function', t.motion.tokens.find((m) => m.name === 'ease-standard').value)
+
 const root = []
 for (const z of t.zIndex.tokens) root.push(`  --${z.name}: ${z.value};`)
 for (const s of t.spacing.tokens) root.push(`  --${s.name}: ${s.value};`)
+for (const m of t.motion.tokens) if (!m.name.startsWith('ease-')) root.push(`  --${m.name}: ${m.value};`)
 
 const css = `/* 자동 생성 파일입니다. 직접 고치지 말고 design/tokens.json을 고친 뒤 npm run tokens를 실행하세요. */
 
