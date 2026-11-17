@@ -228,8 +228,9 @@ export function requestDetail(id: number) {
       templateId: templates.find((t) => t.code === row.templateCode)?.id ?? 0,
       title: row.title,
       description: null,
-      academicYear: 2026,
-      semester: '2',
+      // 대상 학년도·학기는 제목("2027학년도 1학기 ...")에서 읽는다. 못 읽으면 2026학년도 2학기
+      academicYear: Number(/(\d{4})학년도/.exec(row.title)?.[1]) || 2026,
+      semester: (/(\d)학기/.exec(row.title)?.[1] as '1' | '2' | undefined) ?? '2',
       closesAt: row.closesAt,
       completionMessage: null,
     }

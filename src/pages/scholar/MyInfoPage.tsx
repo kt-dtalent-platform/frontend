@@ -27,7 +27,12 @@ export function MyInfoPage() {
               {/* 비밀번호는 값 대신 작은 [변경] 버튼만. 큰 줄 버튼은 눈에 너무 띄었다(11/17) */}
               <Item
                 label="비밀번호"
-                value="••••••••"
+                value={
+                  <>
+                    <span aria-hidden>••••••••</span>
+                    <span className="sr-only">설정됨</span>
+                  </>
+                }
                 action={
                   <Link to="/me/password" aria-label="비밀번호 변경" className={buttonClass({ variant: 'secondary', size: 'compact' })}>
                     변경
@@ -44,12 +49,15 @@ export function MyInfoPage() {
 
 // 이름과 값을 한 줄에. 휴대폰에서도 한 줄로 읽히게 이름 칸 폭을 고정한다
 // action: 값 오른쪽 끝에 두는 작은 버튼(비밀번호 변경)
-function Item({ label, value, action }: { label: string; value: string | null; action?: ReactNode }) {
+// dl 안 줄에는 dt와 dd만 둔다: 버튼은 dd 안에
+function Item({ label, value, action }: { label: string; value: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex min-h-row-h items-center gap-4 border-b border-line-subtle py-3 last:border-b-0">
-      <dt className="w-16 shrink-0 text-ink-3">{label}</dt>
-      <dd className={cn('m-0 min-w-0 flex-1 break-all', !value && 'text-ink-3')}>{value || '없음'}</dd>
-      {action}
+      <dt className="w-20 shrink-0 text-ink-3">{label}</dt>
+      <dd className={cn('m-0 flex min-w-0 flex-1 items-center justify-between gap-3 break-all', !value && 'text-ink-3')}>
+        <span className="min-w-0">{value || '없음'}</span>
+        {action}
+      </dd>
     </div>
   )
 }
