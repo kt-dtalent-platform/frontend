@@ -2,12 +2,19 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
-// 장학생 명단·상세·수정·등록. 담당 정윤. 백엔드 PR #16~#19(KT-10~13) 응답·요청 모양 기준.
+// 장학생 명단·상세·수정·등록. 백엔드 KT-10~13 응답·요청 모양 기준
 // 연락처 형식(숫자와 -). 백엔드 검증 규칙은 확인 필요
 export const PHONE = /^[0-9-]{9,20}$/
 
-// 장학생 상태(재단 요청 11/10): 재학, 수료, 중단. 값 이름은 백엔드 수정에 맞춘다(확인 필요)
-export type ScholarStatus = 'ENROLLED' | 'COMPLETED' | 'WITHDRAWN'
+// 장학생 상태: 재학, 휴학, 수료, 중단(11/10 재단 요청 3개 + 11/17 군휴학 때문에 휴학 추가, 백엔드와 같은 값)
+export type ScholarStatus = 'ENROLLED' | 'LEAVE' | 'COMPLETED' | 'WITHDRAWN'
+// 필터, 상태 바꾸기, 내보내기가 같이 쓰는 순서와 이름
+export const scholarStatuses: { value: ScholarStatus; label: string }[] = [
+  { value: 'ENROLLED', label: '재학' },
+  { value: 'LEAVE', label: '휴학' },
+  { value: 'COMPLETED', label: '수료' },
+  { value: 'WITHDRAWN', label: '중단' },
+]
 export type AccountStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED'
 
 // 중단 사유. 기타는 withdrawalReasonDetail에 직접 쓴 내용(확인 필요)

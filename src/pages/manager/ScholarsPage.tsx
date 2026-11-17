@@ -5,7 +5,15 @@ import { useMe } from '../../api/auth'
 import { useCohorts } from '../../api/manager'
 import { ApiError } from '../../api/client'
 import { downloadFile } from '../../api/review'
-import { scholarExportColumns, useChangeScholarsStatus, useScholars, withdrawalText, type ScholarItem, type ScholarStatus } from '../../api/scholars'
+import {
+  scholarExportColumns,
+  scholarStatuses,
+  useChangeScholarsStatus,
+  useScholars,
+  withdrawalText,
+  type ScholarItem,
+  type ScholarStatus,
+} from '../../api/scholars'
 import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -26,12 +34,7 @@ import { ScholarStatusDialog } from './ScholarStatusDialog'
 import { Checkbox } from '../../components/form/Checkbox'
 import { useToast } from '../../components/ui/useToast'
 
-const statuses: { value: ScholarStatus | null; label: string }[] = [
-  { value: null, label: '전체' },
-  { value: 'ENROLLED', label: '재학' },
-  { value: 'COMPLETED', label: '수료' },
-  { value: 'WITHDRAWN', label: '중단' },
-]
+const statuses: { value: ScholarStatus | null; label: string }[] = [{ value: null, label: '전체' }, ...scholarStatuses]
 
 // 열 이름으로 정렬할 수 있는 열. 서버 정렬 키 이름은 백엔드 확인 필요
 const sortKeys = ['name', 'cohort', 'university', 'status', 'email'] as const
@@ -136,9 +139,16 @@ export function ScholarsPage() {
 
   // 목록에 대한 보조 행동이라 테두리 없는 버튼(11/12)
   const exportButton = (
-    <Button size="compact" variant="ghost" disabled={!data || data.total === 0} onClick={() => (setExportError(false), setExportOpen(true))}>
+    // 휴대폰은 상태 칩 다섯 개와 한 줄에 놓으려고 아이콘만(이름은 화면 읽기용으로 남긴다)
+    <Button
+      size="compact"
+      variant="ghost"
+      className="max-md:w-control-compact max-md:px-0"
+      disabled={!data || data.total === 0}
+      onClick={() => (setExportError(false), setExportOpen(true))}
+    >
       <Download size={16} strokeWidth={2} aria-hidden />
-      내보내기
+      <span className="max-md:sr-only">내보내기</span>
     </Button>
   )
 

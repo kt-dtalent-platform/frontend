@@ -3,7 +3,7 @@ import { api } from './client'
 import { submissionKey, type SubmissionForm, type UploadedFile } from './submissions'
 
 // 파일 올리기 3단계: 업로드 주소 발급 → 저장소(S3)에 직접 PUT → 업로드 완료 처리
-// 담당 정윤 · 백엔드 구현 없음(노션 명세서 모양을 임시로 씀, 확인 필요)
+// 백엔드 구현 전이라 노션 명세서 모양을 임시로 쓴다(확인 필요)
 
 type Presign = { fileId: number; uploadUrl: string; expiresAt: string }
 type Completed = {

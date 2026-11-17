@@ -17,7 +17,7 @@ const KEY = 'kt-dtalent:mock-scholars'
 function base(): Row[] {
   return Array.from({ length: 94 }, (_, i) => {
     const cohort = i < 47 ? cohorts[0] : cohorts[1]
-    // 2025년 선발 일부는 수료, 몇 명은 중단(사유를 돌아가며)
+    // 2025년 선발 일부는 수료, 몇 명은 휴학, 몇 명은 중단(사유를 돌아가며)
     const reasons: WithdrawalReason[] = ['GRADE_NOT_MET', 'VOLUNTARY', 'DOUBLE_BENEFIT', 'OTHER']
     const st: StatusInfo =
       i % 23 === 5 || i % 31 === 7
@@ -29,7 +29,9 @@ function base(): Row[] {
           }
         : cohort.id === 5 && i % 9 === 3
           ? { status: 'COMPLETED', completedYear: 2026, withdrawalReason: null, withdrawalReasonDetail: null }
-          : { status: 'ENROLLED', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }
+          : i % 13 === 6
+            ? { status: 'LEAVE', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }
+            : { status: 'ENROLLED', completedYear: null, withdrawalReason: null, withdrawalReasonDetail: null }
     return {
       id: 1000 + i,
       name: SURNAMES[(i * 7) % 16] + GIVEN[(i * 5 + Math.floor(i / 16)) % 16],
@@ -81,7 +83,7 @@ export function scholarList(q: URLSearchParams) {
   const list = all().filter(
     (r) => (!cohortId || r.cohort.id === cohortId) && (!status || r.status === status) && (!keyword || r.name.includes(keyword) || r.email.includes(keyword)),
   )
-  const statusOrder = ['ENROLLED', 'COMPLETED', 'WITHDRAWN']
+  const statusOrder = ['ENROLLED', 'LEAVE', 'COMPLETED', 'WITHDRAWN']
   // 기본 순서는 백엔드와 같게 등록 순(ORDER BY u.id). 새로 등록한 장학생은 맨 뒤
   list.sort((a, b) => a.id - b.id)
   const sorted = sortRows(list, q.get('sort'), {
@@ -158,7 +160,7 @@ export function createScholar(body: ScholarCreate) {
 
 // 목업 명단 내보내기: 고른 상태, 기수, 열만 담은 CSV. 실제 서버는 xlsx(확인 필요)
 export function exportScholarsCsv(statuses: string[], cohortId: number | null, columns: string[]) {
-  const label: Record<string, string> = { ENROLLED: '재학', COMPLETED: '수료', WITHDRAWN: '중단' }
+  const label: Record<string, string> = { ENROLLED: '재학', LEAVE: '휴학', COMPLETED: '수료', WITHDRAWN: '중단' }
   const reason: Record<string, string> = {
     ACADEMIC_STATUS: '학적 변동/상실',
     DOUBLE_BENEFIT: '이중 수혜',

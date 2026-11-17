@@ -2,7 +2,7 @@
 // 임시 저장한 값은 sessionStorage에 남겨 새로고침해도 다시 보이게 한다.
 import type { Answers, RawSubmissionForm } from '../api/submissions'
 import type { SubmissionStatus } from '../api/types'
-import { kstParts, kstToUtc } from '../lib/time'
+import { daysBetween, kstParts, kstToday, kstToUtc } from '../lib/time'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -209,7 +209,8 @@ export function taskList() {
     return {
       requestId: id,
       title: f.request.title,
-      requestDueAt: f.request.requestDueAt,
+      dueAt: f.request.requestDueAt,
+      dDay: daysBetween(kstToday(), kstParts(f.request.requestDueAt).date),
       status: f.submission?.status ?? 'NOT_SUBMITTED',
       revisionReason: f.revision?.reason ?? null,
     }

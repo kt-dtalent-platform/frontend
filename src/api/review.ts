@@ -4,7 +4,7 @@ import { ApiError, BASE_URL, api } from './client'
 import { tokenStore } from './token'
 import type { SubmissionStatus } from './types'
 
-// 담당자 제출 현황·개별 검토. 모두 백엔드 구현 없음(담당 승완). 노션 명세서 모양을 임시로 쓴다(확인 필요).
+// 담당자 제출 현황·개별 검토. 모두 백엔드 구현 없음. 노션 명세서 모양을 임시로 쓴다(확인 필요).
 
 // GET /requests/{requestId}/submissions?status=&keyword=&page=
 // status 필터는 명세서에 없지만 상태 칩으로 나눠 보려면 필요하다(확인 필요)
