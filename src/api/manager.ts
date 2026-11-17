@@ -94,6 +94,16 @@ export function useCohorts(programId: number | undefined) {
   })
 }
 
+// POST /v1/programs/{programId}/cohorts · 백엔드에 아직 없음(11/15 요청) · FE 연동: Mock
+// 새해 장학생을 등록하기 전에 기수를 만든다. DB cohorts: name(50자), started_on, ended_on(둘 다 비워도 됨)
+export function useCreateCohort(programId: number | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string }) => api<Cohort>(`/programs/${programId}/cohorts`, { method: 'POST', body }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'cohorts', programId] }),
+  })
+}
+
 // POST /requests(작성 중으로 만들기), POST /requests/{id}/publish(공개) · 백엔드 구현 없음
 // 요청 본문은 실제 DB(requests) 열을 따른다: 공개 일시·개인정보 안내·보관 기간 열은 DB에 없어 보내지 않는다(확인 필요).
 export type Semester = '1' | '2' | 'SUMMER' | 'WINTER'

@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Plus, Search } from 'lucide-react'
+import { ChevronDown, Download, FileSpreadsheet, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -156,10 +156,17 @@ export function ScholarsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle>장학생</PageTitle>
-        <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
-          <Plus size={16} strokeWidth={2} aria-hidden />
-          장학생 등록
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* 휴대폰은 제목 줄이 좁아 아이콘만(이름은 화면 읽기용으로 남긴다) */}
+          <Link to="/manager/scholars/import" className={cn(buttonClass({ variant: 'secondary', size: 'default' }), 'max-md:w-control-default max-md:px-0')}>
+            <FileSpreadsheet size={16} strokeWidth={2} aria-hidden />
+            <span className="max-md:sr-only">일괄 등록</span>
+          </Link>
+          <Link to="/manager/scholars/new" className={buttonClass({ variant: 'primary', size: 'default' })}>
+            <Plus size={16} strokeWidth={2} aria-hidden />
+            장학생 등록
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
