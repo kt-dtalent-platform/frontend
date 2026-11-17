@@ -2,14 +2,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
-// 담당자 화면 API. 둘 다 백엔드 구현 없음. 노션 명세서 모양을 임시로 쓰고,
-// 요청 상태는 실제 DB 값(DRAFT·IN_PROGRESS·CLOSED)만 쓴다(확인 필요).
+// 담당자 화면 API: 대시보드, 요청 목록, 요청 만들기와 고치기, 공개. 11/18 백엔드 main과 모양을 맞췄다.
+// 요청 상태는 실제 DB 값(DRAFT, IN_PROGRESS, CLOSED)만 쓴다.
 
 export type RequestStatus = 'DRAFT' | 'IN_PROGRESS' | 'CLOSED'
 
 // GET /dashboard/manager
 // 명세서에는 경비·문의·행사·소모임 수치도 있지만 MVP 범위(제출·검토) 밖이라 화면에 쓰지 않는다.
-// 대시보드는 백엔드 API가 없다. 화면에 필요한 모양을 프론트가 정했다(11/12, 확인 필요)
+// 백엔드 KT-43(#60)과 같은 모양
 // review: 진행 중 요청 전체의 검토 대기. oldestSubmissionId는 가장 오래 기다린 제출(검토 시작 버튼)
 // requests: 진행 중 요청을 마감 순으로. 네 숫자를 더하면 targetCount
 export type DashboardRequest = {
@@ -49,7 +49,7 @@ export type RequestRow = {
   waitingCount?: number
   revisionCount: number
 }
-// 응답의 pageSize는 장학생 목록(백엔드 #16)과 같은 모양으로 가정(확인 필요)
+// 백엔드 KT-38(#50)과 같은 모양. 정렬은 진행 중, 작성 중, 마감 순이고 같은 상태 안에서는 최근에 만든 순
 export type RequestPage = { items: RequestRow[]; page: number; pageSize: number; total: number }
 
 export const PAGE_SIZE = 20
@@ -57,7 +57,7 @@ export const PAGE_SIZE = 20
 export function useRequests({ status, page, sort }: { status: RequestStatus | null; page: number; sort?: Sort }) {
   const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
   if (status) params.set('status', status)
-  // 열 정렬. 백엔드에 아직 없음(11/15 요청)
+  // 열 정렬. 요청 목록은 백엔드에 아직 없어 보내도 서버 기본 순서로 온다(11/15 요청)
   const order = sortParam(sort ?? null)
   if (order) params.set('sort', order)
   return useQuery({
@@ -104,7 +104,7 @@ export function useCreateCohort(programId: number | undefined) {
   })
 }
 
-// POST /requests(작성 중으로 만들기), POST /requests/{id}/publish(공개) · 백엔드 구현 없음
+// POST /requests(작성 중으로 만들기): 백엔드 #65. POST /requests/{id}/publish(공개): 백엔드 PR #81 머지 대기
 // 요청 본문은 실제 DB(requests) 열을 따른다: 공개 일시·개인정보 안내·보관 기간 열은 DB에 없어 보내지 않는다(확인 필요).
 export type Semester = '1' | '2' | 'SUMMER' | 'WINTER'
 export type CreateRequestBody = {
@@ -133,7 +133,7 @@ export function useCreateRequest() {
   })
 }
 
-// GET /requests/{id}: 작성 중 요청 열기. 백엔드 구현 없음, 응답 모양 확인 필요
+// GET /requests/{id}: 작성 중 요청 열기. 백엔드 #65와 같은 모양
 export type RequestDetail = Omit<CreateRequestBody, 'templateId'> & { id: number; status: RequestStatus; templateId: number | null }
 
 export function useRequestDetail(id: number) {
@@ -146,7 +146,7 @@ export function useRequestDetail(id: number) {
   })
 }
 
-// PATCH /requests/{id}: 작성 중일 때만 고칠 수 있다. 백엔드 구현 없음, 확인 필요
+// PATCH /requests/{id}: 작성 중일 때만 고칠 수 있다(공개 뒤에는 409 REQUEST_NOT_EDITABLE). 본문은 만들기와 같다. 백엔드 #65
 export function useUpdateRequest(id: number) {
   const queryClient = useQueryClient()
   return useMutation({

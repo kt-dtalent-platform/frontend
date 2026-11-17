@@ -158,7 +158,7 @@ export function createScholar(body: ScholarCreate) {
   return { id }
 }
 
-// 목업 명단 내보내기: 고른 상태, 기수, 열만 담은 CSV. 실제 서버는 xlsx(확인 필요)
+// 목업 명단 내보내기: 고른 상태, 기수, 열만 담은 CSV. 실제 서버는 xlsx
 export function exportScholarsCsv(statuses: string[], cohortId: number | null, columns: string[]) {
   const label: Record<string, string> = { ENROLLED: '재학', LEAVE: '휴학', COMPLETED: '수료', WITHDRAWN: '중단' }
   const reason: Record<string, string> = {
@@ -179,10 +179,8 @@ export function exportScholarsCsv(statuses: string[], cohortId: number | null, c
     phone: ['연락처', (r) => r.phone ?? ''],
     status: ['상태', (r) => label[r.status] ?? r.status],
     completedYear: ['수료 연도', (r) => (r.completedYear ? String(r.completedYear) : '')],
-    withdrawalReason: [
-      '중단 사유',
-      (r) => (r.withdrawalReason === 'OTHER' ? (r.withdrawalReasonDetail ?? '기타') : r.withdrawalReason ? reason[r.withdrawalReason] : ''),
-    ],
+    withdrawalReason: ['중단 사유', (r) => (r.withdrawalReason === 'OTHER' ? '기타' : r.withdrawalReason ? reason[r.withdrawalReason] : '')],
+    withdrawalReasonDetail: ['중단 상세 사유', (r) => r.withdrawalReasonDetail ?? ''],
     accountStatus: ['로그인 상태', (r) => account[r.accountStatus]],
   }
   const keys = columns.filter((k) => cell[k])
