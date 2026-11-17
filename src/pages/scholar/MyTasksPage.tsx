@@ -80,7 +80,7 @@ function TaskCard({ task }: { task: MyTask }) {
         <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
       </div>
       {task.revisionReason && (
-        <div className="mt-4">
+        <div className="mt-5 border-t border-line-subtle pt-4">
           <RevisionNote reason={task.revisionReason} />
         </div>
       )}
