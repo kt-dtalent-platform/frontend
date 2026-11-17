@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
-// 상태와 별개인 표시(마감 지남, 보완 요청 항목 등). 점 없는 작은 태그.
+// 상태와 별개인 표시(마감 지남, 잠김 등). 점 없는 작은 태그.
 const tones = {
   danger: 'bg-danger-bg text-danger-text',
   warning: 'bg-warning-bg text-warning-text',
