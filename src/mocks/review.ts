@@ -201,7 +201,7 @@ function baseHistory(row: ReturnType<typeof baseRows>[number]): SubmissionDetail
   return [first]
 }
 
-const SCHOOLS = ['한국대학교', '서울과학기술대학교', '부산대학교', '경북대학교', '충남대학교', '전남대학교']
+const SCHOOLS = ['한양대학교', '서울과학기술대학교', '부산대학교', '경북대학교', '충남대학교', '전남대학교']
 const gpaOf = (i: number) => (3 + ((i * 37) % 150) / 100).toFixed(2)
 
 function sample(code: string, i: number) {
