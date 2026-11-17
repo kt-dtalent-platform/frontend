@@ -96,6 +96,26 @@ export const cohorts: Cohort[] = [
   { id: 6, name: '2026년 선발', startedOn: '2026-03-01', endedOn: null, scholarCount: 47 },
 ]
 
+// 새로 만든 기수는 탭을 닫을 때까지 남긴다(다른 목업 데이터와 같게)
+const COHORTS = 'kt-dtalent:mock-created-cohorts'
+try {
+  for (const c of JSON.parse(sessionStorage.getItem(COHORTS) ?? '[]') as Cohort[]) if (!cohorts.some((x) => x.id === c.id)) cohorts.push(c)
+} catch {
+  // 저장소를 못 쓰면 기본 기수만
+}
+
+export function createCohort(name: string) {
+  if (cohorts.some((c) => c.name === name)) return { error: 'DUPLICATE_COHORT' as const }
+  const c: Cohort = { id: Math.max(...cohorts.map((x) => x.id)) + 1, name, startedOn: null, endedOn: null, scholarCount: 0 }
+  cohorts.push(c)
+  try {
+    sessionStorage.setItem(COHORTS, JSON.stringify(cohorts.filter((x) => x.id > 6)))
+  } catch {
+    // 저장 못 해도 이번 화면에서는 쓴다
+  }
+  return c
+}
+
 const KEY = 'kt-dtalent:mock-created-requests'
 const BODIES = 'kt-dtalent:mock-created-request-bodies'
 

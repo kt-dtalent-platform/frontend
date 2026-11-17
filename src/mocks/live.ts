@@ -50,7 +50,17 @@ export function isLive(pathname: string) {
   return patterns.some((re) => re.test(path))
 }
 
+// 묶음을 켜도 백엔드에 아직 없는 API는 목업에 남긴다(백엔드가 만들면 여기서 지운다)
+const notYet: [method: string, path: RegExp][] = [
+  ['POST', /^\/scholars\/bulk$/],
+  ['POST', /^\/programs\/\d+\/cohorts$/],
+  ['GET', /^\/schools$/],
+]
+
 // 목업 처리기 맨 앞에 둔다. 실제 서버로 갈 요청은 그대로 내보낸다.
 export const liveHandler = http.all('*/v1/*', ({ request }) => {
-  if (isLive(new URL(request.url).pathname)) return passthrough()
+  const pathname = new URL(request.url).pathname
+  const path = pathname.replace(/^.*?\/v1(?=\/)/, '')
+  if (notYet.some(([m, re]) => m === request.method && re.test(path))) return
+  if (isLive(pathname)) return passthrough()
 })

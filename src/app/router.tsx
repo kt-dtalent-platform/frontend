@@ -8,6 +8,7 @@ import { RequestCreatePage } from '../pages/manager/RequestCreatePage'
 import { RequestEditPage } from '../pages/manager/RequestEditPage'
 import { RequestsPage } from '../pages/manager/RequestsPage'
 import { ScholarCreatePage } from '../pages/manager/ScholarCreatePage'
+import { ScholarImportPage } from '../pages/manager/ScholarImportPage'
 import { ScholarDetailPage } from '../pages/manager/ScholarDetailPage'
 import { ScholarsPage } from '../pages/manager/ScholarsPage'
 import { RequestSubmissionsPage } from '../pages/manager/RequestSubmissionsPage'
@@ -59,6 +60,7 @@ export const router = createBrowserRouter(
         { path: 'submissions', element: <Navigate to="/manager/requests" replace /> },
         { path: 'scholars', element: <ScholarsPage /> }, // A05
         { path: 'scholars/new', element: <ScholarCreatePage /> }, // A06
+        { path: 'scholars/import', element: <ScholarImportPage /> }, // A07 장학생 일괄 등록(엑셀)
         { path: 'scholars/:scholarId', element: <ScholarDetailPage /> }, // A05 상세
       ],
     },
