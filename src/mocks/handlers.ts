@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from 'msw'
 import type { CreateRequestBody } from '../api/manager'
-import type { ScholarCreate, ScholarUpdate, StatusChange } from '../api/scholars'
+import { scholarStatuses, type ScholarCreate, type ScholarUpdate, type StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
 import { cohorts, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
@@ -44,6 +44,16 @@ function jwtRole(token: string): 'MANAGER' | 'SCHOLAR' | null {
 }
 
 const unauthorized = (path: string) => fail(path, 401, 'UNAUTHORIZED', '인증 정보가 없거나 만료되었습니다')
+
+// 상태 바꾸기 검사(한 명, 여러 명 공용). 백엔드와 같게 수료 연도는 수료일 때만, 중단 사유는 중단일 때만 받는다
+function statusIssues(c: StatusChange) {
+  return [
+    !scholarStatuses.some((s) => s.value === c.status) && 'status',
+    c.status === 'COMPLETED' ? !c.completedYear && 'completedYear' : c.completedYear != null && 'completedYear',
+    c.status === 'WITHDRAWN' ? !c.withdrawalReason && 'withdrawalReason' : c.withdrawalReason != null && 'withdrawalReason',
+    c.withdrawalReason === 'OTHER' && !c.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
+  ]
+}
 
 export const handlers = [
   http.post(`${BASE}/auth/login`, async ({ request }) => {
@@ -417,13 +427,7 @@ export const handlers = [
     const path = '/v1/scholars/status'
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const { scholarIds, ...change } = (await request.json()) as StatusChange & { scholarIds: number[] }
-    const bad = [
-      !scholarIds?.length && 'scholarIds',
-      !['ENROLLED', 'LEAVE', 'COMPLETED', 'WITHDRAWN'].includes(change.status) && 'status',
-      change.status === 'COMPLETED' && !change.completedYear && 'completedYear',
-      change.status === 'WITHDRAWN' && !change.withdrawalReason && 'withdrawalReason',
-      change.withdrawalReason === 'OTHER' && !change.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
-    ].filter(Boolean)
+    const bad = [!scholarIds?.length && 'scholarIds', ...statusIssues(change)].filter(Boolean)
     if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
     await delay(300)
     const updated = scholarIds.filter((id) => changeScholarStatus(id, change)).length
@@ -466,12 +470,7 @@ export const handlers = [
     const path = `/v1/scholars/${params.scholarId}/status`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     const body = (await request.json()) as StatusChange
-    const bad = [
-      !['ENROLLED', 'LEAVE', 'COMPLETED', 'WITHDRAWN'].includes(body.status) && 'status',
-      body.status === 'COMPLETED' && !body.completedYear && 'completedYear',
-      body.status === 'WITHDRAWN' && !body.withdrawalReason && 'withdrawalReason',
-      body.withdrawalReason === 'OTHER' && !body.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
-    ].filter(Boolean)
+    const bad = statusIssues(body).filter(Boolean)
     if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
     await delay(250)
     const r = changeScholarStatus(Number(params.scholarId), body)

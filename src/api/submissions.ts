@@ -102,7 +102,7 @@ export function useSaveDraft(requestId: number) {
 }
 
 // 제출: POST /me/submissions/{requestId}/submit
-// 보완 후 다시 제출: POST .../resubmit (승완). 보완 요청된 항목만 보낸다.
+// 보완 후 다시 제출: POST .../resubmit. 보완 요청된 항목만 보낸다.
 // 둘 다 백엔드 구현 없음(노션 명세서 모양을 임시로 씀, 확인 필요)
 export type SubmitResult = {
   submissionId: number

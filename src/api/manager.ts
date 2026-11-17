@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
-// 담당자 화면 API. 둘 다 백엔드 구현 없음(담당 승완). 노션 명세서 모양을 임시로 쓰고,
+// 담당자 화면 API. 둘 다 백엔드 구현 없음. 노션 명세서 모양을 임시로 쓰고,
 // 요청 상태는 실제 DB 값(DRAFT·IN_PROGRESS·CLOSED)만 쓴다(확인 필요).
 
 export type RequestStatus = 'DRAFT' | 'IN_PROGRESS' | 'CLOSED'
@@ -94,7 +94,7 @@ export function useCohorts(programId: number | undefined) {
   })
 }
 
-// POST /requests(작성 중으로 만들기), POST /requests/{id}/publish(공개) · 담당 승완 · 백엔드 구현 없음
+// POST /requests(작성 중으로 만들기), POST /requests/{id}/publish(공개) · 백엔드 구현 없음
 // 요청 본문은 실제 DB(requests) 열을 따른다: 공개 일시·개인정보 안내·보관 기간 열은 DB에 없어 보내지 않는다(확인 필요).
 export type Semester = '1' | '2' | 'SUMMER' | 'WINTER'
 export type CreateRequestBody = {
