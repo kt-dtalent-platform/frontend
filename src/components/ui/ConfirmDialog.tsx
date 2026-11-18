@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Button } from './Button'
+import { currentOpener, returnFocus } from '../../lib/focusReturn'
 
 type Props = {
   open: boolean
@@ -13,21 +14,25 @@ type Props = {
 }
 
 // 디자인 시스템 › Dialog. 브라우저 기본 <dialog>를 써서 포커스 가두기와 Esc 닫기를 맡긴다.
-// 열리면 취소 버튼에 포커스(입력칸이 없을 때), 닫히면 브라우저가 이전 포커스로 돌려준다.
+// 열리면 취소 버튼에 포커스(입력칸이 없을 때), 닫히면 연 버튼으로 돌려준다.
+// 브라우저도 돌려주지만 맥 Safari는 누른 버튼에 포커스가 없어 body로 떨어지므로 직접 돌려준다
 export function ConfirmDialog({ open, title, children, confirmLabel, cancelLabel = '취소', busy, onConfirm, onCancel }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
   const bodyId = useId()
+  const opener = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
     if (open && !dialog.open) {
+      opener.current = currentOpener()
       dialog.showModal()
       cancelRef.current?.focus()
     } else if (!open && dialog.open) {
       dialog.close()
+      returnFocus(dialog, opener.current)
     }
   }, [open])
 

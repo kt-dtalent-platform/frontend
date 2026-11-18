@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type FormEvent, type ReactNode } from 'react'
 import { Button } from './Button'
+import { currentOpener, returnFocus } from '../../lib/focusReturn'
 
 type Props = {
   open: boolean
@@ -16,24 +17,33 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
-  // 대화상자를 화면에서 빼 버리면(조건부로 그릴 때) 브라우저가 연 버튼으로 포커스를 돌려주지 않는다(Chrome, Safari).
-  // 처음 그릴 때 포커스가 있던 곳을 기억했다가 빠질 때 돌려준다
-  const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null))
-  useEffect(
-    () => () => {
-      if (opener?.isConnected) opener.focus()
-    },
-    [opener],
-  )
+  // 닫히면 연 버튼으로 포커스를 돌려준다. 조건부로 그려 화면에서 빠질 때도 같다(Chrome, Safari는 이때 돌려주지 않음).
+  // Safari는 누른 버튼에 포커스를 주지 않아 마지막으로 누른 요소로 대신한다(lib/focusReturn)
+  const opener = useRef<HTMLElement | null>(open ? currentOpener() : null)
+  useEffect(() => {
+    // 정리할 때는 React가 ref를 이미 비우므로 대화상자 요소를 여기서 잡아 둔다
+    const d = ref.current
+    return () => {
+      // 개발 모드(StrictMode)의 한 번 더 실행: 아직 화면에 열려 있으면 건너뛴다
+      if (d?.isConnected && d.open) return
+      const active = document.activeElement
+      const back = opener.current
+      // 다른 곳으로 일부러 옮긴 포커스는 건드리지 않는다
+      if (back?.isConnected && (!active || active === document.body || d?.contains(active))) back.focus()
+    }
+  }, [])
 
   useEffect(() => {
     const d = ref.current
     if (!d) return
     if (open && !d.open) {
+      opener.current ??= currentOpener()
       d.showModal()
       d.querySelector<HTMLElement>('input, textarea, select')?.focus()
     } else if (!open && d.open) {
       d.close()
+      returnFocus(d, opener.current)
+      opener.current = null
     }
   }, [open])
 
