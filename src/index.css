@@ -71,16 +71,16 @@
   animation: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
 }
 .stagger-in > :nth-child(2) {
-  animation-delay: 60ms;
+  animation-delay: calc(var(--motion-stagger-step) * 1);
 }
 .stagger-in > :nth-child(3) {
-  animation-delay: 120ms;
+  animation-delay: calc(var(--motion-stagger-step) * 2);
 }
 .stagger-in > :nth-child(4) {
-  animation-delay: 180ms;
+  animation-delay: calc(var(--motion-stagger-step) * 3);
 }
 .stagger-in > :nth-child(n + 5) {
-  animation-delay: 240ms;
+  animation-delay: calc(var(--motion-stagger-step) * 4);
 }
 
 /* 화면 전환: 본문이 4px 아래에서 나타남 */

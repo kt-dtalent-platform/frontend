@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ChevronRight, Inbox } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { useMyTasks, type MyTask } from '../../api/tasks'
@@ -20,6 +21,10 @@ const views = [
 export function MyTasksPage() {
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'done' ? 'DONE' : 'TODO'
+  // 카드가 차례로 나타나는 모션은 화면에 처음 들어올 때만. 칩을 바꿀 때는 움직이지 않는다(자주 하는 조작)
+  const [firstView] = useState(view)
+  const [switched, setSwitched] = useState(false)
+  if (!switched && view !== firstView) setSwitched(true)
   const { data, isPending, isError, error, refetch } = useMyTasks()
   usePageTitle('내 할 일')
   const todo = data?.filter((t) => !t.done) ?? []
@@ -46,7 +51,7 @@ export function MyTasksPage() {
         </EmptyState>
       )}
       {data && items.length > 0 && (
-        <ul className="stagger-in m-0 flex list-none flex-col gap-3 p-0">
+        <ul className={cn('m-0 flex list-none flex-col gap-3 p-0', !switched && 'stagger-in')}>
           {items.map((task) => (
             <li key={task.requestId}>
               <TaskCard task={task} />
