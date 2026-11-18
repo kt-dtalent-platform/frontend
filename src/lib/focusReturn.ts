@@ -7,8 +7,8 @@ if (typeof document !== 'undefined') {
   document.addEventListener(
     'pointerdown',
     (e) => {
-      const el = e.target instanceof Element ? e.target.closest<HTMLElement>('button, a[href], [tabindex]') : null
-      if (el) lastPressed = el
+      // 버튼이 아닌 곳을 누르면 비운다(예전에 누른 버튼으로 포커스가 튀지 않게)
+      lastPressed = e.target instanceof Element ? e.target.closest<HTMLElement>('button, a[href], [tabindex]') : null
     },
     true,
   )
@@ -23,5 +23,6 @@ export function returnFocus(dialog: HTMLDialogElement, opener: HTMLElement | nul
 export function currentOpener(): HTMLElement | null {
   const active = document.activeElement
   if (active instanceof HTMLElement && active !== document.body) return active
-  return lastPressed?.isConnected ? lastPressed : null
+  // 닫힌 대화상자 안의 버튼(취소 등)은 돌아갈 곳이 아니다
+  return lastPressed?.isConnected && !lastPressed.closest('dialog:not([open])') ? lastPressed : null
 }

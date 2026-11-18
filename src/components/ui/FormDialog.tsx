@@ -20,14 +20,18 @@ export function FormDialog({ open, title, children, submitLabel, busy, onSubmit,
   // 닫히면 연 버튼으로 포커스를 돌려준다. 조건부로 그려 화면에서 빠질 때도 같다(Chrome, Safari는 이때 돌려주지 않음).
   // Safari는 누른 버튼에 포커스를 주지 않아 마지막으로 누른 요소로 대신한다(lib/focusReturn)
   const opener = useRef<HTMLElement | null>(open ? currentOpener() : null)
-  useEffect(
-    () => () => {
-      const d = ref.current
-      if (d) returnFocus(d, opener.current)
-      else if (opener.current?.isConnected) opener.current.focus()
-    },
-    [],
-  )
+  useEffect(() => {
+    // 정리할 때는 React가 ref를 이미 비우므로 대화상자 요소를 여기서 잡아 둔다
+    const d = ref.current
+    return () => {
+      // 개발 모드(StrictMode)의 한 번 더 실행: 아직 화면에 열려 있으면 건너뛴다
+      if (d?.isConnected && d.open) return
+      const active = document.activeElement
+      const back = opener.current
+      // 다른 곳으로 일부러 옮긴 포커스는 건드리지 않는다
+      if (back?.isConnected && (!active || active === document.body || d?.contains(active))) back.focus()
+    }
+  }, [])
 
   useEffect(() => {
     const d = ref.current
