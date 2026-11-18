@@ -163,7 +163,8 @@ export const scholarExportColumns = [
   },
 ]
 
-// POST /v1/scholars (백엔드 KT-13). 생년월일은 MVP에서 받지 않고 학교는 필수(11/11 백엔드 결정). 응답 모양은 확인 필요({ id }로 가정)
+// POST /v1/scholars (백엔드 KT-13). 생년월일은 MVP에서 받지 않고 학교는 필수(11/11 백엔드 결정).
+// 응답: { id, accountStatus, temporaryPassword }. 임시 비밀번호는 이 응답에서 한 번만 온다(DB에는 해시만)
 export type ScholarCreate = {
   cohortId: number
   name: string
@@ -186,10 +187,14 @@ export function useBulkCreateScholars() {
   })
 }
 
+export type ScholarCreated = { id: number; accountStatus: AccountStatus; temporaryPassword: string | null }
+
 export function useCreateScholar() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: ScholarCreate) => api<{ id: number }>('/scholars', { method: 'POST', body }),
+    mutationFn: (body: ScholarCreate) => api<ScholarCreated>('/scholars', { method: 'POST', body }),
+    // 응답에 임시 비밀번호가 있어 끝난 요청 기록을 캐시에 남기지 않는다
+    gcTime: 0,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] }),
   })
 }

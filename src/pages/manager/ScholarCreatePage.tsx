@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
@@ -11,6 +11,7 @@ import { SchoolField } from '../../components/form/SchoolCombobox'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
+import { buttonClass } from '../../components/ui/buttonClass'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
@@ -20,22 +21,25 @@ type Values = { cohortId: string; name: string; email: string; phone: string; un
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const opt = (v: string) => v.trim() || null
+const EMPTY: Values = { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' }
 
 // A06 장학생 등록: 한 명씩 등록(백엔드 KT-13 요청 형식 기준). 여러 명은 A07 일괄 등록
 export function ScholarCreatePage() {
-  usePageTitle('장학생 등록')
   const navigate = useNavigate()
   const create = useCreateScholar()
-  // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
+  // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 처리한다.
+  // 임시 비밀번호가 오면 결과 화면에서 한 번 보여 주고, 없으면 토스트 후 명단으로
   const [done, setDone] = useState<string | null>(null)
+  const [created, setCreated] = useState<{ name: string; email: string; password: string } | null>(null)
+  usePageTitle(created ? '장학생 등록 완료' : '장학생 등록')
   const toast = useToast()
   useEffect(() => {
-    if (!done) return
+    if (!done || created) return
     toast(`${done} 님을 등록했어요`)
     navigate('/manager/scholars', { replace: true })
-  }, [done, navigate, toast])
-  const { register, handleSubmit, formState, setError, control } = useForm<Values>({
-    defaultValues: { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' },
+  }, [done, created, navigate, toast])
+  const { register, handleSubmit, formState, setError, control, reset, getValues, setFocus } = useForm<Values>({
+    defaultValues: EMPTY,
     mode: 'onBlur',
   })
   const e = formState.errors
@@ -44,7 +48,7 @@ export function ScholarCreatePage() {
 
   const onSubmit = handleSubmit(async (v) => {
     try {
-      await create.mutateAsync({
+      const r = await create.mutateAsync({
         cohortId: Number(v.cohortId),
         name: v.name.trim(),
         email: v.email.trim(),
@@ -53,6 +57,9 @@ export function ScholarCreatePage() {
         major: opt(v.major),
         studentNo: opt(v.studentNo),
       })
+      if (r.temporaryPassword) setCreated({ name: v.name.trim(), email: v.email.trim(), password: r.temporaryPassword })
+      // 임시 비밀번호를 화면 상태로 옮겼으니 요청 결과 캐시에서는 바로 지운다
+      create.reset()
       setDone(v.name.trim())
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE_EMAIL') setError('email', { message: '이미 등록된 이메일이에요.' }, { shouldFocus: true })
@@ -60,6 +67,21 @@ export function ScholarCreatePage() {
       else setError('root', { message: '잠시 뒤 다시 시도하세요.' })
     }
   })
+
+  // 한 명 더: 폼을 비우고 결과를 닫는다(기수는 그대로 둔다)
+  if (created)
+    return (
+      <CreatedResult
+        {...created}
+        onAgain={() => {
+          reset({ ...EMPTY, cohortId: getValues('cohortId') })
+          setCreated(null)
+          setDone(null)
+          // 입력 화면이 다시 그려진 뒤 이름 칸으로
+          setTimeout(() => setFocus('name'))
+        }}
+      />
+    )
 
   return (
     <div className="mx-auto flex w-full max-w-page-form flex-col gap-6">
@@ -170,6 +192,67 @@ export function ScholarCreatePage() {
           </Button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// 등록 결과: 임시 비밀번호는 서버가 이 응답에서 한 번만 준다. 화면을 떠나면 다시 볼 수 없다
+function CreatedResult({ name, email, password, onAgain }: { name: string; email: string; password: string; onAgain: () => void }) {
+  const toast = useToast()
+  const top = useRef<HTMLDivElement>(null)
+  const secret = useRef<HTMLSpanElement>(null)
+  // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
+  useEffect(() => top.current?.focus(), [])
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(password)
+      return toast('임시 비밀번호를 복사했어요')
+    } catch {
+      // http 주소나 권한 거부로 클립보드 API를 못 쓸 때: 글자를 선택해 예전 복사 명령을 한 번 더 시도한다
+      const el = secret.current
+      const sel = window.getSelection()
+      if (el && sel) {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        sel.removeAllRanges()
+        sel.addRange(range)
+        if (document.execCommand('copy')) return toast('임시 비밀번호를 복사했어요')
+      }
+      // 그래도 안 되면 선택한 채로 두어 바로 복사할 수 있게 한다
+      toast('복사하지 못했어요. 선택된 글자를 직접 복사하세요')
+    }
+  }
+  return (
+    <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
+      <PageTitle description="첫 로그인에 쓸 임시 비밀번호예요. 이 화면을 떠나면 다시 볼 수 없으니 지금 장학생에게 전달하세요.">
+        {name} 님을 등록했어요
+      </PageTitle>
+      <section aria-label="로그인 정보" className="rounded-lg bg-surface px-6 py-2 md:px-8">
+        <dl className="m-0">
+          <div className="flex min-h-row-h items-center gap-4 border-b border-line-subtle py-3">
+            <dt className="w-28 shrink-0 text-ink-3">아이디(이메일)</dt>
+            <dd className="m-0 min-w-0 flex-1 break-all">{email}</dd>
+          </div>
+          <div className="flex min-h-row-h items-center gap-4 py-3">
+            <dt className="w-28 shrink-0 text-ink-3">임시 비밀번호</dt>
+            {/* dl 안 줄에는 dt와 dd만 둔다: 복사 버튼은 dd 안에 */}
+            <dd className="m-0 flex min-w-0 flex-1 items-center justify-between gap-3">
+              <span ref={secret} className="font-semibold break-all tabular-nums">
+                {password}
+              </span>
+              <Button size="compact" aria-label="임시 비밀번호 복사" onClick={() => void copy()}>
+                복사
+              </Button>
+            </dd>
+          </div>
+        </dl>
+      </section>
+      <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
+        <Button onClick={onAgain}>한 명 더 등록</Button>
+        <Link to="/manager/scholars" replace className={buttonClass({ variant: 'primary', size: 'md' })}>
+          명단으로
+        </Link>
+      </div>
     </div>
   )
 }
