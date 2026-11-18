@@ -71,7 +71,7 @@ export function useScholars(q: { cohortId: number | null; status: ScholarStatus 
   if (q.cohortId) params.set('cohortId', String(q.cohortId))
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
-  // 열 정렬 sort=name,asc. 백엔드에 아직 없음(11/15 요청, 키 이름 확인 필요). 없으면 서버 기본 순서
+  // 열 정렬 sort=name,asc. 키는 name, cohort, university, status, email(백엔드 main). 없으면 등록 순
   const sort = sortParam(q.sort ?? null)
   if (sort) params.set('sort', sort)
   return useQuery({
@@ -81,7 +81,7 @@ export function useScholars(q: { cohortId: number | null; status: ScholarStatus 
   })
 }
 
-// GET /v1/scholars/{id} (KT-11). 계좌번호·제출 요약은 백엔드 미완료
+// GET /v1/scholars/{id} (KT-11). 응답의 제출 요약과 계좌(bankAccount)는 아직 화면에 쓰지 않는다
 export type ScholarDetail = StatusInfo & {
   id: number
   name: string
@@ -111,8 +111,7 @@ export function useUpdateScholar(id: number) {
   })
 }
 
-// PATCH /v1/scholars/{id}/status: 상태 바꾸기. 수료면 수료 연도, 중단이면 사유가 필요하다
-// 백엔드에 아직 없음. 주소와 본문은 프론트 제안(확인 필요)
+// PATCH /v1/scholars/{id}/status: 상태 바꾸기. 수료면 수료 연도, 중단이면 사유가 필요하다. 백엔드 KT-47(#70)
 export type StatusChange = StatusInfo
 
 export function useChangeScholarStatus(id: number) {
@@ -126,7 +125,7 @@ export function useChangeScholarStatus(id: number) {
   })
 }
 
-// PATCH /v1/scholars/status: 여러 명 상태를 한 번에(11/12). 백엔드에 질문할 것, 모양은 프론트 제안(확인 필요)
+// PATCH /v1/scholars/status: 여러 명 상태를 한 번에(최대 1000명). 백엔드 KT-47(#70)
 export function useChangeScholarsStatus() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -138,7 +137,7 @@ export function useChangeScholarsStatus() {
   })
 }
 
-// GET /v1/scholars/export?format=xlsx&status=A,B&cohortId=&columns=... (재단 요청 11/10, 확인 필요)
+// GET /v1/scholars/export?format=xlsx&status=A,B&cohortId=&columns=... 백엔드 KT-48(#88). 이름은 늘 들어가고 연락처는 가려서 나온다
 export const scholarExportColumns = [
   {
     label: '장학생 정보',
@@ -158,6 +157,7 @@ export const scholarExportColumns = [
       { key: 'status', label: '상태', default: true },
       { key: 'completedYear', label: '수료 연도', default: true },
       { key: 'withdrawalReason', label: '중단 사유', default: true },
+      { key: 'withdrawalReasonDetail', label: '중단 상세 사유', default: true },
       { key: 'accountStatus', label: '로그인 상태' },
     ],
   },
