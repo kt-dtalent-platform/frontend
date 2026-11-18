@@ -240,10 +240,8 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
 
   const download = async () => {
     const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
-    // 장학생이 들어올 이 서비스의 로그인 화면 주소
-    const login = new URL(appUrl('/login'), window.location.origin).href
-    const sheet = [['이름', '아이디(이메일)', '임시 비밀번호', '로그인 주소'], ...accounts.map((a) => [a.name, a.email, a.password, login])]
-    saveBlob(writeXlsx(sheet, [12, 32, 22, 40]), fileName)
+    const sheet = [['이름', '아이디(이메일)', '임시 비밀번호'], ...accounts.map((a) => [a.name, a.email, a.password])]
+    saveBlob(writeXlsx(sheet, [12, 32, 26]), fileName)
     setSaved(true)
   }
 
@@ -262,22 +260,17 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
           <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate font-semibold">{fileName}</span>
-            <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호, 로그인 주소</span>
+            <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호</span>
           </div>
-          <Button
-            size="compact"
-            variant={saved ? 'ghost' : 'secondary'}
-            aria-label={`${fileName} ${saved ? '다시 받기' : '받기'}`}
-            onClick={() => void download()}
-          >
+          <Button size="compact" variant="secondary" aria-label={`${fileName} 받기`} onClick={() => void download()}>
             <Download size={16} strokeWidth={2} aria-hidden />
-            {saved ? '다시 받기' : '받기'}
+            받기
           </Button>
         </div>
-        <p className="m-0 text-caption text-ink-3">{saved ? '전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}</p>
+        <p className="m-0 text-caption text-ink-3">{saved ? '받았어요. 전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}</p>
       </div>
       <div className="flex flex-col md:flex-row md:justify-end">
-        <Link to="/manager/scholars" replace className={buttonClass({ variant: saved ? 'primary' : 'secondary', size: 'md' })}>
+        <Link to="/manager/scholars" replace className={buttonClass({ variant: 'secondary', size: 'md' })}>
           명단으로
         </Link>
       </div>
