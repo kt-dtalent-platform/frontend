@@ -46,7 +46,7 @@ export function MyTasksPage() {
         </EmptyState>
       )}
       {data && items.length > 0 && (
-        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        <ul className="stagger-in m-0 flex list-none flex-col gap-3 p-0">
           {items.map((task) => (
             <li key={task.requestId}>
               <TaskCard task={task} />

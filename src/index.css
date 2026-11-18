@@ -45,6 +45,42 @@
   --animate-dialog-in: dialog-in var(--motion-slow) var(--ease-enter) backwards;
   --animate-fade-in: fade-in var(--motion-moderate) var(--ease-enter) backwards;
   --animate-toast-in: toast-in var(--motion-slow) var(--ease-enter) backwards;
+  /* 장학생 화면용: 더 길고 멀리(400ms, 12px) */
+  --animate-page-in-expressive: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
+  --animate-success-in: success-in var(--motion-expressive) var(--ease-expressive-enter) backwards;
+}
+
+/* 장학생 화면 전환: 본문이 12px 아래에서 떠오름 */
+@keyframes page-in-expressive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* 제출 완료 알림: 살짝 작은 크기에서 커지며 나타남 */
+@keyframes success-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* 목록이 위에서부터 차례로 나타남(장학생 할 일). 6번째부터는 함께 나타나 기다리지 않게 한다 */
+.stagger-in > * {
+  animation: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
+}
+.stagger-in > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.stagger-in > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger-in > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.stagger-in > :nth-child(n + 5) {
+  animation-delay: 240ms;
 }
 
 /* 화면 전환: 본문이 4px 아래에서 나타남 */

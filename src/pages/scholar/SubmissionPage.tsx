@@ -283,7 +283,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         </Banner>
       )}
       {submitted && (
-        <div ref={topRef} tabIndex={-1} className="outline-none">
+        <div ref={topRef} tabIndex={-1} className="animate-success-in outline-none">
           <Banner tone="success" title={submitted.status === 'RESUBMITTED' ? '다시 제출했어요' : '제출했어요'}>
             {submitted.completionMessage || '검토가 끝나면 내 할 일에서 알려 드려요.'}
           </Banner>

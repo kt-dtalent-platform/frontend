@@ -13,7 +13,7 @@ export function ScholarLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-page-form px-4 py-8 md:px-5">
-        <PageTransition />
+        <PageTransition tone="expressive" />
       </main>
     </div>
   )
