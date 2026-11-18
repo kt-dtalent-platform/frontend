@@ -108,6 +108,8 @@ function Detail({ s }: { s: ScholarDetail }) {
             <Item label="기수" value={s.cohort.name} />
             <Item label="학교" value={s.university} />
             <Item label="전공" value={s.major} />
+            <Item label="장학금 받을 계좌" value={s.bankAccount && `${s.bankAccount.bankName} ${s.bankAccount.accountNumber}`} />
+            <Item label="예금주" value={s.bankAccount?.accountHolder ?? null} />
           </dl>
         </section>
       )}

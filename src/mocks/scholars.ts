@@ -10,7 +10,7 @@ const SCHOOLS = ['한양대학교', '서울과학기술대학교', '부산대학
 const MAJORS = ['컴퓨터공학과', '전자공학과', '산업공학과', '데이터사이언스학과', '경영학과']
 
 // studentNo: 등록할 때 받은 학번. 처음부터 있는 목업 줄은 없어서 내보낼 때 id로 만든다
-type Row = ScholarDetail & { accountStatus: AccountStatus; phone: string | null; studentNo?: string | null }
+type Row = Omit<ScholarDetail, 'bankAccount'> & { accountStatus: AccountStatus; phone: string | null; studentNo?: string | null }
 const KEY = 'kt-dtalent:mock-scholars'
 // 기수는 요청 만들기 목업과 같은 목록을 쓴다
 
@@ -113,7 +113,12 @@ export function scholarDetail(id: number): ScholarDetail | null {
   const r = all().find((x) => x.id === id)
   if (!r) return null
   const { accountStatus: _a, phone: _p, ...detail } = r
-  return detail
+  // 목업 계좌: 넷 중 하나는 아직 등록 안 함
+  const bankAccount =
+    r.id % 4 === 0
+      ? null
+      : { bankName: ['KB국민은행', '신한은행', '카카오뱅크'][r.id % 3], accountNumber: String(1002000000000 + r.id * 7919), accountHolder: r.name }
+  return { ...detail, bankAccount }
 }
 
 export function updateScholar(id: number, body: ScholarUpdate) {

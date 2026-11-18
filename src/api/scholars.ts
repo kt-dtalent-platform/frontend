@@ -90,6 +90,8 @@ export type ScholarDetail = StatusInfo & {
   university: string
   major: string | null
   cohort: { id: number; name: string }
+  // 장학금 받을 계좌. 담당자에게는 전체 번호가 온다(백엔드 #77). 장학생이 등록하기 전이면 null
+  bankAccount: { bankName: string; accountNumber: string; accountHolder: string } | null
 }
 
 export function useScholar(id: number) {
