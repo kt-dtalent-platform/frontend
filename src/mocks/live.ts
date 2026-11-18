@@ -52,7 +52,7 @@ export function isLive(pathname: string) {
 
 // 묶음을 켜도 백엔드에 아직 없는 API는 목업에 남긴다(백엔드가 만들면 여기서 지운다)
 const notYet: [method: string, path: RegExp][] = [
-  ['POST', /^\/scholars\/bulk$/],
+  ['POST', /^\/scholars\/bulk$/], // 백엔드 PR #92 머지되면 지운다
   ['POST', /^\/programs\/\d+\/cohorts$/],
   ['GET', /^\/schools$/],
 ]

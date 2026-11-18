@@ -48,13 +48,15 @@ export function ScholarImportPage() {
   const [fileError, setFileError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [done, setDone] = useState<number | null>(null)
+  // 등록 결과(이름, 이메일, 임시 비밀번호). 화면 상태로만 들고 있다가 이 화면을 떠나면 사라진다
+  const [created, setCreated] = useState<Account[] | null>(null)
 
-  // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
+  // 임시 비밀번호가 없는 응답이면(예전 서버) 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
   useEffect(() => {
-    if (done === null) return
+    if (done === null || created) return
     toast(`${done}명을 등록했어요`)
     navigate('/manager/scholars', { replace: true })
-  }, [done, navigate, toast])
+  }, [done, created, navigate, toast])
 
   const bad = rows.filter((r) => r.errors.length > 0)
   const busy = reading || bulk.isPending || done !== null
@@ -95,6 +97,12 @@ export function ScholarImportPage() {
         cohortId: Number(cohort),
         scholars: rows.map(({ name, email, phone, university, major, studentNo }) => ({ name, email, phone, university, major, studentNo })),
       })
+      // row는 보낸 명단 순서 + 1이라 그 줄의 이름을 붙인다
+      const accounts = (r.items ?? [])
+        .filter((it) => it.temporaryPassword)
+        .map((it) => ({ name: rows[it.row - 1]?.name ?? '', email: it.email, password: it.temporaryPassword }))
+      if (accounts.length) setCreated(accounts)
+      bulk.reset()
       setDone(r.created)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE_EMAIL' && Array.isArray(err.details)) {
@@ -108,6 +116,8 @@ export function ScholarImportPage() {
       } else setServerError(err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.')
     }
   }
+
+  if (created) return <ImportResult accounts={created} />
 
   return (
     <div className="mx-auto flex w-full max-w-page-wide flex-col gap-6">
@@ -207,6 +217,60 @@ export function ScholarImportPage() {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+type Account = { name: string; email: string; password: string }
+
+// 등록 결과. 임시 비밀번호는 서버가 이 응답에서만 주므로, 화면에 늘어놓지 않고 로그인 안내 파일로 받게 한다.
+// 담당자는 이 파일로 장학생에게 안내를 보낸다(메일 머지, 메시지). 받기 전에 떠나면 한 번 묻는다
+function ImportResult({ accounts }: { accounts: Account[] }) {
+  usePageTitle('장학생 일괄 등록 완료')
+  const top = useRef<HTMLDivElement>(null)
+  const [saved, setSaved] = useState(false)
+  // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
+  useEffect(() => top.current?.focus(), [])
+
+  const download = async () => {
+    const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
+    const login = new URL(appUrl('/login'), window.location.origin).href
+    const sheet = [['이름', '아이디(이메일)', '임시 비밀번호', '로그인 주소'], ...accounts.map((a) => [a.name, a.email, a.password, login])]
+    const d = new Date()
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    saveBlob(writeXlsx(sheet, [12, 32, 22, 40]), `장학생_로그인안내_${ymd}.xlsx`)
+    setSaved(true)
+  }
+
+  return (
+    <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
+      <UnsavedChangesGuard
+        when={!saved}
+        title="안내 파일 받지 않고 나가기"
+        message="임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요."
+        confirmLabel="받지 않고 나가기"
+      />
+      <PageTitle description="장학생이 처음 로그인할 때 쓸 임시 비밀번호를 안내 파일로 받아 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+      <section className="flex flex-col gap-4 rounded-lg bg-surface p-6 md:p-8">
+        <div className="flex flex-col gap-1">
+          <h2 className="m-0 text-title-2">로그인 안내 파일</h2>
+          <p className="m-0 text-ink-2">이름, 아이디, 임시 비밀번호, 로그인 주소가 들어 있어요.</p>
+          <p className="m-0 text-caption text-ink-3">
+            {saved
+              ? '받았어요. 안내를 보낸 뒤에는 파일을 지워 주세요.'
+              : '임시 비밀번호는 지금만 받을 수 있어요. 장학생은 첫 로그인 때 비밀번호를 새로 정해요.'}
+          </p>
+        </div>
+        <Button variant={saved ? 'secondary' : 'primary'} size="md" className="md:self-start" onClick={() => void download()}>
+          <Download size={16} strokeWidth={2} aria-hidden />
+          {saved ? '다시 받기' : '안내 파일 받기'}
+        </Button>
+      </section>
+      <div className="flex flex-col md:flex-row md:justify-end">
+        <Link to="/manager/scholars" replace className={buttonClass({ variant: saved ? 'primary' : 'secondary', size: 'md' })}>
+          명단으로
+        </Link>
+      </div>
     </div>
   )
 }
