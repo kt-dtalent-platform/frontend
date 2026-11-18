@@ -242,6 +242,14 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
         await publish.mutateAsync(id)
         setLeaving({ status: 'IN_PROGRESS', toast: '요청을 공개했어요' })
       } catch (err) {
+        // 이미 공개된 요청(다른 탭에서 먼저 공개 등)이면 진행 중 목록으로
+        if (publishReason(err) === 'status') {
+          setLeaving({
+            status: 'IN_PROGRESS',
+            notice: { tone: 'warning', title: '이미 공개된 요청이에요', body: `"${v.title.trim()}" 요청을 진행 중 목록에서 확인하세요.` },
+          })
+          return
+        }
         // 만들기는 됐고 공개만 실패: 같은 요청을 다시 만들지 않도록 작성 중 목록으로 보낸다
         setLeaving({
           status: 'DRAFT',
@@ -499,10 +507,14 @@ function Field({
 }
 
 // 공개 실패 이유(백엔드 #81: 409 REQUEST_NOT_PUBLISHABLE, details에 걸린 항목 하나)
+function publishReason(err: unknown) {
+  return err instanceof ApiError && err.code === 'REQUEST_NOT_PUBLISHABLE' && Array.isArray(err.details) ? err.details[0] : null
+}
+
 function publishFailText(err: unknown) {
-  const reason = err instanceof ApiError && err.code === 'REQUEST_NOT_PUBLISHABLE' && Array.isArray(err.details) ? err.details[0] : null
+  const reason = publishReason(err)
   if (reason === 'closesAt') return '요청의 마감 시각이 이미 지났어요. 요청을 열어 마감을 고친 뒤 공개하세요.'
-  if (reason === 'targets') return '요청에 받을 장학생이 없어요. 기수에 장학생을 등록한 뒤 공개하세요.'
+  if (reason === 'targets') return '받을 장학생이 없어요. 대상 기수에 장학생을 등록한 뒤 공개하세요.'
   if (reason === 'fields') return '요청 유형의 제출 항목 설정에 문제가 있어요. 개발팀에 알려 주세요.'
   return '요청을 열어 다시 공개하세요.'
 }

@@ -26,7 +26,9 @@ export function useFindSchoolId() {
     if (!k) return null
     try {
       const data = await queryClient.fetchQuery(schoolsQuery(k))
-      return data.items.find((s) => s.name === k)?.id ?? null
+      // 서버 검색과 같은 규칙으로 비교한다: 띄어쓰기와 괄호를 빼고 소문자로
+      const norm = (v: string) => v.replace(/[\s()]/g, '').toLowerCase()
+      return data.items.find((s) => norm(s.name) === norm(k))?.id ?? null
     } catch {
       return null
     }

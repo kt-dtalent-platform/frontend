@@ -21,7 +21,15 @@ const ME = {
     university: '한양대학교',
     accessiblePrograms: null,
   },
-  MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }] },
+  MANAGER: {
+    id: 7,
+    name: '정지은',
+    email: 'admin@kt.com',
+    role: 'MANAGER',
+    cohort: null,
+    university: null,
+    accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }],
+  },
 } as const
 
 // 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다.
@@ -281,7 +289,7 @@ export const handlers = [
     const path = `/v1/requests/${params.requestId}/targets/${params.scholarId}/deadline`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
     const d = mockDeadline(Number(params.requestId), Number(params.scholarId))
-    return d ? ok(path, d) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다.')
+    return d ? ok(path, d) : fail(path, 404, 'RESOURCE_NOT_FOUND', '대상을 찾을 수 없습니다.')
   }),
 
   http.patch(`${BASE}/requests/:requestId/targets/:scholarId/deadline`, async ({ params, request }) => {
@@ -290,7 +298,8 @@ export const handlers = [
     const requestId = Number(params.requestId)
     const scholarId = Number(params.scholarId)
     const d = mockDeadline(requestId, scholarId)
-    if (!d) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다.')
+    if (!d) return fail(path, 404, 'RESOURCE_NOT_FOUND', '대상을 찾을 수 없습니다.')
+    if (requestDetail(requestId)?.status !== 'IN_PROGRESS') return fail(path, 422, 'SUBMISSION_LOCKED', '수정할 수 없는 제출입니다.')
     const { dueAt } = (await request.json()) as { dueAt?: string }
     const at = dueAt ? Date.parse(dueAt) : NaN
     if (!(at > Date.now()) || !(at > Date.parse(d.dueAt))) return fail(path, 400, 'INVALID_REQUEST', '현재 유효 마감일보다 뒤인 미래 시각을 입력해 주세요.')
