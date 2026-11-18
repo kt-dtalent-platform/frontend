@@ -232,13 +232,18 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
   // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
   useEffect(() => top.current?.focus(), [])
 
+  // 파일 이름은 화면에 보여 준 것과 받은 것이 같아야 해서 한 번만 정한다
+  const [fileName] = useState(() => {
+    const d = new Date()
+    return `장학생_로그인안내_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.xlsx`
+  })
+
   const download = async () => {
     const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
+    // 장학생이 들어올 이 서비스의 로그인 화면 주소
     const login = new URL(appUrl('/login'), window.location.origin).href
     const sheet = [['이름', '아이디(이메일)', '임시 비밀번호', '로그인 주소'], ...accounts.map((a) => [a.name, a.email, a.password, login])]
-    const d = new Date()
-    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-    saveBlob(writeXlsx(sheet, [12, 32, 22, 40]), `장학생_로그인안내_${ymd}.xlsx`)
+    saveBlob(writeXlsx(sheet, [12, 32, 22, 40]), fileName)
     setSaved(true)
   }
 
@@ -250,22 +255,27 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
         message="임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요."
         confirmLabel="받지 않고 나가기"
       />
-      <PageTitle description="장학생이 처음 로그인할 때 쓸 임시 비밀번호를 안내 파일로 받아 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
-      <section className="flex flex-col gap-4 rounded-lg bg-surface p-6 md:p-8">
-        <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-title-2">로그인 안내 파일</h2>
-          <p className="m-0 text-ink-2">이름, 아이디, 임시 비밀번호, 로그인 주소가 들어 있어요.</p>
-          <p className="m-0 text-caption text-ink-3">
-            {saved
-              ? '받았어요. 안내를 보낸 뒤에는 파일을 지워 주세요.'
-              : '임시 비밀번호는 지금만 받을 수 있어요. 장학생은 첫 로그인 때 비밀번호를 새로 정해요.'}
-          </p>
+      <PageTitle description="안내 파일을 받아 장학생에게 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+      <div className="flex flex-col gap-2">
+        {/* 받을 파일 한 줄: 이름과 담긴 내용, 오른쪽에 받기 */}
+        <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
+          <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate font-semibold">{fileName}</span>
+            <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호, 로그인 주소</span>
+          </div>
+          <Button
+            size="compact"
+            variant={saved ? 'ghost' : 'secondary'}
+            aria-label={`${fileName} ${saved ? '다시 받기' : '받기'}`}
+            onClick={() => void download()}
+          >
+            <Download size={16} strokeWidth={2} aria-hidden />
+            {saved ? '다시 받기' : '받기'}
+          </Button>
         </div>
-        <Button variant={saved ? 'secondary' : 'primary'} size="md" className="md:self-start" onClick={() => void download()}>
-          <Download size={16} strokeWidth={2} aria-hidden />
-          {saved ? '다시 받기' : '안내 파일 받기'}
-        </Button>
-      </section>
+        <p className="m-0 text-caption text-ink-3">{saved ? '전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}</p>
+      </div>
       <div className="flex flex-col md:flex-row md:justify-end">
         <Link to="/manager/scholars" replace className={buttonClass({ variant: saved ? 'primary' : 'secondary', size: 'md' })}>
           명단으로
