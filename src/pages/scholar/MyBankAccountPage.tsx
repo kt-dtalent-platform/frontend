@@ -90,7 +90,7 @@ function BankForm({ saved, name }: { saved: MyBankAccount | null; name: string }
         )}
       </LabeledField>
 
-      <LabeledField label="계좌번호" required hint="숫자만 적어도 돼요." error={e.accountNumber?.message}>
+      <LabeledField label="계좌번호" required hint="예: 110-123-456789" error={e.accountNumber?.message}>
         {(p) => (
           <input
             {...p}
