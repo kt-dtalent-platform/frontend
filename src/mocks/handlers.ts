@@ -21,7 +21,15 @@ const ME = {
     university: '한양대학교',
     accessiblePrograms: null,
   },
-  MANAGER: { id: 7, name: '정지은', email: 'admin@kt.com', role: 'MANAGER', cohort: null, accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }] },
+  MANAGER: {
+    id: 7,
+    name: '정지은',
+    email: 'admin@kt.com',
+    role: 'MANAGER',
+    cohort: null,
+    university: null,
+    accessiblePrograms: [{ id: 1, name: 'KT디지털인재장학' }],
+  },
 } as const
 
 // 목업 계좌(장학생 한 명분). 저장소를 못 쓰는 브라우저에서는 새로고침하면 사라진다
@@ -79,6 +87,14 @@ function statusIssues(c: StatusChange) {
     c.status === 'WITHDRAWN' ? !c.withdrawalReason && 'withdrawalReason' : c.withdrawalReason != null && 'withdrawalReason',
     c.withdrawalReason === 'OTHER' && !c.withdrawalReasonDetail?.trim() && 'withdrawalReasonDetail',
   ]
+}
+
+// 목업 마감 연장: "요청:장학생" → 늘린 마감
+const extended = new Map<string, string>()
+function mockDeadline(requestId: number, scholarId: number) {
+  const r = requestDetail(requestId)
+  if (!r?.closesAt) return null
+  return { requestId, scholarId, commonDueAt: r.closesAt, dueAt: extended.get(`${requestId}:${scholarId}`) ?? r.closesAt }
 }
 
 export const handlers = [
@@ -322,6 +338,30 @@ export const handlers = [
   }),
 
   // 담당자: 요청별 제출 현황, 내보내기, 제출 상세, 확인 완료·보완 요청
+  // 장학생별 마감 연장(백엔드 #78). 목업은 이 브라우저 메모리에만 둔다
+  http.get(`${BASE}/requests/:requestId/targets/:scholarId/deadline`, ({ params, request }) => {
+    const path = `/v1/requests/${params.requestId}/targets/${params.scholarId}/deadline`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    const d = mockDeadline(Number(params.requestId), Number(params.scholarId))
+    return d ? ok(path, d) : fail(path, 404, 'RESOURCE_NOT_FOUND', '대상을 찾을 수 없습니다.')
+  }),
+
+  http.patch(`${BASE}/requests/:requestId/targets/:scholarId/deadline`, async ({ params, request }) => {
+    const path = `/v1/requests/${params.requestId}/targets/${params.scholarId}/deadline`
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    const requestId = Number(params.requestId)
+    const scholarId = Number(params.scholarId)
+    const d = mockDeadline(requestId, scholarId)
+    if (!d) return fail(path, 404, 'RESOURCE_NOT_FOUND', '대상을 찾을 수 없습니다.')
+    if (requestDetail(requestId)?.status !== 'IN_PROGRESS') return fail(path, 422, 'SUBMISSION_LOCKED', '수정할 수 없는 제출입니다.')
+    const { dueAt } = (await request.json()) as { dueAt?: string }
+    const at = dueAt ? Date.parse(dueAt) : NaN
+    if (!(at > Date.now()) || !(at > Date.parse(d.dueAt))) return fail(path, 400, 'INVALID_REQUEST', '현재 유효 마감일보다 뒤인 미래 시각을 입력해 주세요.')
+    await delay(300)
+    extended.set(`${requestId}:${scholarId}`, dueAt!)
+    return ok(path, mockDeadline(requestId, scholarId))
+  }),
+
   http.get(`${BASE}/requests/:requestId/submissions`, async ({ params, request }) => {
     const path = `/v1/requests/${params.requestId}/submissions`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '접근 권한이 없는 요청입니다')

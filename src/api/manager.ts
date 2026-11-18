@@ -104,7 +104,7 @@ export function useCreateCohort(programId: number | undefined) {
   })
 }
 
-// POST /requests(작성 중으로 만들기): 백엔드 #65. POST /requests/{id}/publish(공개): 백엔드 PR #81 머지 대기
+// POST /requests(작성 중으로 만들기): 백엔드 #65. POST /requests/{id}/publish(공개): 백엔드 #81
 // 요청 본문은 실제 DB(requests) 열을 따른다: 공개 일시·개인정보 안내·보관 기간 열은 DB에 없어 보내지 않는다(확인 필요).
 export type Semester = '1' | '2' | 'SUMMER' | 'WINTER'
 export type CreateRequestBody = {

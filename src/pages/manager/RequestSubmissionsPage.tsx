@@ -1,9 +1,23 @@
-import { ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { downloadExport, submissionExportColumns, useRequestSubmissions, type StatusFilter, type SubmissionRow } from '../../api/review'
+import {
+  downloadExport,
+  submissionExportColumns,
+  useExtendDeadline,
+  useRequestSubmissions,
+  useTargetDeadline,
+  type StatusFilter,
+  type SubmissionRow,
+} from '../../api/review'
+import { useRequestDetail } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
-import { TIME_ZONE, toDate } from '../../lib/time'
+import { TIME_ZONE, kstParts, kstToUtc, kstToday, toDate } from '../../lib/time'
+import { ApiError } from '../../api/client'
+import { FormDialog } from '../../components/ui/FormDialog'
+import { LabeledField } from '../../components/form/LabeledField'
+import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { useToast } from '../../components/ui/useToast'
 import { filterField } from '../../components/form/fieldClass'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -19,6 +33,7 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { liveRequestsOn } from '../../lib/env'
 import { MetaList } from '../../components/ui/MetaList'
 
 const filters: { value: StatusFilter | null; label: string; empty: string }[] = [
@@ -45,7 +60,9 @@ export function RequestSubmissionsPage() {
   const status = (filters.find((f) => f.value === params.get('status'))?.value ?? null) as StatusFilter | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const keyword = params.get('q') ?? ''
-  const sort = parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt'])
+  // 실제 서버의 제출 현황은 아직 열 정렬을 하지 않는다(서버 순서: 검토 대기, 보완 필요, 미제출, 확인 완료). 그동안은 열 이름만 보인다
+  const canSort = !liveRequestsOn
+  const sort = canSort ? parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt']) : null
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기 등으로 주소의 검색어가 바뀌면 입력칸도 맞춘다
   const [seen, setSeen] = useState(keyword)
@@ -116,8 +133,14 @@ export function RequestSubmissionsPage() {
     setParams(p, { replace: true })
   }, [data, query.isPlaceholderData, page, lastPage, params, setParams])
 
+  // 마감을 늘릴 장학생(미제출, 작성 중). 고르면 대화상자가 열린다.
+  // 백엔드는 진행 중인 요청만 늘려 준다. 제출 현황 응답에 요청 상태가 없어 요청 상세에서 읽는다
+  const [extending, setExtending] = useState<{ scholarId: number; name: string } | null>(null)
+  const canExtend = useRequestDetail(requestId).data?.status === 'IN_PROGRESS'
+
   return (
     <div className="flex flex-col gap-6">
+      {extending && <ExtendDialog requestId={requestId} target={extending} onClose={() => setExtending(null)} />}
       <Link to="/manager/requests" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         요청 관리
@@ -189,12 +212,53 @@ export function RequestSubmissionsPage() {
             <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                  <SortHeader label="이름" sortKey="name" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
-                  <SortHeader label="기수" sortKey="cohort" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28" />
-                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-44" />
-                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-48" />
-                  <SortHeader label="평점" sortKey="gpa" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-20 text-right" />
                   <SortHeader
+                    sortable={canSort}
+                    label="이름"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="flex-1"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="기수"
+                    sortKey="cohort"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-28"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="학교"
+                    sortKey="university"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-44"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="상태"
+                    sortKey="status"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-48"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="평점"
+                    sortKey="gpa"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-20 text-right"
+                  />
+                  <SortHeader
+                    sortable={canSort}
                     label="제출"
                     sortKey="submittedAt"
                     sort={sort}
@@ -206,7 +270,12 @@ export function RequestSubmissionsPage() {
                 </div>
                 <ul className="m-0 list-none p-0">
                   {data.items.map((r) => (
-                    <Row key={r.scholarId} row={r} requestId={requestId} />
+                    <Row
+                      key={r.scholarId}
+                      row={r}
+                      requestId={requestId}
+                      onExtend={canExtend ? () => setExtending({ scholarId: r.scholarId, name: r.scholarName }) : undefined}
+                    />
                   ))}
                 </ul>
               </div>
@@ -238,7 +307,7 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
   )
 }
 
-function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
+function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: number; onExtend?: () => void }) {
   const tags = (
     <>
       {row.late && <Tag tone="neutral">마감 후</Tag>}
@@ -298,12 +367,111 @@ function Row({ row, requestId }: { row: SubmissionRow; requestId: number }) {
           <ChevronRight size={20} strokeWidth={1.75} className="hidden shrink-0 text-ink-3 group-hover:text-ink md:block" aria-hidden />
         </Link>
       ) : (
-        // 미제출·작성 중은 볼 내용이 없어 누를 수 없다
+        // 미제출, 작성 중은 볼 내용이 없어 행을 누를 수 없다. 대신 이 장학생의 마감을 늘릴 수 있다
         <div className={cn(cls, 'text-ink')}>
           {body}
-          <span className="hidden w-5 md:block" />
+          {onExtend ? (
+            <Button
+              size="compact"
+              variant="ghost"
+              className="self-start md:-mr-2 md:self-auto"
+              aria-label={`${row.scholarName} 마감 연장`}
+              title="마감 연장"
+              onClick={onExtend}
+            >
+              <CalendarPlus size={16} strokeWidth={2} aria-hidden />
+              <span className="md:sr-only">마감 연장</span>
+            </Button>
+          ) : (
+            <span className="hidden w-5 md:block" />
+          )}
         </div>
       )}
     </li>
+  )
+}
+
+// 장학생 한 명의 마감 연장(백엔드 #78). 진행 중인 요청에서, 지금 마감보다 뒤인 시각으로만 늘릴 수 있다
+function ExtendDialog({ requestId, target, onClose }: { requestId: number; target: { scholarId: number; name: string }; onClose: () => void }) {
+  const toast = useToast()
+  const deadline = useTargetDeadline(requestId, target.scholarId)
+  const extend = useExtendDeadline(requestId, target.scholarId)
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('23:59')
+  // 어느 칸 때문인지 나눠 둔다. 서버 오류는 날짜 칸 아래에 보인다
+  const [error, setError] = useState<{ field: 'date' | 'time'; message: string } | null>(null)
+  const dateRef = useRef<HTMLInputElement>(null)
+  const timeRef = useRef<HTMLInputElement>(null)
+  const current = deadline.data?.dueAt ?? null
+
+  // 오류가 난 칸으로 포커스를 옮겨 스크린 리더가 오류 문구를 읽게 한다
+  const fail = (field: 'date' | 'time', message: string) => {
+    setError({ field, message })
+    ;(field === 'date' ? dateRef : timeRef).current?.focus()
+  }
+
+  const submit = async () => {
+    if (!date) return fail('date', '날짜를 고르세요.')
+    if (!time) return fail('time', '시각을 고르세요.')
+    const dueAt = kstToUtc(date, time)
+    if (current && Date.parse(dueAt) <= Date.parse(current)) return fail(kstParts(current).date === date ? 'time' : 'date', '지금 마감보다 뒤로 고르세요.')
+    if (Date.parse(dueAt) <= Date.now()) return fail(kstToday() === date ? 'time' : 'date', '지금보다 뒤로 고르세요.')
+    setError(null)
+    try {
+      await extend.mutateAsync(dueAt)
+      toast(`${target.name} 님 마감을 ${formatDue(dueAt)}까지 늘렸어요`)
+      onClose()
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'SUBMISSION_LOCKED') fail('date', '진행 중인 요청만 마감을 늘릴 수 있어요.')
+      else fail('date', err instanceof ApiError && err.message ? err.message : '잠시 뒤 다시 시도하세요.')
+    }
+  }
+
+  return (
+    <FormDialog open title="마감 연장" submitLabel="마감 연장" busy={extend.isPending || deadline.isPending} onSubmit={() => void submit()} onCancel={onClose}>
+      <p className="m-0 text-ink-2">
+        {target.name} 님{deadline.isPending && <span className="text-ink-3">, 지금 마감 확인 중</span>}
+        {current && (
+          <>
+            , 지금 마감 <span className="tabular-nums">{formatDue(current)}</span>
+            {deadline.data && deadline.data.dueAt !== deadline.data.commonDueAt && <span className="text-ink-3"> (이미 늘림)</span>}
+          </>
+        )}
+      </p>
+      {deadline.isError && (
+        <Banner tone="danger" title="지금 마감을 불러오지 못했어요">
+          <Button size="compact" onClick={() => void deadline.refetch()}>
+            다시 시도
+          </Button>
+        </Banner>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <LabeledField label="새 마감일" required error={error?.field === 'date' ? error.message : undefined}>
+          {(p) => (
+            <input
+              {...p}
+              ref={dateRef}
+              type="date"
+              min={current ? kstParts(current).date : kstToday()}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={cn(fieldControl, fieldBorder(error?.field === 'date'))}
+            />
+          )}
+        </LabeledField>
+        <LabeledField label="시각" required error={error?.field === 'time' ? error.message : undefined}>
+          {(p) => (
+            <input
+              {...p}
+              ref={timeRef}
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className={cn(fieldControl, fieldBorder(error?.field === 'time'))}
+            />
+          )}
+        </LabeledField>
+      </div>
+    </FormDialog>
   )
 }

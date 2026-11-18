@@ -90,6 +90,8 @@ export type ScholarDetail = StatusInfo & {
   university: string
   major: string | null
   cohort: { id: number; name: string }
+  // 목록에서 고른 학교의 ID. 직접 쓴 이름이면 null(KT-54)
+  schoolId?: number | null
   // 장학금 받을 계좌. 담당자에게는 전체 번호가 온다(백엔드 #77). 장학생이 등록하기 전이면 null
   bankAccount: { bankName: string; accountNumber: string; accountHolder: string } | null
 }
@@ -99,8 +101,9 @@ export function useScholar(id: number) {
   return useQuery({ queryKey: ['manager', 'scholar', id], queryFn: () => api<ScholarDetail>(`/scholars/${id}`), enabled: Number.isInteger(id) && id > 0 })
 }
 
-// PATCH /v1/scholars/{id} (KT-12): 보낸 문자열 항목만 바꾼다. 빈 값(null)으로 지우기와 상태 변경은 아직 지원하지 않음
-export type ScholarUpdate = Partial<Record<'name' | 'phone' | 'university' | 'major', string>>
+// PATCH /v1/scholars/{id} (KT-12): 보낸 항목만 바꾼다. 빈 값(null)으로 지우기와 상태 변경은 아직 지원하지 않음.
+// 학교를 바꿀 때는 university와 schoolId(목록의 학교면 ID, 직접 쓴 이름이면 null)를 함께 보낸다(KT-54)
+export type ScholarUpdate = Partial<Record<'name' | 'phone' | 'university' | 'major', string>> & { schoolId?: number | null }
 
 export function useUpdateScholar(id: number) {
   const queryClient = useQueryClient()
@@ -175,6 +178,8 @@ export type ScholarCreate = {
   university: string
   major: string | null
   studentNo: string | null
+  // 목록에서 고른 학교면 ID. 서버가 목록의 이름으로 저장한다(KT-54). 직접 쓴 이름이면 보내지 않는다
+  schoolId?: number
 }
 
 // POST /v1/scholars/bulk · 백엔드 KT-56(PR #92, 머지 대기)
