@@ -104,7 +104,7 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
         role="listbox"
         aria-label="학교 목록"
         hidden={!shown}
-        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 max-h-72 list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
+        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 max-h-72 animate-pop-down list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
       >
         {items.map((s, i) => (
           <li

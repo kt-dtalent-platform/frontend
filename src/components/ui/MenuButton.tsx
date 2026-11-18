@@ -96,7 +96,8 @@ export function MenuButton({
         }}
         className={cn(
           'absolute right-0 z-(--z-popover) m-0 w-64 list-none rounded-md bg-surface p-1 shadow-pop',
-          placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
+          // 열릴 때 버튼 쪽에서 살짝 나온다. hidden이 풀릴 때마다 다시 재생된다
+          placement === 'top' ? 'bottom-full mb-1 animate-pop-up' : 'top-full mt-1 animate-pop-down',
         )}
       >
         {items.map((item, i) => (

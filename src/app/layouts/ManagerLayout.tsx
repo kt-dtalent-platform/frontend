@@ -1,6 +1,7 @@
 import { ClipboardList, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink } from 'react-router'
+import { PageTransition } from './PageTransition'
 import { Button } from '../../components/ui/Button'
 import { Logo } from '../../components/ui/Logo'
 import { UserMenu } from '../../components/ui/UserMenu'
@@ -165,7 +166,7 @@ export function ManagerLayout() {
         </header>
         <main className="min-w-0 flex-1 px-4 pt-4 pb-12 md:px-8">
           <div className="mx-auto max-w-page-wide">
-            <Outlet />
+            <PageTransition />
           </div>
         </main>
       </div>

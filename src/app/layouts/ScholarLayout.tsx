@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router'
+import { PageTransition } from './PageTransition'
 import { Logo } from '../../components/ui/Logo'
 import { UserMenu } from '../../components/ui/UserMenu'
 
@@ -13,7 +13,7 @@ export function ScholarLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-page-form px-4 py-8 md:px-5">
-        <Outlet />
+        <PageTransition />
       </main>
     </div>
   )
