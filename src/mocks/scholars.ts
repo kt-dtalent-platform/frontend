@@ -10,7 +10,7 @@ const SCHOOLS = ['한양대학교', '서울과학기술대학교', '부산대학
 const MAJORS = ['컴퓨터공학과', '전자공학과', '산업공학과', '데이터사이언스학과', '경영학과']
 
 // studentNo: 등록할 때 받은 학번. 처음부터 있는 목업 줄은 없어서 내보낼 때 id로 만든다
-type Row = ScholarDetail & { accountStatus: AccountStatus; phone: string | null; studentNo?: string | null }
+type Row = Omit<ScholarDetail, 'bankAccount'> & { accountStatus: AccountStatus; phone: string | null; studentNo?: string | null }
 const KEY = 'kt-dtalent:mock-scholars'
 // 기수는 요청 만들기 목업과 같은 목록을 쓴다
 
@@ -113,7 +113,12 @@ export function scholarDetail(id: number): ScholarDetail | null {
   const r = all().find((x) => x.id === id)
   if (!r) return null
   const { accountStatus: _a, phone: _p, ...detail } = r
-  return detail
+  // 목업 계좌: 넷 중 하나는 아직 등록 안 함
+  const bankAccount =
+    r.id % 4 === 0
+      ? null
+      : { bankName: ['KB국민은행', '신한은행', '카카오뱅크'][r.id % 3], accountNumber: String(1002000000000 + r.id * 7919), accountHolder: r.name }
+  return { ...detail, bankAccount }
 }
 
 export function updateScholar(id: number, body: ScholarUpdate) {
@@ -191,7 +196,7 @@ export function exportScholarsCsv(statuses: string[], cohortId: number | null, c
   return '\uFEFF' + [keys.map((k) => cell[k][0]), ...rowsOut.map((r) => keys.map((k) => esc(cell[k][1](r))))].map((l) => l.join(',')).join('\n')
 }
 
-// 일괄 등록: 하나라도 문제가 있으면 아무도 등록하지 않는다(백엔드와 맞출 것, 확인 필요)
+// 일괄 등록: 하나라도 문제가 있으면 아무도 등록하지 않는다(백엔드 #92와 같음). 임시 비밀번호는 목업용 가짜 값
 export function createScholarsBulk(cohortId: number, list: Omit<ScholarCreate, 'cohortId'>[]) {
   if (!cohorts.find((c) => c.id === cohortId)) return { error: 'COHORT_NOT_FOUND' as const }
   // 보낸 명단 안에서 같은 이메일이 있어도 아무도 등록하지 않는다
@@ -206,6 +211,10 @@ export function createScholarsBulk(cohortId: number, list: Omit<ScholarCreate, '
   const existing = new Set(all().map((r) => r.email.toLowerCase()))
   const dup = list.filter((r) => existing.has(r.email.toLowerCase())).map((r) => r.email)
   if (dup.length) return { error: 'DUPLICATE_EMAIL' as const, emails: dup }
-  for (const r of list) createScholar({ ...r, cohortId })
-  return { created: list.length }
+  const items = list.map((r, i) => {
+    const made = createScholar({ ...r, cohortId })
+    const id = ('id' in made && made.id) || 0
+    return { row: i + 1, id, email: r.email, temporaryPassword: `temp${String(1000 + ((id * 7919) % 9000))}` }
+  })
+  return { created: list.length, items }
 }

@@ -5,8 +5,8 @@ import { isDemo } from '../lib/env'
 // 적은 묶음은 목업을 거치지 않고 개발 서버 프록시로 백엔드에 간다. 나머지는 목업이 답한다.
 // 화면 흐름 단위로 묶었다. 한 흐름 안에서 실제 서버와 목업이 섞이면 ID가 서로 맞지 않는다.
 const groups = {
-  // 로그인, 내 정보, 비밀번호 변경
-  auth: [/^\/auth\//, /^\/me$/],
+  // 로그인, 내 정보, 비밀번호 변경, 장학금 받을 계좌
+  auth: [/^\/auth\//, /^\/me$/, /^\/me\/bank-account$/],
   // 장학생 명단, 상세, 등록, 수정, 기수 목록, 학교 검색
   scholars: [/^\/scholars(\/|$)/, /^\/programs\/\d+\/cohorts$/, /^\/schools$/],
   // 장학생: 내 할 일, 제출 입력, 임시 저장, 파일 올리기와 지우기, 제출
@@ -54,7 +54,7 @@ export function isLive(pathname: string) {
 // 확인 완료, 보완 요청(#89), 파일 올리기 완료와 원본 보기(#62, #59)는 목업에 남기지 않는다.
 // 실제 서버에서 만든 제출 ID를 목업이 모르기 때문이다. 백엔드 PR이 머지되기 전에는 실패로 보인다(11/18 오후 기준).
 const notYet: [method: string, path: RegExp][] = [
-  ['POST', /^\/scholars\/bulk$/],
+  ['POST', /^\/scholars\/bulk$/], // 백엔드 PR #92 머지되면 지운다
   ['POST', /^\/programs\/\d+\/cohorts$/],
 ]
 

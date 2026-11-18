@@ -32,6 +32,32 @@ const ME = {
   },
 } as const
 
+// 목업 계좌(장학생 한 명분). 저장소를 못 쓰는 브라우저에서는 새로고침하면 사라진다
+type MockBank = { bankName: string; accountNumber: string; accountHolder: string }
+const BANK = 'kt-dtalent:mock-bank-account'
+let bankMemory: MockBank | null = null
+// 저장소 쓰기에 실패했으면 그 뒤로는 메모리 값을 믿는다(저장소에 예전 값이 남아 있을 수 있다)
+let bankWriteFailed = false
+function loadBank(): MockBank | null {
+  if (bankWriteFailed) return bankMemory
+  try {
+    const raw = localStorage.getItem(BANK)
+    return raw ? (JSON.parse(raw) as MockBank) : bankMemory
+  } catch {
+    return bankMemory
+  }
+}
+function saveBank(a: MockBank) {
+  bankMemory = a
+  try {
+    localStorage.setItem(BANK, JSON.stringify(a))
+    bankWriteFailed = false
+  } catch {
+    // 저장소를 못 쓰면 메모리에만 둔다
+    bankWriteFailed = true
+  }
+}
+
 // 목업 토큰에 역할을 담아 /me가 맞는 사람을 돌려주게 한다.
 // 로그인만 실제 서버(VITE_LIVE_API=auth)일 때는 진짜 토큰(JWT)의 role 값을 읽는다.
 const roleOf = (request: Request): 'MANAGER' | 'SCHOLAR' | null => {
@@ -108,6 +134,34 @@ export const handlers = [
     if (!currentPassword.startsWith('temp')) return fail(path, 400, 'PASSWORD_MISMATCH', '현재 비밀번호가 올바르지 않습니다.')
     if (newPassword === currentPassword) return fail(path, 400, 'SAME_AS_CURRENT', '기존 비밀번호와 동일합니다.')
     return ok(path, { passwordChangedAt: now() })
+  }),
+
+  // 장학금 받을 계좌(백엔드 #77). 목업은 이 브라우저에만 저장하고, 응답에는 뒤 4자리만 준다
+  http.get(`${BASE}/me/bank-account`, ({ request }) => {
+    const path = '/v1/me/bank-account'
+    const role = roleOf(request)
+    if (!role) return unauthorized(path)
+    if (role !== 'SCHOLAR') return fail(path, 403, 'ACCESS_DENIED', '장학생만 쓸 수 있습니다.')
+    const a = loadBank()
+    return ok(path, a && { bankName: a.bankName, maskedAccountNumber: `****${a.accountNumber.slice(-4)}`, accountHolder: a.accountHolder })
+  }),
+
+  http.patch(`${BASE}/me/bank-account`, async ({ request }) => {
+    const path = '/v1/me/bank-account'
+    const role = roleOf(request)
+    if (!role) return unauthorized(path)
+    if (role !== 'SCHOLAR') return fail(path, 403, 'ACCESS_DENIED', '장학생만 쓸 수 있습니다.')
+    const body = (await request.json()) as { bankName?: string; accountNumber?: string; accountHolder?: string }
+    const number = (body.accountNumber ?? '').replace(/[ -]/g, '')
+    const bad = [
+      !body.bankName?.trim() && 'bankName',
+      (!/^[0-9 -]+$/.test(body.accountNumber ?? '') || number.length < 5) && 'accountNumber',
+      !body.accountHolder?.trim() && 'accountHolder',
+    ].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
+    await delay(300)
+    saveBank({ bankName: body.bankName!.trim(), accountNumber: number, accountHolder: body.accountHolder!.trim() })
+    return ok(path, { updatedAt: now() })
   }),
 
   http.get(`${BASE}/me/tasks`, ({ request }) => {
