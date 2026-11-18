@@ -241,11 +241,11 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
       try {
         await publish.mutateAsync(id)
         setLeaving({ status: 'IN_PROGRESS', toast: '요청을 공개했어요' })
-      } catch {
+      } catch (err) {
         // 만들기는 됐고 공개만 실패: 같은 요청을 다시 만들지 않도록 작성 중 목록으로 보낸다
         setLeaving({
           status: 'DRAFT',
-          notice: { tone: 'warning', title: '작성 중으로 저장됐지만 공개하지 못했어요', body: `"${v.title.trim()}" 요청을 열어 다시 공개하세요.` },
+          notice: { tone: 'warning', title: '작성 중으로 저장됐지만 공개하지 못했어요', body: `"${v.title.trim()}" ${publishFailText(err)}` },
         })
       }
     } catch (error) {
@@ -496,4 +496,13 @@ function Field({
       )}
     </div>
   )
+}
+
+// 공개 실패 이유(백엔드 #81: 409 REQUEST_NOT_PUBLISHABLE, details에 걸린 항목 하나)
+function publishFailText(err: unknown) {
+  const reason = err instanceof ApiError && err.code === 'REQUEST_NOT_PUBLISHABLE' && Array.isArray(err.details) ? err.details[0] : null
+  if (reason === 'closesAt') return '요청의 마감 시각이 이미 지났어요. 요청을 열어 마감을 고친 뒤 공개하세요.'
+  if (reason === 'targets') return '요청에 받을 장학생이 없어요. 기수에 장학생을 등록한 뒤 공개하세요.'
+  if (reason === 'fields') return '요청 유형의 제출 항목 설정에 문제가 있어요. 개발팀에 알려 주세요.'
+  return '요청을 열어 다시 공개하세요.'
 }

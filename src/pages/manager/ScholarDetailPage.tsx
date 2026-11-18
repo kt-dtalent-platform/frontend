@@ -15,6 +15,7 @@ import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { useFindSchoolId } from '../../api/schools'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
 import { useToast } from '../../components/ui/useToast'
@@ -133,13 +134,18 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
     mode: 'onBlur',
   })
   const e = formState.errors
+  const findSchoolId = useFindSchoolId()
 
   const onSubmit = handleSubmit(async (v) => {
     // 백엔드는 보낸 문자열 항목만 바꾼다. 바뀐 항목만 보낸다(빈 값으로 지우기는 아직 지원 안 함)
     const body: ScholarUpdate = {}
     if (v.name.trim() !== s.name) body.name = v.name.trim()
     if (v.phone.trim()) body.phone = v.phone.trim()
-    if (v.university.trim() && v.university.trim() !== s.university) body.university = v.university.trim()
+    // 학교를 바꾸면 목록의 학교 ID도 같이 보낸다. 직접 쓴 이름이면 null(서버가 예전 ID를 지운다)
+    if (v.university.trim() && v.university.trim() !== s.university) {
+      body.university = v.university.trim()
+      body.schoolId = await findSchoolId(v.university)
+    }
     if (v.major.trim() && v.major.trim() !== (s.major ?? '')) body.major = v.major.trim()
     if (Object.keys(body).length === 0) return onDone('unchanged')
     try {

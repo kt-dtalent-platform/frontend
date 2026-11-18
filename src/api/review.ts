@@ -4,22 +4,22 @@ import { ApiError, BASE_URL, api } from './client'
 import { tokenStore } from './token'
 import type { SubmissionStatus } from './types'
 
-// 담당자 제출 현황·개별 검토. 모두 백엔드 구현 없음. 노션 명세서 모양을 임시로 쓴다(확인 필요).
+// 담당자 제출 현황과 개별 검토. 제출 현황, 개별 조회는 백엔드 KT-55(#85). 확인 완료, 보완 요청은 PR #89 머지 대기
 
 // GET /requests/{requestId}/submissions?status=&keyword=&page=
-// status 필터는 명세서에 없지만 상태 칩으로 나눠 보려면 필요하다(확인 필요)
+// status: NOT_SUBMITTED, WAITING(제출 + 재제출), REVISION_REQUIRED, CONFIRMED. summary는 조건과 상관없이 전체 기준
 export type StatusSummary = { target: number; notSubmitted: number; submitted: number; revisionRequired: number; confirmed: number }
 export type SubmissionRow = {
   scholarId: number
   scholarName: string
   cohortName?: string | null
-  university?: string | null // 목록에서 학교와 평점을 같이 본다(11/12, 백엔드 확인 필요)
+  university?: string | null
   gpa?: number | null
   gpaScale?: string | null
   submissionId: number | null
   status: SubmissionStatus
   submittedAt: string | null
-  late?: boolean // 마감 뒤 제출(확인 필요: 서버가 줄지, 화면이 계산할지)
+  late?: boolean // 마감 뒤 제출. 서버가 준다
   hasInputError: boolean
 }
 export type SubmissionPage = {
@@ -39,7 +39,7 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
   const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
-  // 열 정렬. 백엔드에 아직 없음(11/15 요청). 없으면 서버 기본 순서(검토 대기 먼저)
+  // 열 정렬. 백엔드에 아직 없음(11/15 요청). 실제 서버일 때는 화면에서 보내지 않는다
   const order = sortParam(q.sort ?? null)
   if (order) params.set('sort', order)
   return useQuery({

@@ -25,8 +25,8 @@ export type Me = {
   email: string
   role: Role
   cohort: { id: number; name: string } | null
-  // 장학생 학교. 백엔드 /me 응답에 칸은 생겼고(#79), 값은 PR #91 머지 뒤에 채워진다
-  university?: string | null
+  // 장학생 학교. 백엔드 #91. 담당자는 null
+  university: string | null
   accessiblePrograms: { id: number; name: string }[] | null
 }
 

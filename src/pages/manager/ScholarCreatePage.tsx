@@ -8,6 +8,7 @@ import { CohortField } from '../../components/form/CohortField'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
 import { SchoolField } from '../../components/form/SchoolCombobox'
+import { useFindSchoolId } from '../../api/schools'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -46,8 +47,11 @@ export function ScholarCreatePage() {
   // 보내는 동안 버튼을 막아 두 번 등록되지 않게 한다
   const busy = formState.isSubmitting || create.isPending || !!done
 
+  const findSchoolId = useFindSchoolId()
+
   const onSubmit = handleSubmit(async (v) => {
     try {
+      const schoolId = await findSchoolId(v.university)
       const r = await create.mutateAsync({
         cohortId: Number(v.cohortId),
         name: v.name.trim(),
@@ -56,6 +60,7 @@ export function ScholarCreatePage() {
         university: v.university.trim(),
         major: opt(v.major),
         studentNo: opt(v.studentNo),
+        ...(schoolId ? { schoolId } : {}),
       })
       if (r.temporaryPassword) setCreated({ name: v.name.trim(), email: v.email.trim(), password: r.temporaryPassword })
       // 임시 비밀번호를 화면 상태로 옮겼으니 요청 결과 캐시에서는 바로 지운다

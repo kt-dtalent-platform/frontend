@@ -19,6 +19,7 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { liveRequestsOn } from '../../lib/env'
 import { MetaList } from '../../components/ui/MetaList'
 
 const filters: { value: StatusFilter | null; label: string; empty: string }[] = [
@@ -45,7 +46,9 @@ export function RequestSubmissionsPage() {
   const status = (filters.find((f) => f.value === params.get('status'))?.value ?? null) as StatusFilter | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const keyword = params.get('q') ?? ''
-  const sort = parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt'])
+  // 실제 서버의 제출 현황은 아직 열 정렬을 하지 않는다(서버 순서: 검토 대기, 보완 필요, 미제출, 확인 완료). 그동안은 열 이름만 보인다
+  const canSort = !liveRequestsOn
+  const sort = canSort ? parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt']) : null
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기 등으로 주소의 검색어가 바뀌면 입력칸도 맞춘다
   const [seen, setSeen] = useState(keyword)
@@ -189,12 +192,53 @@ export function RequestSubmissionsPage() {
             <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                  <SortHeader label="이름" sortKey="name" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
-                  <SortHeader label="기수" sortKey="cohort" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28" />
-                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-44" />
-                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-48" />
-                  <SortHeader label="평점" sortKey="gpa" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-20 text-right" />
                   <SortHeader
+                    sortable={canSort}
+                    label="이름"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="flex-1"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="기수"
+                    sortKey="cohort"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-28"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="학교"
+                    sortKey="university"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-44"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="상태"
+                    sortKey="status"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-48"
+                  />
+                  <SortHeader
+                    sortable={canSort}
+                    label="평점"
+                    sortKey="gpa"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-20 text-right"
+                  />
+                  <SortHeader
+                    sortable={canSort}
                     label="제출"
                     sortKey="submittedAt"
                     sort={sort}
