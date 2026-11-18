@@ -173,3 +173,28 @@ function useReviewAction<T>(submissionId: number, path: string) {
 export const useConfirm = (submissionId: number) => useReviewAction<{ version: number }>(submissionId, 'confirm')
 export const useRequestRevision = (submissionId: number) =>
   useReviewAction<{ fieldKeys: string[]; reason: string; dueAt: string | null; version: number }>(submissionId, 'revision')
+
+// 장학생별 마감 연장(백엔드 KT-50, #78). 담당자만.
+// GET  /requests/{requestId}/targets/{scholarId}/deadline → 공통 마감과 이 장학생의 마감(연장 반영)
+// PATCH 같은 주소 {dueAt}: 진행 중인 요청의 대상자만, 지금 마감보다 뒤인 미래 시각으로만 늘린다
+export type TargetDeadline = { requestId: number; scholarId: number; commonDueAt: string; dueAt: string }
+const deadlineKey = (requestId: number, scholarId: number) => ['manager', 'deadline', requestId, scholarId] as const
+
+export function useTargetDeadline(requestId: number, scholarId: number | null) {
+  return useQuery({
+    queryKey: deadlineKey(requestId, scholarId ?? 0),
+    queryFn: () => api<TargetDeadline>(`/requests/${requestId}/targets/${scholarId}/deadline`),
+    enabled: scholarId !== null,
+  })
+}
+
+export function useExtendDeadline(requestId: number, scholarId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (dueAt: string) => api<TargetDeadline>(`/requests/${requestId}/targets/${scholarId}/deadline`, { method: 'PATCH', body: { dueAt } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: deadlineKey(requestId, scholarId) })
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'submissions', requestId] })
+    },
+  })
+}
