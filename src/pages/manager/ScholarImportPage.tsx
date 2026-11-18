@@ -121,7 +121,17 @@ export function ScholarImportPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-page-wide flex-col gap-6">
-      <UnsavedChangesGuard when={rows.length > 0 && done === null} />
+      {/* 등록 요청 중에 나가면 서버는 계정을 만들지만 임시 비밀번호를 받을 화면이 없어진다. 그래서 따로 경고한다 */}
+      <UnsavedChangesGuard
+        when={rows.length > 0 && done === null}
+        {...(bulk.isPending
+          ? {
+              title: '등록 중에 나가기',
+              message: '지금 나가면 등록은 되지만 임시 비밀번호를 받을 수 없어요. 끝날 때까지 기다려 주세요.',
+              confirmLabel: '그래도 나가기',
+            }
+          : {})}
+      />
       <Link to="/manager/scholars" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         장학생
@@ -238,20 +248,28 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
     return `장학생_로그인안내_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.xlsx`
   })
 
+  const toast = useToast()
   const download = async () => {
-    const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
-    const sheet = [['이름', '아이디(이메일)', '임시 비밀번호'], ...accounts.map((a) => [a.name, a.email, a.password])]
-    saveBlob(writeXlsx(sheet, [12, 32, 26]), fileName)
-    setSaved(true)
+    try {
+      const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
+      const sheet = [['이름', '아이디(이메일)', '임시 비밀번호'], ...accounts.map((a) => [a.name, a.email, a.password])]
+      saveBlob(writeXlsx(sheet, [12, 32, 26]), fileName)
+      setSaved(true)
+    } catch {
+      toast('파일을 만들지 못했어요. 다시 눌러 주세요')
+    }
   }
 
   return (
     <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
       <UnsavedChangesGuard
-        when={!saved}
-        title="안내 파일 받지 않고 나가기"
-        message="임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요."
-        confirmLabel="받지 않고 나가기"
+        // 받기를 눌러도 실제로 저장됐는지는 알 수 없어(Safari 다운로드 허용 거부, 취소) 나갈 때 확인은 계속 남긴다
+        when
+        title={saved ? '나가기' : '안내 파일 받지 않고 나가기'}
+        message={
+          saved ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?' : '임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요.'
+        }
+        confirmLabel={saved ? '나가기' : '받지 않고 나가기'}
       />
       <PageTitle description="안내 파일을 받아 장학생에게 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
       <div className="flex flex-col gap-2">
@@ -267,7 +285,9 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
             받기
           </Button>
         </div>
-        <p className="m-0 text-caption text-ink-3">{saved ? '받았어요. 전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}</p>
+        <p role="status" className="m-0 text-caption text-ink-3">
+          {saved ? '파일이 저장됐는지 확인해 주세요. 전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}
+        </p>
       </div>
       <div className="flex flex-col md:flex-row md:justify-end">
         <Link to="/manager/scholars" replace className={buttonClass({ variant: 'secondary', size: 'md' })}>
