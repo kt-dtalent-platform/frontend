@@ -34,9 +34,10 @@ export function MyBankAccountPage() {
       </Link>
       <PageTitle description="장학금을 받을 계좌를 적어 주세요.">{editing ? '계좌 변경' : '계좌 등록'}</PageTitle>
       {(me.isPending || bank.isPending) && <LoadingCards count={1} />}
-      {me.isError && <ErrorState error={me.error} onRetry={() => me.refetch()} />}
-      {bank.isError && <ErrorState error={bank.error} onRetry={() => bank.refetch()} />}
-      {me.data && bank.isSuccess && <BankForm saved={bank.data} name={me.data.name} />}
+      {/* 처음 읽기에 실패했을 때만 오류 화면. 한 번 읽은 뒤 다시 읽기가 실패해도 적던 폼은 그대로 둔다 */}
+      {me.isError && !me.data && <ErrorState error={me.error} onRetry={() => me.refetch()} />}
+      {bank.isError && bank.data === undefined && <ErrorState error={bank.error} onRetry={() => bank.refetch()} />}
+      {me.data && bank.data !== undefined && <BankForm saved={bank.data} name={me.data.name} />}
     </div>
   )
 }
@@ -60,9 +61,12 @@ function BankForm({ saved, name }: { saved: MyBankAccount | null; name: string }
   const onSubmit = handleSubmit(async (v) => {
     try {
       await update.mutateAsync({ bankName: v.bankName, accountNumber: v.accountNumber.trim(), accountHolder: v.accountHolder.trim() })
+      update.reset()
       toast('계좌를 저장했어요')
       back()
     } catch (err) {
+      // 보낸 값(전체 계좌번호)이 요청 기록에 남지 않게 성공, 실패 모두 바로 지운다
+      update.reset()
       const fields = err instanceof ApiError ? fieldErrorsOf(err.details).filter((f): f is { key: keyof Values; message: string } => f.key in v) : []
       if (fields.length) for (const f of fields) setError(f.key, { message: '형식을 확인하세요.' }, { shouldFocus: true })
       else setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })

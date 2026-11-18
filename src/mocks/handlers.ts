@@ -28,7 +28,10 @@ const ME = {
 type MockBank = { bankName: string; accountNumber: string; accountHolder: string }
 const BANK = 'kt-dtalent:mock-bank-account'
 let bankMemory: MockBank | null = null
+// 저장소 쓰기에 실패했으면 그 뒤로는 메모리 값을 믿는다(저장소에 예전 값이 남아 있을 수 있다)
+let bankWriteFailed = false
 function loadBank(): MockBank | null {
+  if (bankWriteFailed) return bankMemory
   try {
     const raw = localStorage.getItem(BANK)
     return raw ? (JSON.parse(raw) as MockBank) : bankMemory
@@ -40,8 +43,10 @@ function saveBank(a: MockBank) {
   bankMemory = a
   try {
     localStorage.setItem(BANK, JSON.stringify(a))
+    bankWriteFailed = false
   } catch {
     // 저장소를 못 쓰면 메모리에만 둔다
+    bankWriteFailed = true
   }
 }
 
