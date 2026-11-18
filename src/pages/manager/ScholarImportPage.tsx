@@ -48,13 +48,15 @@ export function ScholarImportPage() {
   const [fileError, setFileError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [done, setDone] = useState<number | null>(null)
+  // 등록 결과(이름, 이메일, 임시 비밀번호). 화면 상태로만 들고 있다가 이 화면을 떠나면 사라진다
+  const [created, setCreated] = useState<Account[] | null>(null)
 
-  // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
+  // 임시 비밀번호가 없는 응답이면(예전 서버) 이탈 확인을 끈 뒤(다음 렌더) 명단으로 옮긴다
   useEffect(() => {
-    if (done === null) return
+    if (done === null || created) return
     toast(`${done}명을 등록했어요`)
     navigate('/manager/scholars', { replace: true })
-  }, [done, navigate, toast])
+  }, [done, created, navigate, toast])
 
   const bad = rows.filter((r) => r.errors.length > 0)
   const busy = reading || bulk.isPending || done !== null
@@ -95,6 +97,12 @@ export function ScholarImportPage() {
         cohortId: Number(cohort),
         scholars: rows.map(({ name, email, phone, university, major, studentNo }) => ({ name, email, phone, university, major, studentNo })),
       })
+      // row는 보낸 명단 순서 + 1이라 그 줄의 이름을 붙인다
+      const accounts = (r.items ?? [])
+        .filter((it) => it.temporaryPassword)
+        .map((it) => ({ name: rows[it.row - 1]?.name ?? '', email: it.email, password: it.temporaryPassword }))
+      if (accounts.length) setCreated(accounts)
+      bulk.reset()
       setDone(r.created)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE_EMAIL' && Array.isArray(err.details)) {
@@ -109,9 +117,21 @@ export function ScholarImportPage() {
     }
   }
 
+  if (created) return <ImportResult accounts={created} />
+
   return (
     <div className="mx-auto flex w-full max-w-page-wide flex-col gap-6">
-      <UnsavedChangesGuard when={rows.length > 0 && done === null} />
+      {/* 등록 요청 중에 나가면 서버는 계정을 만들지만 임시 비밀번호를 받을 화면이 없어진다. 그래서 따로 경고한다 */}
+      <UnsavedChangesGuard
+        when={rows.length > 0 && done === null}
+        {...(bulk.isPending
+          ? {
+              title: '등록 중에 나가기',
+              message: '지금 나가면 등록은 되지만 임시 비밀번호를 받을 수 없어요. 끝날 때까지 기다려 주세요.',
+              confirmLabel: '그래도 나가기',
+            }
+          : {})}
+      />
       <Link to="/manager/scholars" className="inline-flex items-center gap-1 self-start text-label text-ink-3 no-underline hover:text-ink">
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         장학생
@@ -207,6 +227,73 @@ export function ScholarImportPage() {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+type Account = { name: string; email: string; password: string }
+
+// 등록 결과. 임시 비밀번호는 서버가 이 응답에서만 주므로, 화면에 늘어놓지 않고 로그인 안내 파일로 받게 한다.
+// 담당자는 이 파일로 장학생에게 안내를 보낸다(메일 머지, 메시지). 받기 전에 떠나면 한 번 묻는다
+function ImportResult({ accounts }: { accounts: Account[] }) {
+  usePageTitle('장학생 일괄 등록 완료')
+  const top = useRef<HTMLDivElement>(null)
+  const [saved, setSaved] = useState(false)
+  // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
+  useEffect(() => top.current?.focus(), [])
+
+  // 파일 이름은 화면에 보여 준 것과 받은 것이 같아야 해서 한 번만 정한다
+  const [fileName] = useState(() => {
+    const d = new Date()
+    return `장학생_로그인안내_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.xlsx`
+  })
+
+  const toast = useToast()
+  const download = async () => {
+    try {
+      const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
+      const sheet = [['이름', '아이디(이메일)', '임시 비밀번호'], ...accounts.map((a) => [a.name, a.email, a.password])]
+      saveBlob(writeXlsx(sheet, [12, 32, 26]), fileName)
+      setSaved(true)
+    } catch {
+      toast('파일을 만들지 못했어요. 다시 눌러 주세요')
+    }
+  }
+
+  return (
+    <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
+      <UnsavedChangesGuard
+        // 받기를 눌러도 실제로 저장됐는지는 알 수 없어(Safari 다운로드 허용 거부, 취소) 나갈 때 확인은 계속 남긴다
+        when
+        title={saved ? '나가기' : '안내 파일 받지 않고 나가기'}
+        message={
+          saved ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?' : '임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요.'
+        }
+        confirmLabel={saved ? '나가기' : '받지 않고 나가기'}
+      />
+      <PageTitle description="안내 파일을 받아 장학생에게 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+      <div className="flex flex-col gap-2">
+        {/* 받을 파일 한 줄: 이름과 담긴 내용, 오른쪽에 받기 */}
+        <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
+          <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate font-semibold">{fileName}</span>
+            <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호</span>
+          </div>
+          <Button size="compact" variant="secondary" aria-label={`${fileName} 받기`} onClick={() => void download()}>
+            <Download size={16} strokeWidth={2} aria-hidden />
+            받기
+          </Button>
+        </div>
+        <p role="status" className="m-0 text-caption text-ink-3">
+          {saved ? '파일이 저장됐는지 확인해 주세요. 전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}
+        </p>
+      </div>
+      <div className="flex flex-col md:flex-row md:justify-end">
+        <Link to="/manager/scholars" replace className={buttonClass({ variant: 'secondary', size: 'md' })}>
+          명단으로
+        </Link>
+      </div>
     </div>
   )
 }

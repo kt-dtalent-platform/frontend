@@ -177,14 +177,19 @@ export type ScholarCreate = {
   studentNo: string | null
 }
 
-// POST /v1/scholars/bulk · 백엔드에 아직 없음(11/15 요청) · FE 연동: Mock
-// 프론트가 엑셀을 읽어 명단만 보낸다. 이미 등록된 이메일이 있으면 409 DUPLICATE_EMAIL, details에 그 이메일 목록(가정, 확인 필요)
+// POST /v1/scholars/bulk · 백엔드 KT-56(PR #92, 머지 대기)
+// 프론트가 엑셀을 읽어 명단만 보낸다(최대 500명). 한 명이라도 실패하면 아무도 등록하지 않는다.
+// 이미 등록된 이메일이 있으면 409 DUPLICATE_EMAIL, details에 그 이메일 목록.
+// 성공하면 장학생마다 임시 비밀번호가 이 응답에서만 한 번 온다. row는 보낸 명단 순서 + 1
 export type ScholarBulkCreate = { cohortId: number; scholars: Omit<ScholarCreate, 'cohortId'>[] }
+export type ScholarBulkCreated = { created: number; items: { row: number; id: number; email: string; temporaryPassword: string }[] }
 
 export function useBulkCreateScholars() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: ScholarBulkCreate) => api<{ created: number }>('/scholars/bulk', { method: 'POST', body }),
+    mutationFn: (body: ScholarBulkCreate) => api<ScholarBulkCreated>('/scholars/bulk', { method: 'POST', body }),
+    // 응답에 임시 비밀번호가 있어 끝난 요청 기록을 캐시에 남기지 않는다
+    gcTime: 0,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['manager', 'scholars'] }),
   })
 }

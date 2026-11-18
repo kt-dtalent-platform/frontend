@@ -54,7 +54,7 @@ export function isLive(pathname: string) {
 // 공개, 제출 현황, 검토, 파일 API는 목업에 남기지 않는다. 실제 서버에서 만든 요청 ID를 목업이 모르기 때문이다.
 // 백엔드 PR이 머지되기 전에는 이 API들이 실패로 보인다(11/18 기준).
 const notYet: [method: string, path: RegExp][] = [
-  ['POST', /^\/scholars\/bulk$/],
+  ['POST', /^\/scholars\/bulk$/], // 백엔드 PR #92 머지되면 지운다
   ['POST', /^\/programs\/\d+\/cohorts$/],
 ]
 
