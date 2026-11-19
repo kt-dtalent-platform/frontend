@@ -6,6 +6,7 @@ import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { FormDialog } from '../../components/ui/FormDialog'
 import { cn } from '../../lib/cn'
+import { FormError } from '../../components/form/FormError'
 import { errorText } from '../../api/errorText'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -74,14 +75,11 @@ export function LoginNoticeDialog({
       onSubmit={() => void submit()}
       onCancel={onClose}
     >
-      <div className="flex flex-col gap-2 text-ink-2">
-        {reissue ? (
-          <p className="m-0">{who}에게 새 임시 비밀번호를 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요.</p>
-        ) : (
-          <p className="m-0">{who}에게 아이디와 임시 비밀번호를 메일로 보내요.</p>
-        )}
-        {!reissue && <p className="m-0 text-caption text-ink-3">보내면 새 임시 비밀번호가 만들어져, 전에 전달한 비밀번호는 쓸 수 없어요.</p>}
-      </div>
+      <p className="m-0 text-ink-2">
+        {reissue
+          ? `${who}에게 새 임시 비밀번호를 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요.`
+          : `${who}에게 아이디와 임시 비밀번호를 메일로 보내요. 전에 전달한 임시 비밀번호는 더 쓸 수 없어요.`}
+      </p>
 
       {sender.isError && (
         <Banner tone="danger" title="보내는 사람 정보를 불러오지 못했어요">
@@ -92,14 +90,14 @@ export function LoginNoticeDialog({
       )}
 
       {sender.isSuccess && saved && !editing && (
-        <div className="flex items-center justify-between gap-3 border-t border-line-subtle pt-4">
-          <div className="flex min-w-0 flex-col">
-            <span className="text-caption text-ink-3">보내는 사람</span>
-            <span className="truncate">
-              {saved.senderName} &lt;{saved.fromAddress}&gt;
-            </span>
-          </div>
-          <Button size="compact" variant="ghost" onClick={startEdit}>
+        // 이름표, 값(이름과 주소 두 줄), 버튼을 가운데 맞춤. 글자 크기는 본문 하나로
+        <div className="flex items-center gap-3 border-t border-line-subtle pt-4">
+          <span className="shrink-0 text-ink-3">보내는 사람</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate">{saved.senderName}</span>
+            <span className="truncate text-ink-3">{saved.fromAddress}</span>
+          </span>
+          <Button size="compact" onClick={startEdit} aria-label="보내는 사람 바꾸기">
             바꾸기
           </Button>
         </div>
@@ -136,11 +134,7 @@ export function LoginNoticeDialog({
         </div>
       )}
 
-      {failure && (
-        <Banner tone="danger" title="메일을 보내지 못했어요">
-          {failure}
-        </Banner>
-      )}
+      {failure && <FormError>{failure}</FormError>}
     </FormDialog>
   )
 }
