@@ -33,6 +33,8 @@ import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
+import { LoginNoticeDialog } from './LoginNoticeDialog'
+import { sentText, skipText } from '../../api/loginNotices'
 import { Checkbox } from '../../components/form/Checkbox'
 import { useToast } from '../../components/ui/useToast'
 
@@ -114,6 +116,9 @@ export function ScholarsPage() {
   // 고른 사람이 모두 같은 기수면 그 선발 연도부터 수료 연도를 보여 준다
   const pickedCohorts = [...new Set(data?.items.filter((x) => sel.includes(x.id)).map((x) => x.cohortName) ?? [])]
   const pickedCohort = pickedCohorts.length === 1 ? pickedCohorts[0] : ''
+  const [noticeOpen, setNoticeOpen] = useState(false)
+  // 보내지 못한 장학생 중 담당자가 손봐야 하는 사람(로그인할 수 없는 계정 등). 이미 비밀번호를 바꿨거나 이미 보낸 사람은 할 일이 없어 인원만 토스트로
+  const [noticeIssues, setNoticeIssues] = useState<{ name: string; reason: string }[]>([])
   const [bulkOpen, setBulkOpen] = useState(false)
 
   // 내보내기: 기수 필터는 그대로 걸고, 상태와 열은 대화상자에서 고른다
@@ -208,6 +213,19 @@ export function ScholarsPage() {
           {bulk.error instanceof ApiError ? bulk.error.message : '잠시 뒤 다시 시도하세요.'}
         </Banner>
       )}
+      {noticeIssues.length > 0 && (
+        <Banner
+          tone="warning"
+          title={`${noticeIssues.length}명에게는 로그인 안내를 보내지 못했어요`}
+          action={
+            <Button size="compact" variant="ghost" onClick={() => setNoticeIssues([])}>
+              닫기
+            </Button>
+          }
+        >
+          {noticeIssues.map((i) => `${i.name}(${i.reason})`).join(', ')}. 잠기거나 사용 중지된 계정은 풀어야 보낼 수 있어요.
+        </Banner>
+      )}
       {exportError && (
         <Banner tone="danger" title="파일을 만들지 못했어요">
           잠시 후 다시 내보내세요.
@@ -253,6 +271,9 @@ export function ScholarsPage() {
                       <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
                       <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
                         상태 바꾸기
+                      </Button>
+                      <Button size="compact" onClick={() => setNoticeOpen(true)}>
+                        로그인 안내 보내기
                       </Button>
                       <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
                         고르기 해제
@@ -347,6 +368,25 @@ export function ScholarsPage() {
         </div>
       </div>
 
+      {noticeOpen && (
+        <LoginNoticeDialog
+          scholarIds={sel}
+          who={`${sel.length}명`}
+          reissue={false}
+          onClose={() => setNoticeOpen(false)}
+          onSent={(r) => {
+            setNoticeOpen(false)
+            toast(sentText(r))
+            const names = new Map(data?.items.map((x) => [x.id, x.name]))
+            setNoticeIssues(
+              r.items
+                .filter((i) => i.status === 'SKIPPED' && (i.errorCode === 'ACCOUNT_DISABLED' || i.errorCode === 'SCHOLAR_NOT_FOUND'))
+                .map((i) => ({ name: names.get(i.scholarId) ?? `${i.scholarId}번`, reason: skipText(i.errorCode) })),
+            )
+            setPicked([])
+          }}
+        />
+      )}
       {bulkOpen && (
         <ScholarStatusDialog
           open
@@ -400,7 +440,8 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
         <span className="flex min-w-0 items-center gap-2 md:w-40">
           <span className="truncate text-body-strong">{s.name}</span>
           {s.accountStatus === 'LOCKED' && <Tag tone="warning">잠김</Tag>}
-          {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">로그인 전</Tag>}
+          {/* INACTIVE는 백엔드에서 로그인할 수 없는 계정(ACCOUNT_DISABLED). 로그인 전이라는 뜻이 아니다 */}
+          {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">사용 중지</Tag>}
           <span className="ml-auto shrink-0 md:hidden">
             <ScholarStatusBadge status={s.status} />
           </span>

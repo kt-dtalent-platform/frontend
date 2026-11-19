@@ -18,6 +18,8 @@ import { usePageTitle } from '../../lib/usePageTitle'
 import { useFindSchoolId } from '../../api/schools'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
+import { LoginNoticeDialog } from './LoginNoticeDialog'
+import { noticeText, sentText, useNoticeStatus } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
 
 // A05 장학생 상세: 기본 정보 보기, 이름, 연락처, 학교, 전공 고치기(백엔드 KT-11, 12 기준), 상태 바꾸기
@@ -91,6 +93,7 @@ function Detail({ s }: { s: ScholarDetail }) {
           {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
         </div>
       </section>
+      <LoginSection id={s.id} name={s.name} />
       {editing ? (
         <EditForm s={s} onDone={(r) => (setEditing(false), done(r))} />
       ) : (
@@ -223,5 +226,39 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
         </Button>
       </div>
     </form>
+  )
+}
+
+// 로그인 안내(백엔드 KT-60): 안내 메일을 보냈는지와 [임시 비밀번호 다시 보내기].
+// 장학생이 비밀번호를 잊었거나 안내를 못 받았을 때 담당자가 여기서 새 임시 비밀번호를 메일로 보낸다
+function LoginSection({ id, name }: { id: number; name: string }) {
+  const toast = useToast()
+  const status = useNoticeStatus([id])
+  const [open, setOpen] = useState(false)
+  const item = status.data?.find((i) => i.scholarId === id)
+  return (
+    <section aria-labelledby={`login-${id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
+      <div className="flex items-center justify-between gap-4">
+        <h2 id={`login-${id}`} className="m-0 text-title-2">
+          로그인 안내
+        </h2>
+        <Button size="compact" onClick={() => setOpen(true)}>
+          임시 비밀번호 다시 보내기
+        </Button>
+      </div>
+      <p className="m-0 text-body">
+        <span className="text-ink-3">안내 메일 </span>
+        {status.isPending ? '확인 중' : status.isError ? '불러오지 못함' : noticeText(item)}
+      </p>
+      {open && (
+        <LoginNoticeDialog
+          scholarIds={[id]}
+          who={`${name} 님`}
+          reissue
+          onClose={() => setOpen(false)}
+          onSent={(r) => (setOpen(false), toast(sentText(r)))}
+        />
+      )}
+    </section>
   )
 }

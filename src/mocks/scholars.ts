@@ -109,6 +109,9 @@ export function scholarList(q: URLSearchParams) {
   return { items, page, pageSize: size, total: list.length }
 }
 
+// 계정 상태(로그인 안내 메일 목업이 쓴다)
+export const accountStatusOf = (id: number) => all().find((x) => x.id === id)?.accountStatus ?? null
+
 export function scholarDetail(id: number): ScholarDetail | null {
   const r = all().find((x) => x.id === id)
   if (!r) return null
@@ -175,7 +178,7 @@ export function exportScholarsCsv(statuses: string[], cohortId: number | null, c
     ACTIVITY_NOT_MET: '활동 요건 미충족',
     VOLUNTARY: '자발적 포기',
   }
-  const account: Record<string, string> = { ACTIVE: '사용 중', INACTIVE: '로그인 전', LOCKED: '잠김' }
+  const account: Record<string, string> = { ACTIVE: '사용 중', INACTIVE: '사용 중지', LOCKED: '잠김' }
   const cell: Record<string, [string, (r: Row) => string]> = {
     name: ['이름', (r) => r.name],
     cohort: ['기수', (r) => r.cohort.name],

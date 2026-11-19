@@ -7,6 +7,8 @@ import { cohorts, createCohort, createRequest, publishRequest, requestDetail, re
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, createScholarsBulk, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { searchSchools } from './schools'
+import { getSender, noticeStatus, sendNotices, setSender } from './loginNotices'
+import type { Sender } from '../api/loginNotices'
 import { exportCsv, managerDashboard, review, submissionDetail, submissionList } from './review'
 
 const BASE = '/v1'
@@ -98,6 +100,46 @@ function mockDeadline(requestId: number, scholarId: number) {
 }
 
 export const handlers = [
+  // 로그인 안내 메일(백엔드 KT-60). /scholars/:id보다 먼저 둔다
+  http.get(`${BASE}/scholars/login-notices/sender`, ({ request }) => {
+    const path = '/v1/scholars/login-notices/sender'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    return ok(path, getSender())
+  }),
+
+  http.put(`${BASE}/scholars/login-notices/sender`, async ({ request }) => {
+    const path = '/v1/scholars/login-notices/sender'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    const b = (await request.json()) as Partial<Sender>
+    const bad = [!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.fromAddress ?? '') && 'fromAddress', !b.senderName?.trim() && 'senderName'].filter(Boolean)
+    if (bad.length) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', bad)
+    return ok(path, setSender({ fromAddress: b.fromAddress!.trim(), senderName: b.senderName!.trim() }))
+  }),
+
+  http.get(`${BASE}/scholars/login-notices`, ({ request }) => {
+    const path = '/v1/scholars/login-notices'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    const ids = (new URL(request.url).searchParams.get('scholarIds') ?? '')
+      .split(',')
+      .map(Number)
+      .filter((n) => n > 0)
+    if (!ids.length || ids.length > 500) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.')
+    return ok(path, noticeStatus(ids))
+  }),
+
+  http.post(`${BASE}/scholars/login-notices`, async ({ request }) => {
+    const path = '/v1/scholars/login-notices'
+    if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'ACCESS_DENIED', '담당자만 쓸 수 있습니다.')
+    const b = (await request.json()) as { scholarIds?: number[]; reissue?: boolean }
+    const ids = b.scholarIds ?? []
+    if (!ids.length || ids.length > 500 || new Set(ids).size !== ids.length)
+      return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.', ['scholarIds'])
+    await delay(400)
+    const r = sendNotices(ids, !!b.reissue)
+    if (r === 'MAIL_UNAVAILABLE') return fail(path, 503, 'MAIL_UNAVAILABLE', '메일 발송을 사용할 수 없습니다.')
+    return ok(path, r, 202)
+  }),
+
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const { email, password } = (await request.json()) as { email: string; password: string }
     if (password.length < 8) {

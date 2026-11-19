@@ -1,9 +1,11 @@
-import { ChevronLeft, Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { ChevronLeft, Download, FileSpreadsheet, Mail, Upload } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useBulkCreateScholars } from '../../api/scholars'
 import { CohortField } from '../../components/form/CohortField'
+import { LoginNoticeDialog } from './LoginNoticeDialog'
+import { sentText, useNoticeStatus, type NoticeResult } from '../../api/loginNotices'
 import { UnsavedChangesGuard } from '../../components/form/UnsavedChangesGuard'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
@@ -100,7 +102,7 @@ export function ScholarImportPage() {
       // row는 보낸 명단 순서 + 1이라 그 줄의 이름을 붙인다
       const accounts = (r.items ?? [])
         .filter((it) => it.temporaryPassword)
-        .map((it) => ({ name: rows[it.row - 1]?.name ?? '', email: it.email, password: it.temporaryPassword }))
+        .map((it) => ({ id: it.id, name: rows[it.row - 1]?.name ?? '', email: it.email, password: it.temporaryPassword }))
       if (accounts.length) setCreated(accounts)
       bulk.reset()
       setDone(r.created)
@@ -231,16 +233,22 @@ export function ScholarImportPage() {
   )
 }
 
-type Account = { name: string; email: string; password: string }
+type Account = { id: number; name: string; email: string; password: string }
 
-// 등록 결과. 임시 비밀번호는 서버가 이 응답에서만 주므로, 화면에 늘어놓지 않고 로그인 안내 파일로 받게 한다.
-// 담당자는 이 파일로 장학생에게 안내를 보낸다(메일 머지, 메시지). 받기 전에 떠나면 한 번 묻는다
+// 등록 결과. 로그인 안내는 메일로 보내는 것이 기본이다(백엔드 KT-60). 서버가 장학생마다 새 임시 비밀번호를 만들어 보낸다.
+// 메일을 쓸 수 없을 때(메일 서버 미설정 등)만 안내 파일로 받아 직접 전달한다. 임시 비밀번호는 서버가 이 응답에서만 주므로 화면에 늘어놓지 않는다.
+// 메일을 보내면 파일 속 비밀번호는 더 쓸 수 없어서 파일 받기를 숨긴다
 function ImportResult({ accounts }: { accounts: Account[] }) {
   usePageTitle('장학생 일괄 등록 완료')
+  const toast = useToast()
   const top = useRef<HTMLDivElement>(null)
   const [saved, setSaved] = useState(false)
+  const [mailing, setMailing] = useState(false)
+  const [mailed, setMailed] = useState<NoticeResult | null>(null)
   // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
   useEffect(() => top.current?.focus(), [])
+  const ids = accounts.map((a) => a.id)
+  const status = useNoticeStatus(mailed ? ids : [])
 
   // 파일 이름은 화면에 보여 준 것과 받은 것이 같아야 해서 한 번만 정한다
   const [fileName] = useState(() => {
@@ -248,7 +256,6 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
     return `장학생_로그인안내_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.xlsx`
   })
 
-  const toast = useToast()
   const download = async () => {
     try {
       const { writeXlsx, saveBlob } = await import('../../lib/writeXlsx')
@@ -260,40 +267,84 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
     }
   }
 
+  // 보낸 뒤 진행: 보냄, 보내는 중, 실패 인원
+  const count = (pred: (s: string) => boolean) => status.data?.filter((i) => pred(i.status)).length ?? 0
+  const progress = mailed
+    ? `보냄 ${count((x) => x === 'SENT')}명, 보내는 중 ${count((x) => x === 'PENDING' || x === 'SENDING')}명, 실패 ${count((x) => x === 'FAILED')}명`
+    : null
+
   return (
     <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
       <UnsavedChangesGuard
-        // 받기를 눌러도 실제로 저장됐는지는 알 수 없어(Safari 다운로드 허용 거부, 취소) 나갈 때 확인은 계속 남긴다
-        when
-        title={saved ? '나가기' : '안내 파일 받지 않고 나가기'}
+        // 메일을 보냈으면 묻지 않는다. 파일 받기를 눌러도 실제로 저장됐는지는 알 수 없어(Safari 다운로드 거부, 취소) 계속 묻는다
+        when={!mailed}
+        title={saved ? '나가기' : '안내를 보내지 않고 나가기'}
         message={
-          saved ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?' : '임시 비밀번호는 지금만 받을 수 있어요. 나가면 다시 볼 수 없어요.'
+          saved
+            ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?'
+            : '아직 로그인 안내를 보내지 않았어요. 나가도 나중에 명단에서 골라 메일로 보낼 수 있어요.'
         }
-        confirmLabel={saved ? '나가기' : '받지 않고 나가기'}
+        confirmLabel="나가기"
       />
-      <PageTitle description="안내 파일을 받아 장학생에게 전달해 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+      <PageTitle description="장학생에게 로그인 안내를 보내 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+
+      {/* 메일: 기본 방법 */}
       <div className="flex flex-col gap-2">
-        {/* 받을 파일 한 줄: 이름과 담긴 내용, 오른쪽에 받기 */}
         <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
-          <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+          <Mail size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate font-semibold">{fileName}</span>
-            <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호</span>
+            <span className="font-semibold">로그인 안내 메일</span>
+            <span className="text-caption text-ink-3">아이디와 임시 비밀번호를 장학생마다 메일로 보내요</span>
           </div>
-          <Button size="compact" variant="secondary" aria-label={`${fileName} 받기`} onClick={() => void download()}>
-            <Download size={16} strokeWidth={2} aria-hidden />
-            받기
-          </Button>
+          {!mailed && (
+            <Button size="compact" variant="primary" onClick={() => setMailing(true)}>
+              메일 보내기
+            </Button>
+          )}
         </div>
-        <p role="status" className="m-0 text-caption text-ink-3">
-          {saved ? '파일이 저장됐는지 확인해 주세요. 전달한 뒤에는 파일을 지워 주세요.' : '임시 비밀번호는 이 화면에서만 받을 수 있어요.'}
-        </p>
+        {mailed && (
+          <p role="status" className="m-0 text-caption text-ink-3 tabular-nums">
+            {status.data ? progress : sentText(mailed)}
+          </p>
+        )}
       </div>
+
+      {/* 파일: 메일을 쓸 수 없을 때. 메일을 보내면 비밀번호가 바뀌어 숨긴다 */}
+      {!mailed && (
+        <div className="flex flex-col gap-2">
+          <h2 className="m-0 text-label text-ink-2">메일을 쓸 수 없을 때</h2>
+          <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
+            <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate font-semibold">{fileName}</span>
+              <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호. 직접 전달해요</span>
+            </div>
+            <Button size="compact" variant="secondary" aria-label={`${fileName} 받기`} onClick={() => void download()}>
+              <Download size={16} strokeWidth={2} aria-hidden />
+              받기
+            </Button>
+          </div>
+          <p role="status" className="m-0 text-caption text-ink-3">
+            {saved ? '파일이 저장됐는지 확인해 주세요. 전달한 뒤에는 파일을 지워 주세요.' : '파일 속 임시 비밀번호는 이 화면에서만 받을 수 있어요.'}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:justify-end">
         <Link to="/manager/scholars" replace className={buttonClass({ variant: 'secondary', size: 'md' })}>
           명단으로
         </Link>
       </div>
+
+      {mailing && (
+        <LoginNoticeDialog
+          scholarIds={ids}
+          who={`${accounts.length}명`}
+          reissue={false}
+          onClose={() => setMailing(false)}
+          onSent={(r) => (setMailing(false), setMailed(r))}
+        />
+      )}
     </div>
   )
 }
