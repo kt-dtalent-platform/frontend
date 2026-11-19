@@ -4,12 +4,13 @@ import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { roleHome, useLogin } from '../api/auth'
-import { ApiError } from '../api/client'
 import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
 import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
 import { liveAuthOn, mockOn } from '../lib/env'
+import { FormError } from '../components/form/FormError'
+import { errorText } from '../api/errorText'
 
 const schema = z.object({
   email: z.email('이메일 형식을 확인하세요.'),
@@ -41,7 +42,7 @@ export function LoginPage() {
     }),
   )
 
-  const serverError = login.error instanceof ApiError ? login.error.message : login.error && '잠시 후 다시 시도하세요.'
+  const serverError = login.error ? errorText(login.error) : null
 
   return (
     <main className="relative grid min-h-dvh place-items-center overflow-hidden">
@@ -67,21 +68,19 @@ export function LoginPage() {
           <Field label="이메일" error={errors.email?.message}>
             <input type="email" autoComplete="username" className={inputClass(!!errors.email)} aria-invalid={!!errors.email} {...register('email')} />
           </Field>
-          <Field label="비밀번호" error={errors.password?.message}>
-            <input
-              type="password"
-              autoComplete="current-password"
-              className={inputClass(!!errors.password)}
-              aria-invalid={!!errors.password}
-              {...register('password')}
-            />
-          </Field>
-
-          {serverError && (
-            <p role="alert" className="m-0 rounded-md bg-danger-bg px-4 py-3 text-danger-text">
-              {serverError}
-            </p>
-          )}
+          {/* 서버 오류는 비밀번호 칸 바로 아래에 붙인다 */}
+          <div className="flex flex-col gap-2">
+            <Field label="비밀번호" error={errors.password?.message}>
+              <input
+                type="password"
+                autoComplete="current-password"
+                className={inputClass(!!errors.password)}
+                aria-invalid={!!errors.password}
+                {...register('password')}
+              />
+            </Field>
+            {serverError && <FormError>{serverError}</FormError>}
+          </div>
 
           <Button type="submit" variant="primary" size="cta" className="mt-2" disabled={login.isPending}>
             {login.isPending ? '확인하는 중' : '로그인'}

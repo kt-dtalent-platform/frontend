@@ -14,6 +14,7 @@ import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { useToast } from '../../components/ui/useToast'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { errorText } from '../../api/errorText'
 
 type Values = { bankName: string; accountNumber: string; accountHolder: string }
 
@@ -69,7 +70,7 @@ function BankForm({ saved, name }: { saved: MyBankAccount | null; name: string }
       update.reset()
       const fields = err instanceof ApiError ? fieldErrorsOf(err.details).filter((f): f is { key: keyof Values; message: string } => f.key in v) : []
       if (fields.length) for (const f of fields) setError(f.key, { message: '형식을 확인하세요.' }, { shouldFocus: true })
-      else setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
+      else setError('root', { message: errorText(err) })
     }
   })
 

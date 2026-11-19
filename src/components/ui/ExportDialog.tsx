@@ -107,7 +107,7 @@ export function ExportDialog({
           </div>
         </fieldset>
       ))}
-      <p className="m-0 text-caption text-ink-3">엑셀 파일(.xlsx)로 받아요. 고른 순서와 상관없이 위 순서대로 열이 들어가요.</p>
+      <p className="m-0 text-caption text-ink-3">엑셀 파일(.xlsx)로 받아요.</p>
     </FormDialog>
   )
 }

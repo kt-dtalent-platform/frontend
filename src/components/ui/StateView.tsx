@@ -1,7 +1,7 @@
 import { FileText, RefreshCw } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { ApiError } from '../../api/client'
 import { Button } from './Button'
+import { errorText } from '../../api/errorText'
 
 // 불러오는 중: 실제 내용과 비슷한 회색 덩어리
 export function LoadingCards({ count = 3 }: { count?: number }) {
@@ -30,7 +30,7 @@ export function EmptyState({ title, children, icon = <FileText size={24} strokeW
 
 // 실패: 무엇이 안 됐는지 + 다시 시도
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof ApiError ? error.message : '네트워크 연결을 확인하세요.'
+  const message = errorText(error)
   return (
     <div role="alert" className="flex flex-col items-center gap-2 rounded-lg bg-surface px-8 py-12 text-center">
       <h2 className="m-0 text-title-2">불러오지 못했어요</h2>

@@ -27,6 +27,7 @@ import { kstParts, kstToday, kstToUtc } from '../../lib/time'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { Radio } from '../../components/form/Radio'
 import { useToast } from '../../components/ui/useToast'
+import { errorText } from '../../api/errorText'
 
 export type Notice = { tone: 'warning'; title: string; body: string }
 
@@ -414,8 +415,8 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
           title={actionError.code === 'INVALID_REQUEST' || actionError.code === 'VALIDATION_ERROR' ? '확인이 필요한 항목이 있어요' : '저장하지 못했어요'}
         >
           {actionError.code === 'INVALID_REQUEST' || actionError.code === 'VALIDATION_ERROR'
-            ? '빨간색으로 표시된 항목을 고친 뒤 다시 시도하세요.'
-            : '입력한 내용은 그대로 있어요. 잠시 후 다시 시도하세요.'}
+            ? '빨간색으로 표시된 항목을 고치세요.'
+            : `${errorText(actionError)} 입력한 내용은 그대로 있어요.`}
         </Banner>
       )}
 

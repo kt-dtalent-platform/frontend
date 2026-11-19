@@ -30,6 +30,7 @@ import { daysUntil, isPastDue } from '../../api/tasks'
 import { dDayText, formatDue, formatTime } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
+import { errorCode, errorText } from '../../api/errorText'
 
 // S02 제출 입력 · 임시 저장
 export function SubmissionPage() {
@@ -350,7 +351,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
             ) : undefined
           }
         >
-          {errorBody(actionError, submit.isError)}
+          {errorBody(actionError)}
         </Banner>
       )}
 
@@ -456,11 +457,10 @@ function errorTitle(code: string, submitting: boolean) {
   return submitting ? '제출하지 못했어요' : '저장하지 못했어요'
 }
 
-function errorBody(error: ApiError, submitting: boolean) {
-  if (error.code === 'VERSION_CONFLICT') return '다른 탭이나 기기에서 고친 내용이 있어요. 새로 불러온 뒤 다시 입력하세요.'
-  if (error.code === 'SUBMISSION_LOCKED' || error.code === 'NOT_IN_REVISION') return '이미 제출했거나 마감된 요청이에요. 새로고침해서 상태를 확인하세요.'
-  if (error.code === 'DEADLINE_PASSED') return '담당자에게 기한 연장을 요청하세요.'
-  if (error.code === 'FIELD_NOT_EDITABLE') return '새로고침한 뒤 보완 요청된 항목만 고쳐서 다시 제출하세요.'
-  if (error.code === 'INVALID_REQUEST' || error.code === 'VALIDATION_ERROR') return '빨간색으로 표시된 항목을 고친 뒤 다시 시도하세요.'
-  return `입력한 내용은 그대로 있어요. 잠시 후 다시 ${submitting ? '제출하세요' : '시도하세요'}.`
+function errorBody(error: ApiError) {
+  if (error.code === 'VERSION_CONFLICT') return '다른 탭이나 기기에서 먼저 고쳤어요. 새로 불러온 뒤 다시 입력하세요.'
+  if (error.code === 'INVALID_REQUEST' || error.code === 'VALIDATION_ERROR') return '빨간색으로 표시된 항목을 고치세요.'
+  const code = errorCode(error)
+  // 연결이나 서버 문제면 입력한 내용이 남아 있다는 것도 알린다
+  return code === 'NETWORK_ERROR' || code === 'INTERNAL_SERVER_ERROR' ? `${errorText(error)} 입력한 내용은 그대로 있어요.` : errorText(error)
 }

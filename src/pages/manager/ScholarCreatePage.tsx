@@ -19,6 +19,7 @@ import { usePageTitle } from '../../lib/usePageTitle'
 import { LoginNoticeDialog } from './LoginNoticeDialog'
 import { noticeText, sentText, useNoticeStatus, type NoticeResult } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
+import { errorText } from '../../api/errorText'
 
 type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
 
@@ -70,8 +71,7 @@ export function ScholarCreatePage() {
       setDone(v.name.trim())
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DUPLICATE_EMAIL') setError('email', { message: '이미 등록된 이메일이에요.' }, { shouldFocus: true })
-      else if (err instanceof ApiError) setError('root', { message: err.message })
-      else setError('root', { message: '잠시 뒤 다시 시도하세요.' })
+      else setError('root', { message: errorText(err) })
     }
   })
 
@@ -262,7 +262,7 @@ function CreatedResult({
   }
   return (
     <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
-      <PageTitle description="장학생에게 로그인 안내를 보내 주세요.">{name} 님을 등록했어요</PageTitle>
+      <PageTitle>{name} 님을 등록했어요</PageTitle>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
           <Mail size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
@@ -312,7 +312,7 @@ function CreatedResult({
               </div>
             </dl>
           </section>
-          <p className="m-0 text-caption text-ink-3">이 화면을 떠나면 다시 볼 수 없어요. 직접 전달해 주세요.</p>
+          <p className="m-0 text-caption text-ink-3">이 화면을 떠나면 다시 볼 수 없어요.</p>
         </div>
       )}
       <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">

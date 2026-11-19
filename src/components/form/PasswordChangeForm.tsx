@@ -4,10 +4,11 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useChangePassword } from '../../api/auth'
 import { ApiError } from '../../api/client'
 import { cn } from '../../lib/cn'
-import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
 import { fieldBorder, fieldControl } from './fieldClass'
 import { LabeledField } from './LabeledField'
+import { FormError } from './FormError'
+import { errorText } from '../../api/errorText'
 
 type Values = { currentPassword: string; newPassword: string; confirm: string }
 
@@ -48,7 +49,7 @@ export function PasswordChangeForm({ email, mode, onDone, onCancel }: Props) {
         setError('currentPassword', { message: `${current}가 맞지 않아요.` }, { shouldFocus: true })
       else if (err instanceof ApiError && err.code === 'SAME_AS_CURRENT')
         setError('newPassword', { message: `${current}와 다른 비밀번호를 쓰세요.` }, { shouldFocus: true })
-      else setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
+      else setError('root', { message: errorText(err) })
     }
   })
 
@@ -116,11 +117,7 @@ export function PasswordChangeForm({ email, mode, onDone, onCancel }: Props) {
         )}
       </LabeledField>
 
-      {e.root && (
-        <Banner tone="danger" title="바꾸지 못했어요">
-          {e.root.message}
-        </Banner>
-      )}
+      {e.root && <FormError>{e.root.message}</FormError>}
 
       {mode === 'first' ? (
         <Button type="submit" variant="primary" size="cta" className="mt-2" disabled={busy}>

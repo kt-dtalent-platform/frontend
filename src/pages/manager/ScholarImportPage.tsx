@@ -16,6 +16,7 @@ import { cn } from '../../lib/cn'
 import { appUrl } from '../../lib/env'
 import { MAX_ROWS, parseScholarSheet, type ImportRow, type Key } from '../../lib/scholarImport'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { errorText } from '../../api/errorText'
 
 const TEMPLATE = appUrl('/templates/scholar-import.xlsx')
 const FILE_INPUT = 'scholar-import-file'
@@ -115,7 +116,7 @@ export function ScholarImportPage() {
             taken.has(r.email.toLowerCase()) ? { ...r, errors: [...r.errors, { field: 'email', message: '이미 등록된 이메일이에요' }] } : r,
           ),
         )
-      } else setServerError(err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.')
+      } else setServerError(errorText(err))
     }
   }
 
@@ -140,7 +141,7 @@ export function ScholarImportPage() {
         <ChevronLeft size={16} strokeWidth={2} aria-hidden />
         장학생
       </Link>
-      <PageTitle description="양식에 명단을 채워 올리면 여러 명을 한 번에 등록해요. 등록하면 장학생 계정이 만들어져요.">장학생 일괄 등록</PageTitle>
+      <PageTitle description="양식에 명단을 채워 올리면 장학생 계정이 한 번에 만들어져요.">장학생 일괄 등록</PageTitle>
 
       <section className="flex flex-col gap-6 rounded-lg bg-surface px-6 py-6 md:px-8">
         <div className="md:max-w-page-narrow">
@@ -314,7 +315,7 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
         }
         confirmLabel="나가기"
       />
-      <PageTitle description="장학생에게 로그인 안내를 보내 주세요.">{accounts.length}명을 등록했어요</PageTitle>
+      <PageTitle>{accounts.length}명을 등록했어요</PageTitle>
 
       {/* 메일: 기본 방법 */}
       <div className="flex flex-col gap-2">
@@ -354,7 +355,7 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
             <FileSpreadsheet size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate font-semibold">{fileName}</span>
-              <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호. 직접 전달해요</span>
+              <span className="text-caption text-ink-3">이름, 아이디, 임시 비밀번호가 들어 있어요</span>
             </div>
             <Button size="compact" variant="secondary" aria-label={`${fileName} 받기`} onClick={() => void download()}>
               <Download size={16} strokeWidth={2} aria-hidden />
@@ -362,7 +363,7 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
             </Button>
           </div>
           <p role="status" className="m-0 text-caption text-ink-3">
-            {saved ? '파일이 저장됐는지 확인해 주세요. 전달한 뒤에는 파일을 지워 주세요.' : '파일 속 임시 비밀번호는 이 화면에서만 받을 수 있어요.'}
+            {saved ? '전달한 뒤에는 파일을 지우세요.' : '이 화면을 떠나면 다시 받을 수 없어요.'}
           </p>
         </div>
       )}

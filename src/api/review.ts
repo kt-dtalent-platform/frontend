@@ -88,7 +88,11 @@ export async function downloadFile(path: string, choice: { scopes: string[]; col
   const res = await fetch(`${BASE_URL}${path}?${params}`, {
     headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
   })
-  if (!res.ok) throw new ApiError(res.status, { code: 'EXPORT_FAILED', message: '파일을 만들지 못했습니다.' })
+  if (!res.ok) {
+    // 실패 응답은 공통 형식(JSON)이라 오류 코드를 꺼내 이유를 보여 준다
+    const json = (await res.json().catch(() => null)) as { resultType?: string; error?: { code: string; message: string } } | null
+    throw new ApiError(res.status, json?.error ?? { code: 'EXPORT_FAILED', message: '' })
+  }
   const name = fileNameOf(res.headers.get('Content-Disposition')) ?? fallbackName
   const url = URL.createObjectURL(await res.blob())
   const a = Object.assign(document.createElement('a'), { href: url, download: name })

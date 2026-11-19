@@ -2,7 +2,6 @@ import { ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
-import { ApiError } from '../../api/client'
 import { PHONE, withdrawalText, useChangeScholarStatus, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
@@ -21,6 +20,7 @@ import { ScholarStatusDialog } from './ScholarStatusDialog'
 import { LoginNoticeDialog } from './LoginNoticeDialog'
 import { noticeText, sentText, useNoticeStatus } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
+import { errorText } from '../../api/errorText'
 
 // A05 장학생 상세: 기본 정보 보기, 이름, 연락처, 학교, 전공 고치기(백엔드 KT-11, 12 기준), 상태 바꾸기
 export function ScholarDetailPage() {
@@ -71,7 +71,7 @@ function Detail({ s }: { s: ScholarDetail }) {
       )}
       {changeStatus.isError && !changing && (
         <Banner tone="danger" title="상태를 바꾸지 못했어요">
-          {changeStatus.error instanceof ApiError ? changeStatus.error.message : '잠시 뒤 다시 시도하세요.'}
+          {errorText(changeStatus.error)}
         </Banner>
       )}
       {/* 상태와 기본 정보를 구역으로 나누고 각 구역 머리에 작은 고치기 버튼(32px)을 둔다(11/12).
@@ -157,7 +157,7 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
       await update.mutateAsync(body)
       onDone('saved')
     } catch (err) {
-      setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
+      setError('root', { message: errorText(err) })
     }
   })
 
