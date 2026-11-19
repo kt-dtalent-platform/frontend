@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
 import { useCohorts } from '../../api/manager'
-import { ApiError } from '../../api/client'
 import { downloadFile } from '../../api/review'
 import {
   scholarExportColumns,
@@ -37,6 +36,7 @@ import { LoginNoticeDialog } from './LoginNoticeDialog'
 import { sentText, skipText } from '../../api/loginNotices'
 import { Checkbox } from '../../components/form/Checkbox'
 import { useToast } from '../../components/ui/useToast'
+import { errorText } from '../../api/errorText'
 
 const statuses: { value: ScholarStatus | null; label: string }[] = [{ value: null, label: '전체' }, ...scholarStatuses]
 
@@ -125,14 +125,14 @@ export function ScholarsPage() {
   const cohortName = cohorts.data?.find((c) => c.id === cohortId)?.name ?? null
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState(false)
+  const [exportError, setExportError] = useState<unknown>(null)
   const onExport = async (choice: ExportChoice) => {
     setExporting(true)
-    setExportError(false)
+    setExportError(null)
     try {
       await downloadFile('/scholars/export', choice, 'scholars.xlsx', cohortId ? { cohortId: String(cohortId) } : {})
-    } catch {
-      setExportError(true)
+    } catch (err) {
+      setExportError(err)
     } finally {
       setExporting(false)
       setExportOpen(false)
@@ -156,7 +156,7 @@ export function ScholarsPage() {
       variant="ghost"
       className="max-md:w-control-compact max-md:px-0"
       disabled={!data || data.total === 0}
-      onClick={() => (setExportError(false), setExportOpen(true))}
+      onClick={() => (setExportError(null), setExportOpen(true))}
     >
       <Download size={16} strokeWidth={2} aria-hidden />
       <span className="max-md:sr-only">내보내기</span>
@@ -210,7 +210,7 @@ export function ScholarsPage() {
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {bulk.isError && !bulkOpen && (
         <Banner tone="danger" title="상태를 바꾸지 못했어요">
-          {bulk.error instanceof ApiError ? bulk.error.message : '잠시 뒤 다시 시도하세요.'}
+          {errorText(bulk.error)}
         </Banner>
       )}
       {noticeIssues.length > 0 && (
@@ -226,9 +226,9 @@ export function ScholarsPage() {
           {noticeIssues.map((i) => `${i.name}(${i.reason})`).join(', ')}. 잠기거나 사용 중지된 계정이라 보내지 않았어요. 계정 확인은 개발팀에 요청해 주세요.
         </Banner>
       )}
-      {exportError && (
+      {exportError != null && (
         <Banner tone="danger" title="파일을 만들지 못했어요">
-          잠시 후 다시 내보내세요.
+          {errorText(exportError)}
         </Banner>
       )}
       {data &&

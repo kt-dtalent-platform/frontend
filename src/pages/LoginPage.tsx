@@ -4,12 +4,12 @@ import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { roleHome, useLogin } from '../api/auth'
-import { ApiError } from '../api/client'
 import { BrandFlow } from '../components/brand/BrandFlow'
 import { Button } from '../components/ui/Button'
 import { KtSquare } from '../components/ui/KtSquare'
 import { cn } from '../lib/cn'
 import { liveAuthOn, mockOn } from '../lib/env'
+import { errorText } from '../api/errorText'
 
 const schema = z.object({
   email: z.email('이메일 형식을 확인하세요.'),
@@ -41,7 +41,7 @@ export function LoginPage() {
     }),
   )
 
-  const serverError = login.error instanceof ApiError ? login.error.message : login.error && '잠시 후 다시 시도하세요.'
+  const serverError = login.error ? errorText(login.error) : null
 
   return (
     <main className="relative grid min-h-dvh place-items-center overflow-hidden">

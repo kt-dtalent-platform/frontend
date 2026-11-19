@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from './client'
+import { ApiError, api } from './client'
+import { errorText } from './errorText'
 import { submissionKey, type SubmissionForm, type UploadedFile } from './submissions'
 
 // 파일 올리기 3단계: 업로드 주소 발급 → 저장소(S3)에 직접 PUT → 업로드 완료 처리
-// 백엔드 구현 전이라 노션 명세서 모양을 임시로 쓴다(확인 필요)
 
 type Presign = { fileId: number; uploadUrl: string; expiresAt: string }
 type Completed = {
@@ -89,12 +89,10 @@ export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxS
 }
 
 export function uploadErrorText(error: unknown) {
+  if (error instanceof ApiError) return errorText(error)
   const code = (error as { code?: string } | null)?.code
   if (code === 'FORM_INVALID') return '형식이 맞지 않는 항목을 먼저 고친 뒤 올리세요.'
-  if (code === 'FILE_LOCKED') return '지금은 이 항목의 파일을 바꿀 수 없어요. 새로고침해서 상태를 확인하세요.'
-  if (code === 'INVALID_EXTENSION') return '올릴 수 없는 파일 형식이에요.'
-  if (code === 'FILE_TOO_LARGE') return '파일이 너무 커요.'
-  if (code === 'FILE_COUNT_EXCEEDED') return '더 올릴 수 없어요. 기존 파일을 지운 뒤 올리세요.'
-  if (code === 'FILE_MISMATCH' || code === 'UPLOAD_NOT_FOUND') return '파일 확인에 실패했어요. 다시 올려 주세요.'
-  return '올리지 못했어요. 연결을 확인하고 다시 시도하세요.'
+  // 저장소(S3)로 바로 올리는 단계의 실패
+  if (code === 'STORAGE_FAILED') return '저장소가 파일을 받지 않았어요. 다시 올리세요.'
+  return '올리지 못했어요. 인터넷 연결을 확인하고 다시 올리세요.'
 }

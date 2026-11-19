@@ -35,6 +35,7 @@ import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { liveRequestsOn } from '../../lib/env'
 import { MetaList } from '../../components/ui/MetaList'
+import { errorText } from '../../api/errorText'
 
 const filters: { value: StatusFilter | null; label: string; empty: string }[] = [
   { value: null, label: '전체', empty: '대상 장학생이 없어요.' },
@@ -101,17 +102,17 @@ export function RequestSubmissionsPage() {
 
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState(false)
+  const [exportError, setExportError] = useState<unknown>(null)
   const filter = filters.find((f) => f.value === status)!
   const onExport = async (choice: ExportChoice) => {
     setExporting(true)
-    setExportError(false)
+    setExportError(null)
     try {
       await downloadExport(requestId, choice)
       setExportOpen(false)
-    } catch {
+    } catch (err) {
       setExportOpen(false)
-      setExportError(true)
+      setExportError(err)
     } finally {
       setExporting(false)
     }
@@ -151,9 +152,9 @@ export function RequestSubmissionsPage() {
       {data && (
         <>
           <PageTitle description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} />}>{data.request.title}</PageTitle>
-          {exportError && (
+          {exportError != null && (
             <Banner tone="danger" title="파일을 만들지 못했어요">
-              잠시 후 다시 내보내세요.
+              {errorText(exportError)}
             </Banner>
           )}
           {exportOpen && (
@@ -194,7 +195,7 @@ export function RequestSubmissionsPage() {
                 size="compact"
                 variant="ghost"
                 disabled={exporting || data.summary.target === 0}
-                onClick={() => (setExportError(false), setExportOpen(true))}
+                onClick={() => (setExportError(null), setExportOpen(true))}
               >
                 <Download size={16} strokeWidth={2} aria-hidden />
                 내보내기
@@ -423,7 +424,7 @@ function ExtendDialog({ requestId, target, onClose }: { requestId: number; targe
       onClose()
     } catch (err) {
       if (err instanceof ApiError && err.code === 'SUBMISSION_LOCKED') fail('date', '진행 중인 요청만 마감을 늘릴 수 있어요.')
-      else fail('date', err instanceof ApiError && err.message ? err.message : '잠시 뒤 다시 시도하세요.')
+      else fail('date', errorText(err))
     }
   }
 

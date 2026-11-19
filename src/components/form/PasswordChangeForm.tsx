@@ -8,6 +8,7 @@ import { Banner } from '../ui/Banner'
 import { Button } from '../ui/Button'
 import { fieldBorder, fieldControl } from './fieldClass'
 import { LabeledField } from './LabeledField'
+import { errorText } from '../../api/errorText'
 
 type Values = { currentPassword: string; newPassword: string; confirm: string }
 
@@ -48,7 +49,7 @@ export function PasswordChangeForm({ email, mode, onDone, onCancel }: Props) {
         setError('currentPassword', { message: `${current}가 맞지 않아요.` }, { shouldFocus: true })
       else if (err instanceof ApiError && err.code === 'SAME_AS_CURRENT')
         setError('newPassword', { message: `${current}와 다른 비밀번호를 쓰세요.` }, { shouldFocus: true })
-      else setError('root', { message: err instanceof ApiError ? err.message : '잠시 뒤 다시 시도하세요.' })
+      else setError('root', { message: errorText(err) })
     }
   })
 

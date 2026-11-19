@@ -5,6 +5,7 @@ import type { FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
 import { formatBytes } from '../../lib/format'
 import { Button } from '../ui/Button'
+import { errorText } from '../../api/errorText'
 
 export type FileHandlers = {
   upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<unknown>
@@ -145,8 +146,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
       await handlers.remove(file.id)
       setLive(`${file.originalName}을(를) 지웠어요.`)
       refocus()
-    } catch {
-      setMessage(`${file.originalName}을(를) 지우지 못했어요. 다시 시도하세요.`)
+    } catch (err) {
+      setMessage(`${file.originalName}을(를) 지우지 못했어요. ${errorText(err)}`)
     } finally {
       setRemoving(null)
     }

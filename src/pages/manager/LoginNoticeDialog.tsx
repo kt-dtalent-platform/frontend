@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNoticeSender, useSaveNoticeSender, useSendNotices, type NoticeResult } from '../../api/loginNotices'
-import { ApiError } from '../../api/client'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { FormDialog } from '../../components/ui/FormDialog'
 import { cn } from '../../lib/cn'
+import { errorText } from '../../api/errorText'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -61,8 +61,7 @@ export function LoginNoticeDialog({
       const r = await send.mutateAsync({ scholarIds, reissue })
       onSent(r)
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'MAIL_UNAVAILABLE') setFailure('메일 서버가 아직 설정되지 않아 보낼 수 없어요. 개발팀에 알려 주세요.')
-      else setFailure(err instanceof ApiError && err.message ? err.message : '잠시 뒤 다시 시도하세요.')
+      setFailure(errorText(err))
     }
   }
 
@@ -77,13 +76,11 @@ export function LoginNoticeDialog({
     >
       <div className="flex flex-col gap-2 text-ink-2">
         {reissue ? (
-          <p className="m-0">
-            {who}의 비밀번호를 새 임시 비밀번호로 바꾸고 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요. 잠기거나 사용 중지된 계정에는 보내지 않아요.
-          </p>
+          <p className="m-0">{who}에게 새 임시 비밀번호를 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요.</p>
         ) : (
-          <p className="m-0">{who}에게 아이디와 임시 비밀번호를 각자 메일로 보내요. 이미 보냈거나 비밀번호를 바꾼 장학생은 건너뛰어요.</p>
+          <p className="m-0">{who}에게 아이디와 임시 비밀번호를 메일로 보내요.</p>
         )}
-        <p className="m-0 text-caption text-ink-3">메일을 보내면 전에 받은 안내 파일이나 화면의 임시 비밀번호는 더 쓸 수 없어요.</p>
+        {!reissue && <p className="m-0 text-caption text-ink-3">보내면 새 임시 비밀번호가 만들어져, 전에 전달한 비밀번호는 쓸 수 없어요.</p>}
       </div>
 
       {sender.isError && (

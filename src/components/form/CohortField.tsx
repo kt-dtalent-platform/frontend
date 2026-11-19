@@ -10,6 +10,7 @@ import { FormDialog } from '../ui/FormDialog'
 import { useToast } from '../ui/useToast'
 import { fieldBorder, fieldControl } from './fieldClass'
 import { LabeledField, SelectBox } from './LabeledField'
+import { errorText } from '../../api/errorText'
 
 type Props = {
   value: string
@@ -92,13 +93,7 @@ function NewCohortDialog({ programId, taken, onDone, onCancel }: { programId: nu
       toast(`${c.name} 기수를 만들었어요`)
       onDone(c.id)
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.code === 'DUPLICATE_COHORT'
-          ? `${name} 기수가 이미 있어요.`
-          : err instanceof ApiError
-            ? err.message
-            : '잠시 뒤 다시 시도하세요.',
-      )
+      setError(err instanceof ApiError && err.code === 'DUPLICATE_COHORT' ? `${name} 기수가 이미 있어요.` : errorText(err))
     }
   }
 

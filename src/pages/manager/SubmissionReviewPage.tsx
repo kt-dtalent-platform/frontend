@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, ExternalLink, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ApiError } from '../../api/client'
 import {
   useConfirm,
   useFileUrl,
@@ -27,6 +26,7 @@ import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { Checkbox } from '../../components/form/Checkbox'
 import { useToast } from '../../components/ui/useToast'
+import { errorCode, errorText } from '../../api/errorText'
 
 // A02 개별 검토: 왼쪽 서류 원본 + 오른쪽 입력값과 서류 비교 → 확인 완료 또는 보완 요청. 끝나면 같은 요청의 다음 검토 대기로
 export function SubmissionReviewPage() {
@@ -93,7 +93,8 @@ function Review({ d }: { d: SubmissionDetail }) {
     </Banner>
   )
 
-  const actionError = [confirm.error, revision.error].find((e) => e instanceof ApiError) as ApiError | undefined
+  // 연결이 끊긴 실패(ApiError 아님)도 보여 준다
+  const actionError = confirm.error ?? revision.error
 
   return (
     <>
@@ -130,10 +131,10 @@ function Review({ d }: { d: SubmissionDetail }) {
           {revisionNotice && <div className="hidden lg:block">{revisionNotice}</div>}
           <CompareCard d={d} />
           {actionError && (
-            <Banner tone="danger" title={actionError.code === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
-              {actionError.code === 'VERSION_CONFLICT' || actionError.code === 'INVALID_STATE_TRANSITION'
+            <Banner tone="danger" title={errorCode(actionError) === 'VERSION_CONFLICT' ? '그사이 제출 내용이 바뀌었어요' : '처리하지 못했어요'}>
+              {['VERSION_CONFLICT', 'INVALID_STATE_TRANSITION', 'SUBMISSION_NOT_REVIEWABLE'].includes(errorCode(actionError))
                 ? '최신 내용을 다시 불러왔어요. 내용을 확인한 뒤 다시 처리하세요.'
-                : '잠시 후 다시 시도하세요.'}
+                : errorText(actionError)}
             </Banner>
           )}
           {waiting && (
