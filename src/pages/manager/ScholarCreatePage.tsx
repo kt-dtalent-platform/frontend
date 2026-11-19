@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Mail } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
@@ -16,6 +16,8 @@ import { buttonClass } from '../../components/ui/buttonClass'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
+import { LoginNoticeDialog } from './LoginNoticeDialog'
+import { noticeText, sentText, useNoticeStatus, type NoticeResult } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
 
 type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
@@ -31,7 +33,7 @@ export function ScholarCreatePage() {
   // 등록이 끝나면 이탈 확인을 끈 뒤(다음 렌더) 처리한다.
   // 임시 비밀번호가 오면 결과 화면에서 한 번 보여 주고, 없으면 토스트 후 명단으로
   const [done, setDone] = useState<string | null>(null)
-  const [created, setCreated] = useState<{ name: string; email: string; password: string } | null>(null)
+  const [created, setCreated] = useState<{ id: number; name: string; email: string; password: string } | null>(null)
   usePageTitle(created ? '장학생 등록 완료' : '장학생 등록')
   const toast = useToast()
   useEffect(() => {
@@ -62,7 +64,7 @@ export function ScholarCreatePage() {
         studentNo: opt(v.studentNo),
         ...(schoolId ? { schoolId } : {}),
       })
-      if (r.temporaryPassword) setCreated({ name: v.name.trim(), email: v.email.trim(), password: r.temporaryPassword })
+      if (r.temporaryPassword) setCreated({ id: r.id, name: v.name.trim(), email: v.email.trim(), password: r.temporaryPassword })
       // 임시 비밀번호를 화면 상태로 옮겼으니 요청 결과 캐시에서는 바로 지운다
       create.reset()
       setDone(v.name.trim())
@@ -78,6 +80,8 @@ export function ScholarCreatePage() {
     return (
       <CreatedResult
         {...created}
+        // 메일을 보내면 서버가 비밀번호를 새로 만들어 화면의 것은 쓸모가 없으므로 메모리에서도 지운다
+        onMailed={() => setCreated((prev) => prev && { ...prev, password: '' })}
         onAgain={() => {
           reset({ ...EMPTY, cohortId: getValues('cohortId') })
           setCreated(null)
@@ -202,8 +206,37 @@ export function ScholarCreatePage() {
 }
 
 // 등록 결과: 임시 비밀번호는 서버가 이 응답에서 한 번만 준다. 화면을 떠나면 다시 볼 수 없다
-function CreatedResult({ name, email, password, onAgain }: { name: string; email: string; password: string; onAgain: () => void }) {
+function CreatedResult({
+  id,
+  name,
+  email,
+  password,
+  onAgain,
+  onMailed,
+}: {
+  id: number
+  name: string
+  email: string
+  password: string
+  onAgain: () => void
+  onMailed: () => void
+}) {
   const toast = useToast()
+  // 로그인 안내 메일(백엔드 KT-60). 보내면 서버가 새 임시 비밀번호를 만들어 보내므로 화면의 비밀번호는 숨긴다
+  const [mailing, setMailing] = useState(false)
+  const [mailed, setMailed] = useState<NoticeResult | null>(null)
+  const status = useNoticeStatus(mailed ? [id] : [])
+  const result = useRef<HTMLDivElement>(null)
+  const onSent = (r: NoticeResult) => {
+    setMailing(false)
+    // 접수되지 않았으면(건너뜀) 비밀번호가 그대로 유효하므로 화면에 남긴다
+    if (!r.queued) return toast(sentText(r))
+    setMailed(r)
+    onMailed()
+    // 메일 보내기 버튼이 사라지므로 결과 문구로 포커스를 옮긴다
+    requestAnimationFrame(() => result.current?.focus())
+  }
+  const record = status.data?.find((i) => i.scholarId === id)
   const top = useRef<HTMLDivElement>(null)
   const secret = useRef<HTMLSpanElement>(null)
   // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
@@ -229,29 +262,59 @@ function CreatedResult({ name, email, password, onAgain }: { name: string; email
   }
   return (
     <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
-      <PageTitle description="첫 로그인에 쓸 임시 비밀번호예요. 이 화면을 떠나면 다시 볼 수 없으니 지금 장학생에게 전달하세요.">
-        {name} 님을 등록했어요
-      </PageTitle>
-      <section aria-label="로그인 정보" className="rounded-lg bg-surface px-6 py-2 md:px-8">
-        <dl className="m-0">
-          <div className="flex min-h-row-h items-center gap-4 border-b border-line-subtle py-3">
-            <dt className="w-28 shrink-0 text-ink-3">아이디(이메일)</dt>
-            <dd className="m-0 min-w-0 flex-1 break-all">{email}</dd>
+      <PageTitle description="장학생에게 로그인 안내를 보내 주세요.">{name} 님을 등록했어요</PageTitle>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 rounded-lg bg-surface py-3 pr-3 pl-4">
+          <Mail size={20} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="font-semibold">로그인 안내 메일</span>
+            <span className="text-caption text-ink-3">아이디와 임시 비밀번호를 {email}로 보내요</span>
           </div>
-          <div className="flex min-h-row-h items-center gap-4 py-3">
-            <dt className="w-28 shrink-0 text-ink-3">임시 비밀번호</dt>
-            {/* dl 안 줄에는 dt와 dd만 둔다: 복사 버튼은 dd 안에 */}
-            <dd className="m-0 flex min-w-0 flex-1 items-center justify-between gap-3">
-              <span ref={secret} className="font-semibold break-all tabular-nums">
-                {password}
-              </span>
-              <Button size="compact" aria-label="임시 비밀번호 복사" onClick={() => void copy()}>
-                복사
-              </Button>
-            </dd>
-          </div>
-        </dl>
-      </section>
+          {!mailed && (
+            <Button size="compact" variant="primary" onClick={() => setMailing(true)}>
+              메일 보내기
+            </Button>
+          )}
+        </div>
+        {/* 처음부터 그려 두고 글만 바꿔야 스크린 리더가 바뀐 내용을 읽는다 */}
+        <div ref={result} tabIndex={-1} className="flex flex-wrap items-center gap-x-3 gap-y-2 outline-none">
+          <p role="status" className="m-0 text-caption text-ink-3">
+            {mailed ? (record ? noticeText(record) : sentText(mailed)) : ''}
+          </p>
+          {record?.status === 'FAILED' && (
+            <Button size="compact" onClick={() => setMailing(true)}>
+              다시 보내기
+            </Button>
+          )}
+        </div>
+      </div>
+      {mailing && <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue={false} onClose={() => setMailing(false)} onSent={onSent} />}
+      {!mailed && (
+        <div className="flex flex-col gap-2">
+          <h2 className="m-0 text-label text-ink-2">메일을 쓸 수 없을 때</h2>
+          <section aria-label="로그인 정보" className="rounded-lg bg-surface px-6 py-2 md:px-8">
+            <dl className="m-0">
+              <div className="flex min-h-row-h items-center gap-4 border-b border-line-subtle py-3">
+                <dt className="w-28 shrink-0 text-ink-3">아이디(이메일)</dt>
+                <dd className="m-0 min-w-0 flex-1 break-all">{email}</dd>
+              </div>
+              <div className="flex min-h-row-h items-center gap-4 py-3">
+                <dt className="w-28 shrink-0 text-ink-3">임시 비밀번호</dt>
+                {/* dl 안 줄에는 dt와 dd만 둔다: 복사 버튼은 dd 안에 */}
+                <dd className="m-0 flex min-w-0 flex-1 items-center justify-between gap-3">
+                  <span ref={secret} className="font-semibold break-all tabular-nums">
+                    {password}
+                  </span>
+                  <Button size="compact" aria-label="임시 비밀번호 복사" onClick={() => void copy()}>
+                    복사
+                  </Button>
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <p className="m-0 text-caption text-ink-3">이 화면을 떠나면 다시 볼 수 없어요. 직접 전달해 주세요.</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:flex md:justify-end">
         <Button onClick={onAgain}>한 명 더 등록</Button>
         <Link to="/manager/scholars" replace className={buttonClass({ variant: 'primary', size: 'md' })}>

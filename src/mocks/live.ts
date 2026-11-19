@@ -55,7 +55,11 @@ export function isLive(pathname: string) {
 // 실제 서버에서 만든 제출 ID를 목업이 모르기 때문이다. 백엔드 PR이 머지되기 전에는 실패로 보인다(11/18 오후 기준).
 const notYet: [method: string, path: RegExp][] = [
   ['POST', /^\/scholars\/bulk$/], // 백엔드 PR #92 머지되면 지운다
-  ['POST', /^\/programs\/\d+\/cohorts$/],
+  ['POST', /^\/programs\/\d+\/cohorts$/], // 백엔드 KT-61 머지되면 지운다
+  // 로그인 안내 메일(백엔드 KT-60 머지되면 지운다)
+  ['GET', /^\/scholars\/login-notices/],
+  ['PUT', /^\/scholars\/login-notices\/sender$/],
+  ['POST', /^\/scholars\/login-notices$/],
 ]
 
 // 목업 처리기 맨 앞에 둔다. 실제 서버로 갈 요청은 그대로 내보낸다.
