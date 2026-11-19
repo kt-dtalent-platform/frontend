@@ -24,6 +24,7 @@ type Saved = Record<
     version: number
     id: number
     files?: MockFile[]
+    submittedAt?: string
   }
 >
 const KEY = 'kt-dtalent:mock-submissions'
@@ -54,6 +55,7 @@ function current(requestId: number) {
     status: saved?.status ?? base.submission?.status ?? ('NOT_SUBMITTED' as SubmissionStatus),
     version: saved?.version ?? base.submission?.version ?? 0,
     files: saved?.files ?? base.files,
+    submittedAt: saved?.submittedAt,
     exists: !!(saved || base.submission),
   }
 }
@@ -137,6 +139,7 @@ export function submit(requestId: number, answers: Answers, resubmit: boolean) {
       answers: merged,
       status: resubmit ? 'RESUBMITTED' : 'SUBMITTED',
       version: prev.version + 1,
+      submittedAt: now(),
     }),
   }
 }
@@ -216,16 +219,36 @@ export function getForm(requestId: number): RawSubmissionForm | undefined {
   return { ...base, submission, files: files ?? base.files, revision }
 }
 
+// 백엔드처럼 진행 중인 요청만(마감된 요청은 내 제출 이력에서 본다)
 export function taskList() {
-  return [40, 31, 28].map((id) => {
-    const f = getForm(id)!
-    return {
+  return [40, 31, 28]
+    .filter((id) => getForm(id)!.request.status === 'IN_PROGRESS')
+    .map((id) => {
+      const f = getForm(id)!
+      return {
+        requestId: id,
+        title: f.request.title,
+        dueAt: f.request.requestDueAt,
+        dDay: daysBetween(kstToday(), kstParts(f.request.requestDueAt).date),
+        status: f.submission?.status ?? 'NOT_SUBMITTED',
+        revisionReason: f.revision?.reason ?? null,
+      }
+    })
+}
+
+// GET /me/submissions: 작성 중을 뺀 내 제출, 최근 제출 순. 기본 데이터의 제출 시각은 마감 며칠 전으로 둔다
+export function submissionHistory() {
+  const saved = load()
+  return [40, 31, 28]
+    .map((id) => ({ id, form: getForm(id)! }))
+    .filter(({ form }) => form.submission && form.submission.status !== 'DRAFT')
+    .map(({ id, form }) => ({
       requestId: id,
-      title: f.request.title,
-      dueAt: f.request.requestDueAt,
-      dDay: daysBetween(kstToday(), kstParts(f.request.requestDueAt).date),
-      status: f.submission?.status ?? 'NOT_SUBMITTED',
-      revisionReason: f.revision?.reason ?? null,
-    }
-  })
+      title: form.request.title,
+      status: form.submission!.status,
+      submittedAt: saved[id]?.submittedAt ?? (id === 28 ? dueIn(-18) : dueIn(-3)),
+      confirmedAt: form.submission!.status === 'CONFIRMED' ? dueIn(-12) : null,
+      purged: false,
+    }))
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
 }

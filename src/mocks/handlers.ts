@@ -2,7 +2,7 @@ import { delay, http, HttpResponse } from 'msw'
 import type { CreateRequestBody } from '../api/manager'
 import { scholarStatuses, type ScholarBulkCreate, type ScholarCreate, type ScholarUpdate, type StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
-import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submit, taskList } from './db'
+import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submissionHistory, submit, taskList } from './db'
 import { cohorts, createCohort, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, createScholarsBulk, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
@@ -215,6 +215,12 @@ export const handlers = [
       .filter((t) => filter === 'ALL' || todo(t.status))
       .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
     return ok('/v1/me/tasks', { items })
+  }),
+
+  http.get(`${BASE}/me/submissions`, ({ request }) => {
+    if (!roleOf(request)) return unauthorized('/v1/me/submissions')
+    const items = submissionHistory()
+    return ok('/v1/me/submissions', { items, page: 1, pageSize: 100, total: items.length })
   }),
 
   http.get(`${BASE}/me/submissions/:requestId`, ({ params, request }) => {
