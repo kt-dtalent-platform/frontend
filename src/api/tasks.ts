@@ -40,10 +40,15 @@ export type SubmissionHistory = {
   purged: boolean // 보관 기간(1년)이 지나 서류 파일이 지워짐
 }
 
-export function useMySubmissionHistory() {
+export function useMySubmissionHistory(enabled = true) {
   return useQuery({
     queryKey: ['me', 'submissions', 'history'],
-    queryFn: async () => (await api<{ items: SubmissionHistory[] }>('/me/submissions?page_size=100')).items,
+    enabled,
+    queryFn: async () => {
+      const r = await api<{ items: SubmissionHistory[]; total: number }>('/me/submissions?page_size=100')
+      if (r.total > r.items.length) console.warn(`내 제출 이력 ${r.total}건 중 ${r.items.length}건만 보여 줍니다.`)
+      return r.items
+    },
   })
 }
 

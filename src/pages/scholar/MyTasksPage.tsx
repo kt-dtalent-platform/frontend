@@ -11,6 +11,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
+import { liveTasksOn } from '../../lib/env'
 import { usePageTitle } from '../../lib/usePageTitle'
 
 const views = [
@@ -28,15 +29,20 @@ export function MyTasksPage() {
   if (!switched && view !== firstView) setSwitched(true)
   const tasks = useMyTasks()
   // 끝난 일은 내 제출 이력에서 가져온다(마감된 요청도 포함). 해야 할 일에 있는 요청은 뺀다(보완 필요)
-  const history = useMySubmissionHistory()
+  // 실제 서버에 내 제출 이력이 아직 없으면(백엔드 KT-42 머지 전) 내 할 일의 끝난 일로 대신한다. 머지되면 이 분기를 지운다
+  const history = useMySubmissionHistory(!liveTasksOn)
+  const fallback = liveTasksOn ? (tasks.data?.filter((t) => t.done) ?? []) : null
   usePageTitle('내 할 일')
   const todo = tasks.data?.filter((t) => !t.done) ?? []
   const todoIds = new Set(todo.map((t) => t.requestId))
   const done = tasks.data && history.data ? history.data.filter((h) => !todoIds.has(h.requestId)) : undefined
-  const counts = { TODO: tasks.data ? todo.length : undefined, DONE: done?.length }
-  const loading = tasks.isPending || (view === 'DONE' && history.isPending)
-  const failed = tasks.error ?? (view === 'DONE' ? history.error : null)
-  const empty = view === 'DONE' ? done?.length === 0 : tasks.data && todo.length === 0
+  const doneCount = fallback ? (tasks.data ? fallback.length : undefined) : done?.length
+  const counts = { TODO: tasks.data ? todo.length : undefined, DONE: doneCount }
+  const loading = tasks.isPending || (view === 'DONE' && !fallback && history.isPending)
+  const failed = tasks.error ?? (view === 'DONE' && !fallback ? history.error : null)
+  // 카드 목록: 해야 할 일, 또는 대신 쓰는 끝난 일(내 할 일 응답)
+  const taskCards = view === 'TODO' ? todo : fallback
+  const empty = !failed && (view === 'DONE' ? doneCount === 0 : tasks.data && todo.length === 0)
 
   return (
     <div className="flex flex-col gap-8">
@@ -50,22 +56,22 @@ export function MyTasksPage() {
       />
 
       {loading && !failed && <LoadingCards />}
-      {failed && <ErrorState error={failed} onRetry={() => (void tasks.refetch(), void history.refetch())} />}
+      {failed && <ErrorState error={failed} onRetry={() => (void tasks.refetch(), !fallback && void history.refetch())} />}
       {empty && (
         <EmptyState title={view === 'TODO' ? '지금 해야 할 일이 없어요' : '아직 끝낸 일이 없어요'} icon={<Inbox size={24} strokeWidth={1.75} />}>
           {view === 'TODO' ? '새 요청이 열리면 여기에 보여요.' : '제출하면 여기에서 결과를 볼 수 있어요.'}
         </EmptyState>
       )}
-      {view === 'TODO' && todo.length > 0 && (
+      {!failed && taskCards && taskCards.length > 0 && (
         <ul className={cn('m-0 flex list-none flex-col gap-3 p-0', !switched && 'stagger-in')}>
-          {todo.map((task) => (
+          {taskCards.map((task) => (
             <li key={task.requestId}>
               <TaskCard task={task} />
             </li>
           ))}
         </ul>
       )}
-      {view === 'DONE' && done && done.length > 0 && (
+      {!failed && view === 'DONE' && !fallback && done && done.length > 0 && (
         <ul className={cn('m-0 flex list-none flex-col gap-3 p-0', !switched && 'stagger-in')}>
           {done.map((h) => (
             <li key={h.requestId}>

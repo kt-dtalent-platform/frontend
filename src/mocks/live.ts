@@ -56,7 +56,6 @@ export function isLive(pathname: string) {
 const notYet: [method: string, path: RegExp][] = [
   ['POST', /^\/scholars\/bulk$/], // 백엔드 PR #92 머지되면 지운다
   ['POST', /^\/programs\/\d+\/cohorts$/], // 백엔드 KT-61 머지되면 지운다
-  ['GET', /^\/me\/submissions$/], // 내 제출 이력(백엔드 KT-42 머지되면 지운다)
   // 로그인 안내 메일(백엔드 KT-60 머지되면 지운다)
   ['GET', /^\/scholars\/login-notices/],
   ['PUT', /^\/scholars\/login-notices\/sender$/],
