@@ -251,13 +251,7 @@ function LoginSection({ id, name }: { id: number; name: string }) {
         {status.isPending ? '확인 중' : status.isError ? '불러오지 못함' : noticeText(item)}
       </p>
       {open && (
-        <LoginNoticeDialog
-          scholarIds={[id]}
-          who={`${name} 님`}
-          reissue
-          onClose={() => setOpen(false)}
-          onSent={(r) => (setOpen(false), toast(sentText(r)))}
-        />
+        <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue onClose={() => setOpen(false)} onSent={(r) => (setOpen(false), toast(sentText(r)))} />
       )}
     </section>
   )

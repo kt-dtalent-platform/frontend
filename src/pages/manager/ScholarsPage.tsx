@@ -223,7 +223,7 @@ export function ScholarsPage() {
             </Button>
           }
         >
-          {noticeIssues.map((i) => `${i.name}(${i.reason})`).join(', ')}. 잠기거나 사용 중지된 계정은 풀어야 보낼 수 있어요.
+          {noticeIssues.map((i) => `${i.name}(${i.reason})`).join(', ')}. 잠기거나 사용 중지된 계정이라 보내지 않았어요. 계정 확인은 개발팀에 요청해 주세요.
         </Banner>
       )}
       {exportError && (

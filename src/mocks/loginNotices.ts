@@ -54,7 +54,8 @@ export function sendNotices(ids: number[], reissue: boolean): NoticeResult | 'MA
     notices.set(id, item)
     items.push(item)
     setTimeout(
-      () => notices.set(id, id % 7 === 0 ? { scholarId: id, status: 'FAILED', errorCode: 'SMTP_ERROR' } : { scholarId: id, status: 'SENT', errorCode: null }),
+      () =>
+        notices.set(id, id % 7 === 0 ? { scholarId: id, status: 'FAILED', errorCode: 'DELIVERY_FAILED' } : { scholarId: id, status: 'SENT', errorCode: null }),
       2000,
     )
   }

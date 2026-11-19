@@ -119,7 +119,9 @@ export function ScholarImportPage() {
     }
   }
 
-  if (created) return <ImportResult accounts={created} />
+  // 메일을 접수한 장학생의 임시 비밀번호는 서버가 새로 만들어 쓸모가 없으므로 메모리에서도 지운다
+  if (created)
+    return <ImportResult accounts={created} onMailed={(ids) => setCreated((prev) => prev && prev.map((a) => (ids.has(a.id) ? { ...a, password: '' } : a)))} />
 
   return (
     <div className="mx-auto flex w-full max-w-page-wide flex-col gap-6">
@@ -238,13 +240,15 @@ type Account = { id: number; name: string; email: string; password: string }
 // 등록 결과. 로그인 안내는 메일로 보내는 것이 기본이다(백엔드 KT-60). 서버가 장학생마다 새 임시 비밀번호를 만들어 보낸다.
 // 메일을 쓸 수 없을 때(메일 서버 미설정 등)만 안내 파일로 받아 직접 전달한다. 임시 비밀번호는 서버가 이 응답에서만 주므로 화면에 늘어놓지 않는다.
 // 메일을 보내면 파일 속 비밀번호는 더 쓸 수 없어서 파일 받기를 숨긴다
-function ImportResult({ accounts }: { accounts: Account[] }) {
+function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (ids: Set<number>) => void }) {
   usePageTitle('장학생 일괄 등록 완료')
   const toast = useToast()
   const top = useRef<HTMLDivElement>(null)
   const [saved, setSaved] = useState(false)
-  const [mailing, setMailing] = useState(false)
+  // 보낼 대상: 처음에는 전원, 실패한 사람을 다시 보낼 때는 그 사람들만
+  const [mailing, setMailing] = useState<number[] | null>(null)
   const [mailed, setMailed] = useState<NoticeResult | null>(null)
+  const result = useRef<HTMLDivElement>(null)
   // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
   useEffect(() => top.current?.focus(), [])
   const ids = accounts.map((a) => a.id)
@@ -267,22 +271,46 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
     }
   }
 
-  // 보낸 뒤 진행: 보냄, 보내는 중, 실패 인원
+  // 보낸 뒤 진행: 보냄, 보내는 중, 실패, 건너뜀 인원. 건너뛴 사람은 상태 조회에 나오지 않아 접수 결과에서 센다
   const count = (pred: (s: string) => boolean) => status.data?.filter((i) => pred(i.status)).length ?? 0
-  const progress = mailed
-    ? `보냄 ${count((x) => x === 'SENT')}명, 보내는 중 ${count((x) => x === 'PENDING' || x === 'SENDING')}명, 실패 ${count((x) => x === 'FAILED')}명`
-    : null
+  const skipped = mailed?.items.filter((i) => i.status === 'SKIPPED').length ?? 0
+  const failed = (status.data ?? []).filter((i) => i.status === 'FAILED').map((i) => i.scholarId)
+  const nameOf = (id: number) => accounts.find((a) => a.id === id)?.name ?? `${id}번`
+  const progress = !mailed
+    ? ''
+    : status.data
+      ? [
+          `보냄 ${count((x) => x === 'SENT')}명`,
+          `보내는 중 ${count((x) => x === 'PENDING' || x === 'SENDING')}명`,
+          `실패 ${failed.length}명`,
+          skipped ? `건너뜀 ${skipped}명` : '',
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : sentText(mailed)
+
+  const onSent = (r: NoticeResult) => {
+    setMailing(null)
+    // 아무도 접수되지 않았으면 비밀번호가 그대로 유효하므로 파일 받기를 남겨 둔다
+    if (!r.queued) return toast(sentText(r))
+    setMailed(r)
+    onMailed(new Set(r.items.filter((i) => i.status === 'PENDING').map((i) => i.scholarId)))
+    // 메일 보내기 버튼이 사라지므로 결과 문구로 포커스를 옮긴다
+    requestAnimationFrame(() => result.current?.focus())
+  }
 
   return (
     <div ref={top} tabIndex={-1} className="mx-auto flex w-full max-w-page-form flex-col gap-6 outline-none">
       <UnsavedChangesGuard
         // 메일을 보냈으면 묻지 않는다. 파일 받기를 눌러도 실제로 저장됐는지는 알 수 없어(Safari 다운로드 거부, 취소) 계속 묻는다
-        when={!mailed}
-        title={saved ? '나가기' : '안내를 보내지 않고 나가기'}
+        when={!mailed || failed.length > 0}
+        title={mailed ? '실패한 장학생을 두고 나가기' : saved ? '나가기' : '안내를 보내지 않고 나가기'}
         message={
-          saved
-            ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?'
-            : '아직 로그인 안내를 보내지 않았어요. 나가도 나중에 명단에서 골라 메일로 보낼 수 있어요.'
+          mailed
+            ? '메일을 받지 못한 장학생은 지금 로그인할 수 없어요. 나가면 장학생 상세에서 다시 보내야 해요.'
+            : saved
+              ? '임시 비밀번호는 다시 볼 수 없어요. 파일이 저장됐는지 확인했나요?'
+              : '아직 로그인 안내를 보내지 않았어요. 나가도 나중에 명단에서 골라 메일로 보낼 수 있어요.'
         }
         confirmLabel="나가기"
       />
@@ -297,16 +325,25 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
             <span className="text-caption text-ink-3">아이디와 임시 비밀번호를 장학생마다 메일로 보내요</span>
           </div>
           {!mailed && (
-            <Button size="compact" variant="primary" onClick={() => setMailing(true)}>
+            <Button size="compact" variant="primary" onClick={() => setMailing(ids)}>
               메일 보내기
             </Button>
           )}
         </div>
-        {mailed && (
+        {/* 처음부터 그려 두고 글만 바꿔야 스크린 리더가 바뀐 내용을 읽는다 */}
+        <div ref={result} tabIndex={-1} className="flex flex-col gap-2 outline-none">
           <p role="status" className="m-0 text-caption text-ink-3 tabular-nums">
-            {status.data ? progress : sentText(mailed)}
+            {progress}
           </p>
-        )}
+          {failed.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="text-danger-text">보내지 못함: {failed.map(nameOf).join(', ')}</span>
+              <Button size="compact" onClick={() => setMailing(failed)}>
+                {failed.length}명 다시 보내기
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 파일: 메일을 쓸 수 없을 때. 메일을 보내면 비밀번호가 바뀌어 숨긴다 */}
@@ -336,15 +373,7 @@ function ImportResult({ accounts }: { accounts: Account[] }) {
         </Link>
       </div>
 
-      {mailing && (
-        <LoginNoticeDialog
-          scholarIds={ids}
-          who={`${accounts.length}명`}
-          reissue={false}
-          onClose={() => setMailing(false)}
-          onSent={(r) => (setMailing(false), setMailed(r))}
-        />
-      )}
+      {mailing && <LoginNoticeDialog scholarIds={mailing} who={`${mailing.length}명`} reissue={false} onClose={() => setMailing(null)} onSent={onSent} />}
     </div>
   )
 }

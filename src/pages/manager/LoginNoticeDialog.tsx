@@ -22,7 +22,7 @@ export function LoginNoticeDialog({
   onSent,
 }: {
   scholarIds: number[]
-  who: string // "3명", "홍길동 님"
+  who: string // "3명", "이름 님"
   reissue: boolean
   onClose: () => void
   onSent: (r: NoticeResult) => void
@@ -77,7 +77,9 @@ export function LoginNoticeDialog({
     >
       <div className="flex flex-col gap-2 text-ink-2">
         {reissue ? (
-          <p className="m-0">{who}의 비밀번호를 새 임시 비밀번호로 바꾸고 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요.</p>
+          <p className="m-0">
+            {who}의 비밀번호를 새 임시 비밀번호로 바꾸고 메일로 보내요. 지금 비밀번호로는 더 로그인할 수 없어요. 잠기거나 사용 중지된 계정에는 보내지 않아요.
+          </p>
         ) : (
           <p className="m-0">{who}에게 아이디와 임시 비밀번호를 각자 메일로 보내요. 이미 보냈거나 비밀번호를 바꾼 장학생은 건너뛰어요.</p>
         )}

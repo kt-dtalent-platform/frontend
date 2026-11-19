@@ -80,6 +80,8 @@ export function ScholarCreatePage() {
     return (
       <CreatedResult
         {...created}
+        // 메일을 보내면 서버가 비밀번호를 새로 만들어 화면의 것은 쓸모가 없으므로 메모리에서도 지운다
+        onMailed={() => setCreated((prev) => prev && { ...prev, password: '' })}
         onAgain={() => {
           reset({ ...EMPTY, cohortId: getValues('cohortId') })
           setCreated(null)
@@ -204,12 +206,36 @@ export function ScholarCreatePage() {
 }
 
 // 등록 결과: 임시 비밀번호는 서버가 이 응답에서 한 번만 준다. 화면을 떠나면 다시 볼 수 없다
-function CreatedResult({ id, name, email, password, onAgain }: { id: number; name: string; email: string; password: string; onAgain: () => void }) {
+function CreatedResult({
+  id,
+  name,
+  email,
+  password,
+  onAgain,
+  onMailed,
+}: {
+  id: number
+  name: string
+  email: string
+  password: string
+  onAgain: () => void
+  onMailed: () => void
+}) {
   const toast = useToast()
   // 로그인 안내 메일(백엔드 KT-60). 보내면 서버가 새 임시 비밀번호를 만들어 보내므로 화면의 비밀번호는 숨긴다
   const [mailing, setMailing] = useState(false)
   const [mailed, setMailed] = useState<NoticeResult | null>(null)
   const status = useNoticeStatus(mailed ? [id] : [])
+  const result = useRef<HTMLDivElement>(null)
+  const onSent = (r: NoticeResult) => {
+    setMailing(false)
+    // 접수되지 않았으면(건너뜀) 비밀번호가 그대로 유효하므로 화면에 남긴다
+    if (!r.queued) return toast(sentText(r))
+    setMailed(r)
+    onMailed()
+    // 메일 보내기 버튼이 사라지므로 결과 문구로 포커스를 옮긴다
+    requestAnimationFrame(() => result.current?.focus())
+  }
   const record = status.data?.find((i) => i.scholarId === id)
   const top = useRef<HTMLDivElement>(null)
   const secret = useRef<HTMLSpanElement>(null)
@@ -250,22 +276,19 @@ function CreatedResult({ id, name, email, password, onAgain }: { id: number; nam
             </Button>
           )}
         </div>
-        {mailed && (
+        {/* 처음부터 그려 두고 글만 바꿔야 스크린 리더가 바뀐 내용을 읽는다 */}
+        <div ref={result} tabIndex={-1} className="flex flex-wrap items-center gap-x-3 gap-y-2 outline-none">
           <p role="status" className="m-0 text-caption text-ink-3">
-            {/* 서버가 건너뛰었으면 기록이 없으므로 접수 결과로 알린다 */}
-            {record ? noticeText(record) : mailed && sentText(mailed)}
+            {mailed ? (record ? noticeText(record) : sentText(mailed)) : ''}
           </p>
-        )}
+          {record?.status === 'FAILED' && (
+            <Button size="compact" onClick={() => setMailing(true)}>
+              다시 보내기
+            </Button>
+          )}
+        </div>
       </div>
-      {mailing && (
-        <LoginNoticeDialog
-          scholarIds={[id]}
-          who={`${name} 님`}
-          reissue={false}
-          onClose={() => setMailing(false)}
-          onSent={(r) => (setMailing(false), setMailed(r))}
-        />
-      )}
+      {mailing && <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue={false} onClose={() => setMailing(false)} onSent={onSent} />}
       {!mailed && (
         <div className="flex flex-col gap-2">
           <h2 className="m-0 text-label text-ink-2">메일을 쓸 수 없을 때</h2>
