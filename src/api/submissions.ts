@@ -124,6 +124,7 @@ export function useSubmit(requestId: number) {
       // 버전 등 나머지는 서버 값으로 다시 불러온다
       queryClient.invalidateQueries({ queryKey: submissionKey(requestId) })
       queryClient.invalidateQueries({ queryKey: ['me', 'tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['me', 'submissions', 'history'] })
     },
   })
 }

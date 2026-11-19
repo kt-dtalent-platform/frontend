@@ -28,6 +28,25 @@ export function useMyTasks() {
   })
 }
 
+// GET /me/submissions · 백엔드 KT-42 기준(머지 전)
+// 내 할 일은 진행 중인 요청만 주므로, 마감된 요청까지 포함한 지난 제출은 이 API로 본다.
+// 작성 중(DRAFT)은 오지 않는다. 최근 제출 순. page_size 최대 100(한 사람의 제출은 학기마다 몇 건이라 한 번에 받는다)
+export type SubmissionHistory = {
+  requestId: number
+  title: string
+  status: SubmissionStatus
+  submittedAt: string
+  confirmedAt: string | null
+  purged: boolean // 보관 기간(1년)이 지나 서류 파일이 지워짐
+}
+
+export function useMySubmissionHistory() {
+  return useQuery({
+    queryKey: ['me', 'submissions', 'history'],
+    queryFn: async () => (await api<{ items: SubmissionHistory[] }>('/me/submissions?page_size=100')).items,
+  })
+}
+
 // 마감 시각이 지났는지(날짜가 같아도 시각까지 비교)
 export function isPastDue(iso: string) {
   return toDate(iso).getTime() < Date.now()
