@@ -75,15 +75,19 @@ function Review({ d }: { d: SubmissionDetail }) {
   }
 
   const onConfirm = () =>
-    confirm.mutate(
-      { version: d.version },
-      {
-        onSuccess: () => {
-          setConfirming(false)
-          afterAction(`${d.scholar.name} 님 제출을 확인했어요`)
+    // 다른 처리의 지난 오류가 이번 오류를 가리지 않게 지운다
+    (
+      revision.reset(),
+      confirm.mutate(
+        { version: d.version },
+        {
+          onSuccess: () => {
+            setConfirming(false)
+            afterAction(`${d.scholar.name} 님 제출을 확인했어요`)
+          },
+          onError: () => setConfirming(false),
         },
-        onError: () => setConfirming(false),
-      },
+      )
     )
 
   const lastRevision = d.status === 'REVISION_REQUIRED' ? d.revisions.at(-1) : undefined
@@ -203,7 +207,8 @@ function Review({ d }: { d: SubmissionDetail }) {
         preselect={mismatched.map((c) => c.field)}
         busy={revision.isPending}
         onCancel={() => setRevising(false)}
-        onSubmit={(fieldKeys, reason) =>
+        onSubmit={(fieldKeys, reason) => (
+          confirm.reset(),
           revision.mutate(
             { fieldKeys, reason, dueAt: null, version: d.version },
             {
@@ -214,7 +219,7 @@ function Review({ d }: { d: SubmissionDetail }) {
               onError: () => setRevising(false),
             },
           )
-        }
+        )}
       />
     </>
   )

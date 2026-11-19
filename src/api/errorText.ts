@@ -62,7 +62,11 @@ const TEXT: Record<string, () => string> = {
 }
 
 export function errorCode(err: unknown) {
-  if (err instanceof ApiError) return err.status >= 500 && !TEXT[err.code] ? 'INTERNAL_SERVER_ERROR' : err.code
+  if (err instanceof ApiError) {
+    // 5xx인데 처음 보는 코드이거나 응답을 못 읽은 경우(게이트웨이 502 HTML 등)는 서버 문제로 본다. MAIL_UNAVAILABLE 같은 코드는 그대로
+    if (err.status >= 500 && (!TEXT[err.code] || err.code === 'NETWORK_ERROR')) return 'INTERNAL_SERVER_ERROR'
+    return err.code
+  }
   // fetch 자체가 실패하면 TypeError가 온다(연결 끊김, 차단)
   return 'NETWORK_ERROR'
 }
