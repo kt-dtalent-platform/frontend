@@ -160,12 +160,12 @@ export function createScholar(body: ScholarCreate) {
     completedYear: null,
     withdrawalReason: null,
     withdrawalReasonDetail: null,
-    accountStatus: 'INACTIVE',
+    accountStatus: 'ACTIVE', // 백엔드도 등록하면 바로 ACTIVE(첫 로그인 때 비밀번호 변경)
   })
   save(s)
   // 백엔드처럼 임시 비밀번호를 이 응답에서 한 번만 준다. 목업 로그인은 temp로 시작하는 비밀번호를 첫 로그인으로 본다
   const temporaryPassword = `temp${String(1000 + (id % 9000)).padStart(4, '0')}`
-  return { id, accountStatus: 'INACTIVE' as const, temporaryPassword }
+  return { id, accountStatus: 'ACTIVE' as const, temporaryPassword }
 }
 
 // 목업 명단 내보내기: 고른 상태, 기수, 열만 담은 CSV. 실제 서버는 xlsx
