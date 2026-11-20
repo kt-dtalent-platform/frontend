@@ -2,7 +2,16 @@ import { ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
-import { PHONE, withdrawalText, useChangeScholarStatus, useScholar, useUpdateScholar, type ScholarDetail, type ScholarUpdate } from '../../api/scholars'
+import {
+  PHONE,
+  withdrawalText,
+  useChangeScholarStatus,
+  useScholar,
+  useUpdateScholar,
+  type AccountStatus,
+  type ScholarDetail,
+  type ScholarUpdate,
+} from '../../api/scholars'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
 import { SchoolField } from '../../components/form/SchoolCombobox'
@@ -93,7 +102,7 @@ function Detail({ s }: { s: ScholarDetail }) {
           {s.status === 'WITHDRAWN' && <span className="text-body">{withdrawalText(s) ?? '사유 없음'}</span>}
         </div>
       </section>
-      <LoginSection id={s.id} name={s.name} />
+      <LoginSection id={s.id} name={s.name} account={s.accountStatus} />
       {editing ? (
         <EditForm s={s} onDone={(r) => (setEditing(false), done(r))} />
       ) : (
@@ -231,25 +240,35 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
 
 // 로그인 안내(백엔드 KT-60): 안내 메일을 보냈는지와 [임시 비밀번호 다시 보내기].
 // 장학생이 비밀번호를 잊었거나 안내를 못 받았을 때 담당자가 여기서 새 임시 비밀번호를 메일로 보낸다
-function LoginSection({ id, name }: { id: number; name: string }) {
+// 계정이 정상일 때만 메일을 보낼 수 있다. 사용 중지와 잠김은 이유와 할 일을 먼저 보여 준다
+const blocked: Partial<Record<AccountStatus, { label: string; text: string }>> = {
+  INACTIVE: { label: '사용 중지', text: '중단된 장학생이라 로그인할 수 없어요. 안내 메일도 보내지 않아요.' },
+  LOCKED: { label: '잠김', text: '비밀번호를 여러 번 틀려 잠겼어요. 시간이 지나면 풀리니 그 뒤에 보내세요.' },
+}
+
+function LoginSection({ id, name, account }: { id: number; name: string; account: AccountStatus }) {
   const toast = useToast()
   const status = useNoticeStatus([id])
   const [open, setOpen] = useState(false)
   const item = status.data?.find((i) => i.scholarId === id)
+  const block = blocked[account]
   return (
-    <section aria-labelledby={`login-${id}`} className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
+    <section aria-labelledby={`login-${id}`} className="flex flex-col gap-5 rounded-lg bg-surface px-6 py-6 md:px-8">
       <div className="flex items-center justify-between gap-4">
         <h2 id={`login-${id}`} className="m-0 text-title-2">
           로그인 안내
         </h2>
-        <Button size="compact" onClick={() => setOpen(true)}>
-          임시 비밀번호 다시 보내기
-        </Button>
+        {!block && (
+          <Button size="compact" onClick={() => setOpen(true)}>
+            임시 비밀번호 다시 보내기
+          </Button>
+        )}
       </div>
-      <p className="m-0 text-body">
-        <span className="text-ink-3">안내 메일 </span>
-        {status.isPending ? '확인 중' : status.isError ? '불러오지 못함' : noticeText(item)}
-      </p>
+      <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+        <Item label="계정" value={block ? block.label : '사용 중'} />
+        <Item label="안내 메일" value={status.isPending ? '확인 중' : status.isError ? '불러오지 못함' : noticeText(item)} />
+      </dl>
+      {block && <p className="m-0 text-ink-2">{block.text}</p>}
       {open && (
         <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue onClose={() => setOpen(false)} onSent={(r) => (setOpen(false), toast(sentText(r)))} />
       )}

@@ -22,8 +22,9 @@ const TEXT: Record<string, () => string> = {
   UNAUTHORIZED: () => '로그인 시간이 지났어요. 다시 로그인하세요.',
   ACCESS_DENIED: () => '이 계정으로는 할 수 없는 작업이에요.',
   LOGIN_FAILED: () => '이메일이나 비밀번호가 맞지 않아요.',
-  ACCOUNT_DISABLED: () => '사용 중지된 계정이에요. 담당자에게 문의하세요.',
-  ACCOUNT_LOCKED: () => '잠긴 계정이에요. 담당자에게 잠금 해제를 요청하세요.',
+  // 사용 중지는 중단된 장학생, 잠김은 비밀번호를 5번 틀린 계정이고 시간이 지나면 풀린다(백엔드 정책)
+  ACCOUNT_DISABLED: () => '이용이 중단된 계정이에요. 담당자에게 문의하세요.',
+  ACCOUNT_LOCKED: () => '비밀번호를 여러 번 틀려 계정이 잠겼어요. 잠시 뒤 다시 로그인하세요.',
   PASSWORD_MISMATCH: () => '지금 비밀번호가 맞지 않아요.',
   SAME_AS_CURRENT: () => '지금 비밀번호와 다른 비밀번호를 입력하세요.',
 

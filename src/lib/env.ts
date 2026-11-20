@@ -18,6 +18,3 @@ export const appUrl = (path: string) => basePath.replace(/\/$/, '') + path
 // 요청 목록이 실제 서버로 가는지: 목업을 끄거나, VITE_LIVE_API에 requests(또는 함께 켜지는 review, all)를 적었을 때
 const liveNames = (import.meta.env.DEV && !isDemo ? (import.meta.env.VITE_LIVE_API ?? '') : '').split(',').map((s: string) => s.trim())
 export const liveRequestsOn = !mockOn || liveNames.some((g: string) => g === 'requests' || g === 'review' || g === 'all')
-
-// 장학생 할 일과 제출이 실제 서버로 가는지: 목업을 끄거나, VITE_LIVE_API에 tasks(또는 all)를 적었을 때
-export const liveTasksOn = !mockOn || liveNames.some((g: string) => g === 'tasks' || g === 'all')
