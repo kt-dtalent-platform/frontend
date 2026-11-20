@@ -213,6 +213,7 @@ function Review({ d }: { d: SubmissionDetail }) {
         preselect={mismatched.map((c) => c.field)}
         busy={revision.isPending}
         dueError={dueError}
+        onDueChange={() => setDueError(null)}
         onCancel={() => setRevising(false)}
         onSubmit={(fieldKeys, reason, dueAt) => (
           confirm.reset(),
@@ -454,6 +455,7 @@ function RevisionDialog({
   preselect,
   busy,
   dueError,
+  onDueChange,
   onCancel,
   onSubmit,
 }: {
@@ -462,6 +464,7 @@ function RevisionDialog({
   preselect: string[]
   busy: boolean
   dueError: string | null
+  onDueChange: () => void
   onCancel: () => void
   onSubmit: (fieldKeys: string[], reason: string, dueAt: string | null) => void
 }) {
@@ -470,30 +473,38 @@ function RevisionDialog({
   const [date, setDate] = useState('')
   const [time, setTime] = useState('23:59')
   const [tried, setTried] = useState(false)
+  // 기한 칸 오류는 보낼 때 정한다(그때의 시각 기준). 날짜나 시각을 바꾸면 지운다
+  const [dueCheck, setDueCheck] = useState<string | null>(null)
   const reasonId = useId()
+  const dueId = useId()
+  const dateRef = useRef<HTMLInputElement>(null)
   // 이 장학생의 지금 마감(연장했으면 그 마감). 지났으면 다시 낼 기한을 꼭 받는다
   const deadline = useTargetDeadline(d.requestId, open ? d.scholar.id : null)
   const current = deadline.data?.dueAt ?? null
-  // 창을 연 시각 기준(창은 열 때마다 새로 만든다)
+  // 창을 연 시각 기준으로 필수 표시를 정한다(창은 열 때마다 새로 만든다)
   const [openedAt] = useState(() => Date.now())
   const passed = current !== null && Date.parse(current) <= openedAt
-  const dueAt = date && time ? kstToUtc(date, time) : null
+  const dueAt = date ? kstToUtc(date, time || '23:59') : null
   const keysError = tried && keys.length === 0 ? '보완할 항목을 하나 이상 고르세요.' : null
   const reasonError = tried && !reason.trim() ? '보완 사유를 입력하세요.' : null
-  const localDueError = !tried ? null : passed && !dueAt ? '기한을 고르세요.' : dueAt && Date.parse(dueAt) <= openedAt ? '지금보다 뒤로 고르세요.' : null
-  const dateError = localDueError ?? dueError
+  const dateError = dueCheck ?? dueError
+  const changeDue = (set: () => void) => (set(), setDueCheck(null), onDueChange())
 
   return (
     <FormDialog
       open={open}
       title="보완 요청 보내기"
       submitLabel="보완 요청 보내기"
-      busy={busy}
+      // 지금 마감을 확인하는 동안에도 보내지 않는다
+      busy={busy || deadline.isPending}
       onCancel={onCancel}
       onSubmit={() => {
         setTried(true)
-        const dueOk = !(passed && !dueAt) && !(dueAt && Date.parse(dueAt) <= Date.now())
-        if (keys.length && reason.trim() && dueOk && !deadline.isPending) onSubmit(keys, reason.trim(), dueAt)
+        const now = Date.now()
+        const check = passed && !dueAt ? '기한을 고르세요.' : dueAt && Date.parse(dueAt) <= now ? '지금보다 뒤로 고르세요.' : null
+        setDueCheck(check)
+        if (check) dateRef.current?.focus()
+        if (keys.length && reason.trim() && !check) onSubmit(keys, reason.trim(), dueAt)
       }}
     >
       <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
@@ -537,22 +548,32 @@ function RevisionDialog({
               ? '지금 마감을 불러오지 못했어요. 기한을 고르면 그때까지 다시 낼 수 있어요.'
               : passed
                 ? `마감(${formatDue(current)})이 지났어요. 기한을 골라야 장학생이 다시 낼 수 있어요.`
-                : `비워 두면 지금 마감(${formatDue(current)})까지 다시 낼 수 있어요.`}
+                : `비워 두면 지금 마감(${formatDue(current)})까지 다시 낼 수 있어요. 지금 마감보다 이른 날짜를 골라도 마감은 줄지 않아요.`}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <input
+            ref={dateRef}
             type="date"
             aria-label="기한 날짜"
             min={kstToday()}
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => changeDue(() => setDate(e.target.value))}
             aria-invalid={!!dateError}
+            aria-describedby={dateError ? dueId : undefined}
             className={cn(fieldControl, fieldBorder(!!dateError))}
           />
-          <input type="time" aria-label="기한 시각" value={time} onChange={(e) => setTime(e.target.value)} className={cn(fieldControl, fieldBorder(false))} />
+          <input
+            type="time"
+            aria-label="기한 시각"
+            value={time}
+            onChange={(e) => changeDue(() => setTime(e.target.value))}
+            aria-invalid={!!dateError}
+            aria-describedby={dateError ? dueId : undefined}
+            className={cn(fieldControl, fieldBorder(!!dateError))}
+          />
         </div>
         {dateError && (
-          <p role="alert" className="m-0 text-caption text-danger-text">
+          <p id={dueId} role="alert" className="m-0 text-caption text-danger-text">
             {dateError}
           </p>
         )}

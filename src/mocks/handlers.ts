@@ -482,7 +482,6 @@ export const handlers = [
         const at = body.dueAt ? Date.parse(body.dueAt) : null
         const passed = due !== null && Date.parse(due.dueAt) <= Date.now()
         if ((passed && at === null) || (at !== null && at <= Date.now())) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', ['dueAt'])
-        if (due && at !== null && at > Date.parse(due.dueAt)) extended.set(`${sd.requestId}:${sd.scholar.id}`, body.dueAt!)
       }
       await delay(300)
       const r = review(Number(params.submissionId), action, body)
@@ -490,6 +489,11 @@ export const handlers = [
         if (r.error === 'NOT_FOUND') return fail(path, 404, 'SUBMISSION_NOT_FOUND', '제출을 찾을 수 없습니다')
         if (r.error === 'VERSION_CONFLICT') return fail(path, 409, 'VERSION_CONFLICT', '제출 내용이 변경되었습니다')
         return fail(path, 422, 'INVALID_STATE_TRANSITION', '검토 대기 상태에서만 처리할 수 있습니다')
+      }
+      // 처리가 끝난 뒤에만 장학생 마감을 늘린다(지금 마감보다 늦을 때만)
+      if (sd && body.dueAt) {
+        const due = mockDeadline(sd.requestId, sd.scholar.id)
+        if (due && Date.parse(body.dueAt) > Date.parse(due.dueAt)) extended.set(`${sd.requestId}:${sd.scholar.id}`, body.dueAt)
       }
       return ok(path, r)
     }),

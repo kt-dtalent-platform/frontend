@@ -162,6 +162,8 @@ function useReviewAction<T>(submissionId: number, path: string) {
       void queryClient.invalidateQueries({ queryKey: ['manager', 'submissions'] })
       void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
       void queryClient.invalidateQueries({ queryKey: detailKey(submissionId) })
+      // 보완 기한이 장학생 마감을 늘릴 수 있다(백엔드 #103)
+      void queryClient.invalidateQueries({ queryKey: ['manager', 'deadline'] })
     },
     // 그사이 바뀌었으면(409 버전 충돌, 422 상태 전이 불가) 최신 내용을 다시 불러온다
     onError: (e) => {
