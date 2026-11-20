@@ -33,7 +33,7 @@ import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
 import { LoginNoticeDialog } from './LoginNoticeDialog'
-import { sentText, skipText } from '../../api/loginNotices'
+import { sentText } from '../../api/loginNotices'
 import { Checkbox } from '../../components/form/Checkbox'
 import { useToast } from '../../components/ui/useToast'
 import { errorText } from '../../api/errorText'
@@ -118,7 +118,7 @@ export function ScholarsPage() {
   const pickedCohort = pickedCohorts.length === 1 ? pickedCohorts[0] : ''
   const [noticeOpen, setNoticeOpen] = useState(false)
   // 보내지 못한 장학생 중 담당자가 손봐야 하는 사람(로그인할 수 없는 계정 등). 이미 비밀번호를 바꿨거나 이미 보낸 사람은 할 일이 없어 인원만 토스트로
-  const [noticeIssues, setNoticeIssues] = useState<{ name: string; reason: string }[]>([])
+  const [noticeIssues, setNoticeIssues] = useState<{ name: string; code: 'ACCOUNT_DISABLED' | 'SCHOLAR_NOT_FOUND' }[]>([])
   const [bulkOpen, setBulkOpen] = useState(false)
 
   // 내보내기: 기수 필터는 그대로 걸고, 상태와 열은 대화상자에서 고른다
@@ -223,7 +223,19 @@ export function ScholarsPage() {
             </Button>
           }
         >
-          {noticeIssues.map((i) => `${i.name}(${i.reason})`).join(', ')}. 이용이 중단됐거나 잠긴 계정이에요. 잠긴 계정은 시간이 지나면 풀려요.
+          {/* 이유마다 할 일이 달라 따로 적는다 */}
+          {(['ACCOUNT_DISABLED', 'SCHOLAR_NOT_FOUND'] as const).map((code) => {
+            const names = noticeIssues.filter((i) => i.code === code).map((i) => i.name)
+            if (!names.length) return null
+            return (
+              <p key={code} className="m-0">
+                {names.join(', ')}:{' '}
+                {code === 'ACCOUNT_DISABLED'
+                  ? '이용이 중단됐거나 잠긴 계정이에요. 잠긴 계정은 시간이 지나면 풀려요.'
+                  : '명단에서 지워진 장학생이에요. 새로고침해서 확인하세요.'}
+              </p>
+            )
+          })}
         </Banner>
       )}
       {exportError != null && (
@@ -381,7 +393,7 @@ export function ScholarsPage() {
             setNoticeIssues(
               r.items
                 .filter((i) => i.status === 'SKIPPED' && (i.errorCode === 'ACCOUNT_DISABLED' || i.errorCode === 'SCHOLAR_NOT_FOUND'))
-                .map((i) => ({ name: names.get(i.scholarId) ?? `${i.scholarId}번`, reason: skipText(i.errorCode) })),
+                .map((i) => ({ name: names.get(i.scholarId) ?? `${i.scholarId}번`, code: i.errorCode as 'ACCOUNT_DISABLED' | 'SCHOLAR_NOT_FOUND' })),
             )
             setPicked([])
           }}
