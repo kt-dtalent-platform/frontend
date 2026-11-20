@@ -94,7 +94,7 @@ export function useCohorts(programId: number | undefined) {
   })
 }
 
-// POST /v1/programs/{programId}/cohorts · 백엔드에 아직 없음(11/15 요청) · FE 연동: Mock
+// POST /v1/programs/{programId}/cohorts · 백엔드 #97. 같은 이름이면 409 DUPLICATE_COHORT
 // 새해 장학생을 등록하기 전에 기수를 만든다. DB cohorts: name(50자), started_on, ended_on(둘 다 비워도 됨)
 export function useCreateCohort(programId: number | undefined) {
   const queryClient = useQueryClient()

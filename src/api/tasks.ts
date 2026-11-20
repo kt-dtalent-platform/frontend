@@ -28,7 +28,7 @@ export function useMyTasks() {
   })
 }
 
-// GET /me/submissions · 백엔드 KT-42 기준(머지 전)
+// GET /me/submissions · 백엔드 #59
 // 내 할 일은 진행 중인 요청만 주므로, 마감된 요청까지 포함한 지난 제출은 이 API로 본다.
 // 작성 중(DRAFT)은 오지 않는다. 최근 제출 순. page_size 최대 100(한 사람의 제출은 학기마다 몇 건이라 한 번에 받는다)
 export type SubmissionHistory = {
@@ -40,10 +40,9 @@ export type SubmissionHistory = {
   purged: boolean // 보관 기간(1년)이 지나 서류 파일이 지워짐
 }
 
-export function useMySubmissionHistory(enabled = true) {
+export function useMySubmissionHistory() {
   return useQuery({
     queryKey: ['me', 'submissions', 'history'],
-    enabled,
     queryFn: async () => {
       const r = await api<{ items: SubmissionHistory[]; total: number }>('/me/submissions?page_size=100')
       if (r.total > r.items.length) console.warn(`내 제출 이력 ${r.total}건 중 ${r.items.length}건만 보여 줍니다.`)
