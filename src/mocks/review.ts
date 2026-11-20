@@ -169,7 +169,7 @@ export function submissionDetail(id: number): SubmissionDetail | null {
     answers,
     files,
     analysis: comparisons.length
-      ? { overallResult: mismatch ? (comparisons.some((c) => c.result === 'UNREADABLE') ? 'UNREADABLE' : 'MISMATCH') : 'MATCH', comparisons }
+      ? { overallResult: comparisons.some((c) => c.result === 'MISMATCH') ? 'MISMATCH' : mismatch ? 'UNREADABLE' : 'MATCH', comparisons }
       : null,
     history: o?.history ?? baseHistory(row),
     // 미리 만든 보완 필요 제출에도 보완 요청 기록을 둔다(검토 화면 안내가 비지 않게)
