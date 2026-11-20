@@ -42,7 +42,7 @@ function base(): Row[] {
       major: MAJORS[i % MAJORS.length],
       cohort: { id: cohort.id, name: cohort.name },
       ...st,
-      accountStatus: i % 19 === 4 ? 'LOCKED' : i % 13 === 6 ? 'INACTIVE' : 'ACTIVE',
+      accountStatus: i % 19 === 4 ? 'LOCKED' : 'ACTIVE',
     }
   })
 }
@@ -68,9 +68,10 @@ function all(): Row[] {
   const s = load()
   return [...s.created, ...base()].map((r) => {
     const e = s.edits[r.id]
-    if (!e) return r
-    const phone = e.phone ?? r.phone
-    return { ...r, ...e, phone, maskedPhone: mask(phone) }
+    const row = e ? { ...r, ...e, phone: e.phone ?? r.phone, maskedPhone: mask(e.phone ?? r.phone) } : r
+    // 백엔드처럼 중단된 장학생은 계정을 사용 중지로 맞춘다(중단을 풀면 다시 사용)
+    const accountStatus: AccountStatus = row.status === 'WITHDRAWN' ? 'INACTIVE' : row.accountStatus === 'INACTIVE' ? 'ACTIVE' : row.accountStatus
+    return { ...row, accountStatus }
   })
 }
 
@@ -115,7 +116,7 @@ export const accountStatusOf = (id: number) => all().find((x) => x.id === id)?.a
 export function scholarDetail(id: number): ScholarDetail | null {
   const r = all().find((x) => x.id === id)
   if (!r) return null
-  const { accountStatus: _a, phone: _p, ...detail } = r
+  const { phone: _p, ...detail } = r
   // 목업 계좌: 넷 중 하나는 아직 등록 안 함
   const bankAccount =
     r.id % 4 === 0

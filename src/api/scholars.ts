@@ -92,6 +92,8 @@ export type ScholarDetail = StatusInfo & {
   cohort: { id: number; name: string }
   // 목록에서 고른 학교의 ID. 직접 쓴 이름이면 null(KT-54)
   schoolId?: number | null
+  // 로그인 계정 상태(백엔드 #99). 사용 중지는 중단된 장학생, 잠김은 비밀번호를 5번 틀린 계정(시간이 지나면 풀림)
+  accountStatus: AccountStatus
   // 장학금 받을 계좌. 담당자에게는 전체 번호가 온다(백엔드 #77). 장학생이 등록하기 전이면 null
   bankAccount: { bankName: string; accountNumber: string; accountHolder: string } | null
 }
@@ -182,7 +184,7 @@ export type ScholarCreate = {
   schoolId?: number
 }
 
-// POST /v1/scholars/bulk · 백엔드 KT-56(PR #92, 머지 대기)
+// POST /v1/scholars/bulk · 백엔드 #92
 // 프론트가 엑셀을 읽어 명단만 보낸다(최대 500명). 한 명이라도 실패하면 아무도 등록하지 않는다.
 // 이미 등록된 이메일이 있으면 409 DUPLICATE_EMAIL, details에 그 이메일 목록.
 // 성공하면 장학생마다 임시 비밀번호가 이 응답에서만 한 번 온다. row는 보낸 명단 순서 + 1
