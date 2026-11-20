@@ -475,6 +475,15 @@ export const handlers = [
           [!body.fieldKeys?.length && 'fieldKeys', !body.reason?.trim() && 'reason'].filter(Boolean),
         )
       }
+      // 보완 기한은 장학생 재제출 마감이 된다. 마감이 지났으면 꼭 있어야 한다(백엔드 #103)
+      const sd = action === 'revision' ? submissionDetail(Number(params.submissionId)) : null
+      if (sd) {
+        const due = mockDeadline(sd.requestId, sd.scholar.id)
+        const at = body.dueAt ? Date.parse(body.dueAt) : null
+        const passed = due !== null && Date.parse(due.dueAt) <= Date.now()
+        if ((passed && at === null) || (at !== null && at <= Date.now())) return fail(path, 400, 'INVALID_REQUEST', '입력값을 확인해주세요.', ['dueAt'])
+        if (due && at !== null && at > Date.parse(due.dueAt)) extended.set(`${sd.requestId}:${sd.scholar.id}`, body.dueAt!)
+      }
       await delay(300)
       const r = review(Number(params.submissionId), action, body)
       if ('error' in r) {
