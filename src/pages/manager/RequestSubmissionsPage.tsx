@@ -71,7 +71,7 @@ export function RequestSubmissionsPage() {
   }
   const query = useRequestSubmissions(requestId, { status, keyword, page, sort })
   const data = query.data
-  // 필터, 쪽, 정렬로 새 결과가 오면 목록이 다시 나타난다. 같은 결과를 다시 불러오면 그대로
+  // 필터, 쪽, 정렬로 새 결과가 오면 행 목록만 다시 나타난다(표 머리와 쪽 번호는 그대로라 키보드 포커스가 남는다). 같은 결과를 다시 불러오면 그대로
   const listKey = useChangeKey(data?.items)
   usePageTitle(data ? `${data.request.title} 제출 현황` : '제출 현황')
 
@@ -216,7 +216,7 @@ export function RequestSubmissionsPage() {
                 </EmptyState>
               )
             ) : (
-              <div key={listKey} className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
+              <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
                 <div className="overflow-hidden rounded-lg bg-surface">
                   <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
                     {/* 열 순서: 누구 → 상태 → 소속 → 숫자 → 비고. 비고는 늘 맨 끝. 상태, 평점처럼 값 길이가 정해진 열은 가장 긴 값만큼만 둔다
@@ -270,7 +270,7 @@ export function RequestSubmissionsPage() {
                     <span className="w-28 shrink-0 pl-4">비고</span>
                     <span className="w-5 shrink-0" />
                   </div>
-                  <ul className="m-0 list-none p-0">
+                  <ul key={listKey} className={cn('m-0 list-none p-0', listKey > 0 && 'animate-list-in')}>
                     {data.items.map((r) => (
                       <Row
                         key={r.scholarId}

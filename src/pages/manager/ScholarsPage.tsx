@@ -66,7 +66,7 @@ export function ScholarsPage() {
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
   const query = useScholars({ cohortId, status, keyword, page, pageSize, sort })
   const data = query.data
-  // 필터, 쪽, 정렬로 새 결과가 오면 목록이 다시 나타난다. 같은 결과를 다시 불러오면 그대로
+  // 필터, 쪽, 정렬로 새 결과가 오면 행 목록만 다시 나타난다(표 머리와 쪽 번호는 그대로라 키보드 포커스가 남는다). 같은 결과를 다시 불러오면 그대로
   const motionKey = useChangeKey(data?.items)
 
   const toast = useToast()
@@ -263,7 +263,7 @@ export function ScholarsPage() {
               </EmptyState>
             )
           ) : (
-            <div key={motionKey} className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
+            <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
                 <div className="flex h-control-default items-center gap-4 border-b border-line-subtle px-6">
@@ -350,7 +350,7 @@ export function ScholarsPage() {
                     </>
                   )}
                 </div>
-                <ul className="m-0 list-none p-0">
+                <ul key={motionKey} className={cn('m-0 list-none p-0', motionKey > 0 && 'animate-list-in')}>
                   {data.items.map((s) => (
                     <Row
                       key={s.id}

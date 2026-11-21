@@ -44,6 +44,8 @@
   --animate-pop-up: pop-up var(--motion-moderate) var(--ease-enter) backwards;
   --animate-dialog-in: dialog-in var(--motion-slow) var(--ease-enter) backwards;
   --animate-fade-in: fade-in var(--motion-moderate) var(--ease-enter) backwards;
+  /* 목록의 새 결과: 불러오는 동안의 흐림(0.6)에서 이어서 또렷해지고 살짝 올라온다. 0부터 시작하면 한 번 깜빡여 보임 */
+  --animate-list-in: list-in var(--motion-slow) var(--ease-enter) backwards;
   --animate-toast-in: toast-in var(--motion-slow) var(--ease-enter) backwards;
   /* 장학생 화면용: 더 길고 멀리(400ms, 12px) */
   --animate-page-in-expressive: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
@@ -181,6 +183,13 @@
 @keyframes fade-in {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes list-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(--spacing(1));
   }
 }
 
