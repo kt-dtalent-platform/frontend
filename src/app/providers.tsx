@@ -7,7 +7,7 @@ import { appUrl } from '../lib/env'
 
 // 401(로그인 만료, 재발급도 실패)이면 토큰을 지우고 로그인 화면으로 보낸다.
 function onAuthExpired(error: unknown) {
-  if (!(error instanceof ApiError) || error.status !== 401) return
+  if (!(error instanceof ApiError) || error.status !== 401 || error.staleSession) return
   // 요청하는 쪽(api)이 이미 재발급을 해 보고도 401이면 다시 로그인해야 한다
   if (!tokenStore.loggedIn()) return
   tokenStore.clear()

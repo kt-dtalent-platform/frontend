@@ -17,6 +17,8 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly details?: unknown
+  // 다른 로그인으로 바뀐 뒤에 도착한 이전 로그인의 401. 지금 로그인을 끊지 않게 표시한다
+  staleSession = false
 
   constructor(status: number, body: ApiErrorBody) {
     super(body.message)
@@ -49,6 +51,8 @@ export function refreshTokens(): Promise<boolean> {
       const json = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken: string; refreshToken: string }> | null
       // 그사이 로그아웃하거나 다른 계정으로 들어왔으면 받은 토큰을 쓰지 않는다
       if (session !== tokenStore.session()) return false
+      // 그사이 다른 쪽(비밀번호 변경)이 이미 새 쌍으로 바꿨으면 그 쌍을 지키고, 이 응답은 버린다
+      if (tokenStore.refresh() !== refreshToken) return tokenStore.access() !== null
       if (json?.resultType !== 'SUCCESS') {
         // 리프레시 토큰이 만료되었거나 이미 쓰였으면 다시 로그인해야 한다. 연결 문제면 토큰을 남겨 둔다
         if (res.status === 401) tokenStore.clear()
@@ -84,11 +88,18 @@ export async function authedFetch(url: string, init: RequestInit = {}): Promise<
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const canRefresh = !NO_REFRESH.test(path)
   if (canRefresh && !tokenStore.access() && tokenStore.refresh()) await refreshTokens()
+  const session = tokenStore.session()
   const sent = tokenStore.access()
   try {
     return await send<T>(path, options)
   } catch (err) {
-    if (!(canRefresh && err instanceof ApiError && err.status === 401 && tokenStore.refresh())) throw err
+    if (!(canRefresh && err instanceof ApiError && err.status === 401)) throw err
+    // 기다리는 사이 로그아웃하거나 다른 계정으로 들어왔으면 이전 요청을 새 토큰으로 다시 보내지 않는다
+    if (session !== tokenStore.session()) {
+      err.staleSession = true
+      throw err
+    }
+    if (!tokenStore.refresh()) throw err
     // 기다리는 사이 다른 요청이 이미 새로 받았으면 그 토큰으로 다시 보낸다
     const renewed = tokenStore.access() !== sent && tokenStore.access() !== null
     if (!renewed && !(await refreshTokens())) throw err
