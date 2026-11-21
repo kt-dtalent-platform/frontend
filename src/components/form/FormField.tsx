@@ -84,8 +84,9 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         )
         break
       case 'SELECT_ONE':
-        // 고를 것이 3개 이하면 펼치지 않고 한눈에 보이는 라디오로
-        if ((field.options ?? []).length <= 3) {
+        // 필수이고 고를 것이 3개 이하면 펼치지 않고 한눈에 보이는 라디오로.
+        // 선택 항목은 고른 것을 다시 비울 수 있어야 해서(라디오는 못 비움) 그대로 선택칸
+        if (field.required && (field.options ?? []).length <= 3) {
           // 눌리는 높이(44px)는 지키되, 위아래 남는 여백을 걷어 다른 칸과 도움말 간격을 맞춘다
           input = (
             <div role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy} className="-my-2.5 flex flex-wrap gap-x-6">

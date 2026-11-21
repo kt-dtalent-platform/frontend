@@ -104,10 +104,10 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
       <ul
         id={listId}
         role="listbox"
-        // 스크롤 막대를 숨겨 고른 줄의 회색 바탕이 좌우 같은 여백이 되게 한다(마우스를 쓰는 맥, 윈도우는 막대가 자리를 차지함)
+        // 스크롤 막대 자리를 양쪽에 같이 둬서 고른 줄의 회색 바탕이 좌우 같은 여백이 되게 한다(막대가 늘 보이는 맥, 윈도우 설정)
         aria-label="학교 목록"
         hidden={!shown}
-        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 no-scrollbar max-h-72 animate-pop-down list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
+        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 scrollbar-both max-h-72 animate-pop-down list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
       >
         {items.map((s, i) => (
           <li
