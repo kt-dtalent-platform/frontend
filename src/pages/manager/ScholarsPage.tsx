@@ -485,9 +485,10 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
             <ScholarStatusBadge status={s.status} plain />
           </span>
           <span className="flex items-baseline justify-between gap-3 text-caption text-ink-3">
-            <MetaList oneLine items={[s.cohortName, s.university]} className="flex min-w-0" />
+            {/* 아주 좁은 화면(320px)에서도 학교가 0이 되지 않게 최소 폭을 두고, 넘치면 오른쪽 설명이 줄어 말줄임 */}
+            <MetaList oneLine items={[s.cohortName, s.university]} className="flex min-w-16 flex-1" />
             {(mobileNote || mobileNotes) && (
-              <span className="flex shrink-0 items-center gap-2">
+              <span className="flex min-w-0 items-center gap-2 truncate">
                 {mobileNote && <span>{mobileNote}</span>}
                 {mobileNotes}
               </span>

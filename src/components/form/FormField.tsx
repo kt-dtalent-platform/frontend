@@ -47,7 +47,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
             aria-invalid={!!error}
             aria-required={required || undefined}
             aria-describedby={describedBy}
-            className={cn(base, 'resize-y py-3 text-input-touch md:text-body-long', border)}
+            className={cn(base, 'resize-y py-3 text-input-touch md:pointer-fine:text-body-long', border)}
             {...register(field.fieldKey, rules)}
           />
         )

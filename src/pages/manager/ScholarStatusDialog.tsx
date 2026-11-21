@@ -152,7 +152,7 @@ export function ScholarStatusDialog({
                 onChange={(e) => setDetail(e.target.value)}
                 aria-invalid={!!detailError}
                 aria-describedby={detailError ? `${detailId}-error` : undefined}
-                className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(!!detailError))}
+                className={cn(fieldBase, 'resize-y py-3 text-input-touch md:pointer-fine:text-body-long', fieldBorder(!!detailError))}
               />
               {detailError && (
                 <p id={`${detailId}-error`} className="m-0 text-caption text-danger-text">

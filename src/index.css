@@ -228,6 +228,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* 불러오는 중 표시의 지연은 움직임이 아니라 번쩍임을 막는 시간이라 그대로 둔다 */
+  .animate-loader-in {
+    animation-delay: var(--motion-loader-delay) !important;
+  }
 }
 
 /* 완료 알림 위치: 휴대폰은 화면 아래 16px에 아이폰 홈 막대 높이를 더하고, PC는 24px */

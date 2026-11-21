@@ -540,7 +540,7 @@ function RevisionDialog({
           onChange={(e) => setReason(e.target.value)}
           aria-invalid={!!reasonError}
           aria-describedby={`${reasonId}-help`}
-          className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(!!reasonError))}
+          className={cn(fieldBase, 'resize-y py-3 text-input-touch md:pointer-fine:text-body-long', fieldBorder(!!reasonError))}
         />
         <p id={`${reasonId}-help`} className={cn('m-0 text-caption', reasonError ? 'text-danger-text' : 'text-ink-3')}>
           {reasonError ?? '장학생에게 그대로 보여요.'}
