@@ -14,6 +14,7 @@ import { RequestStatusBadge } from '../../components/ui/RequestStatusBadge'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
+import { useChangeKey } from '../../lib/useChangeKey'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
@@ -57,6 +58,8 @@ export function RequestsPage() {
   }
 
   const data = query.data
+  // 필터, 쪽, 정렬로 새 결과가 오면 행 목록만 다시 나타난다(표 머리와 쪽 번호는 그대로라 키보드 포커스가 남는다). 같은 결과를 다시 불러오면 그대로
+  const listKey = useChangeKey(data?.items)
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData // 탭·페이지를 바꿔 새 결과를 기다리는 중(이전 결과가 대신 보임)
 
@@ -122,7 +125,7 @@ export function RequestsPage() {
                 </span>
                 <span className="w-5" />
               </div>
-              <ul className="m-0 list-none p-0">
+              <ul key={listKey} className={cn('m-0 list-none p-0', listKey > 0 && 'animate-list-in')}>
                 {data.items.map((r) => (
                   <Row key={r.id} row={r} />
                 ))}

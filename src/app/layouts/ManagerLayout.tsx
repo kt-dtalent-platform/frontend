@@ -1,23 +1,38 @@
 import { ClipboardList, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router'
+import { NavLink, matchPath, useLocation } from 'react-router'
 import { PageTransition } from './PageTransition'
 import { Button } from '../../components/ui/Button'
 import { Logo } from '../../components/ui/Logo'
 import { UserMenu } from '../../components/ui/UserMenu'
 import { cn } from '../../lib/cn'
 
-const menu: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
+// also: 메뉴 밖 화면이지만 이 메뉴 아래로 보는 경로(개별 검토는 요청 관리 → 제출 현황에서 들어감)
+const menu: { to: string; label: string; icon: LucideIcon; end?: boolean; also?: string[] }[] = [
   { to: '/manager', label: '대시보드', icon: LayoutDashboard, end: true },
-  { to: '/manager/requests', label: '요청 관리', icon: ClipboardList },
+  { to: '/manager/requests', label: '요청 관리', icon: ClipboardList, also: ['/manager/submissions'] },
   { to: '/manager/scholars', label: '장학생', icon: Users },
 ]
 
 // compact: 메뉴를 접었을 때. 아이콘만 보이고 이름은 낭독기와 마우스 툴팁으로 전한다.
+// 고른 메뉴의 바탕(과 KT 스퀘어)은 하나만 두고, 다른 메뉴로 옮기면 그 자리로 미끄러져 간다. 어디서 어디로 갔는지 보인다
 function Nav({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
+  const { pathname } = useLocation()
+  const active = menu.findIndex(({ to, end, also = [] }) => [to, ...also].some((path) => matchPath({ path, end: !!end }, pathname)))
   return (
-    <nav aria-label="담당자 메뉴" className="flex flex-col gap-1">
-      {menu.map(({ to, label, icon: Icon, end }) => (
+    <nav aria-label="담당자 메뉴" className="relative flex flex-col gap-1">
+      {active >= 0 && (
+        <span
+          aria-hidden
+          // 메뉴 한 칸(h-control-default)과 칸 사이(gap-1)만큼 내려간다. 둘 중 하나를 바꾸면 여기도 같이
+          style={{ transform: `translateY(calc(${active} * (var(--spacing-control-default) + var(--spacing))))` }}
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 h-control-default rounded-md bg-surface-sunken transition-transform duration-(--motion-slow) ease-(--ease-standard)',
+            !compact && 'before:absolute before:top-4 before:left-2 before:size-kt-square before:rounded-xs before:bg-kt-red',
+          )}
+        />
+      )}
+      {menu.map(({ to, label, icon: Icon, end }, i) => (
         <NavLink
           key={to}
           to={to}
@@ -28,11 +43,10 @@ function Nav({ onNavigate, compact }: { onNavigate?: () => void; compact?: boole
             cn(
               // 펼친 메뉴: 모든 상태에서 KT 스퀘어 자리(왼쪽 24px)를 비워 둬 글자 시작점이 같다.
               // 접은 메뉴: 아이콘만 있어 스퀘어 자리가 애매하므로 바탕과 진한 아이콘으로만 선택을 보인다(11/12)
-              'relative flex h-control-default items-center gap-2 rounded-md text-label font-normal text-ink-2 no-underline',
-              compact ? 'justify-center px-0' : 'pr-3 pl-6 before:absolute before:top-4 before:left-2 before:size-kt-square before:rounded-xs',
-              'hover:bg-surface-hover active:bg-surface-sunken',
-              isActive && 'bg-surface-sunken font-semibold text-ink',
-              isActive && !compact && 'before:bg-kt-red',
+              'relative flex h-control-default items-center gap-2 rounded-md text-label font-normal text-ink-2 no-underline transition-colors',
+              compact ? 'justify-center px-0' : 'pr-3 pl-6',
+              // 누를 때 바탕은 두지 않는다(미끄러져 오는 바탕과 겹쳐 보임)
+              isActive || i === active ? 'font-semibold text-ink' : 'hover:bg-surface-hover',
             )
           }
         >

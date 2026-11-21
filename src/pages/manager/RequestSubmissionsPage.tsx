@@ -30,6 +30,7 @@ import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateV
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { RowNote } from '../../components/ui/RowNote'
 import { cn } from '../../lib/cn'
+import { useChangeKey } from '../../lib/useChangeKey'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
@@ -70,6 +71,8 @@ export function RequestSubmissionsPage() {
   }
   const query = useRequestSubmissions(requestId, { status, keyword, page, sort })
   const data = query.data
+  // 필터, 쪽, 정렬로 새 결과가 오면 행 목록만 다시 나타난다(표 머리와 쪽 번호는 그대로라 키보드 포커스가 남는다). 같은 결과를 다시 불러오면 그대로
+  const listKey = useChangeKey(data?.items)
   usePageTitle(data ? `${data.request.title} 제출 현황` : '제출 현황')
 
   const go = (next: { status?: StatusFilter | null; page?: number; q?: string; sort?: Sort }) => {
@@ -267,7 +270,7 @@ export function RequestSubmissionsPage() {
                     <span className="w-28 shrink-0 pl-4">비고</span>
                     <span className="w-5 shrink-0" />
                   </div>
-                  <ul className="m-0 list-none p-0">
+                  <ul key={listKey} className={cn('m-0 list-none p-0', listKey > 0 && 'animate-list-in')}>
                     {data.items.map((r) => (
                       <Row
                         key={r.scholarId}
