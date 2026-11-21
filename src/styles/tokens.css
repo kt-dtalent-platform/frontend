@@ -10,6 +10,7 @@
   --color-gray-150: #EBEBEB;
   --color-gray-200: #DEDEDE;
   --color-gray-400: #9E9E9E;
+  --color-gray-450: #949494;
   --color-gray-500: #7A7A7A;
   --color-gray-600: #5B5B5B;
   --color-gray-700: #3D3D3D;
@@ -28,8 +29,7 @@
   --color-line: #DEDEDE;
   --color-line-subtle: #EBEBEB;
   --color-line-control: #7A7A7A;
-  /* 글자 입력칸 테두리. 라벨이 칸을 알려 주니 테두리는 연하게, 올리면 line-control로 진해진다 */
-  --color-line-input: #C4C4C4;
+  --color-line-input: #949494;
   --color-action: #161616;
   --color-action-hover: #3D3D3D;
   --color-on-action: #FFFFFF;
