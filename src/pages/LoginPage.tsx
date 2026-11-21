@@ -125,8 +125,9 @@ function MockGuide() {
       <dl className="m-0 flex flex-col gap-1">
         {rows.map(([k, v]) => (
           <div key={k} className="flex gap-3">
+            {/* 낱말 중간에서 끊지 않는다(temp1234가 t / emp1234로 갈리지 않게). 칸보다 긴 낱말만 끊는다 */}
             <dt className="w-24 shrink-0 text-ink-3">{k}</dt>
-            <dd className="m-0 break-all text-ink-2">{v}</dd>
+            <dd className="m-0 break-keep wrap-anywhere text-ink-2">{v}</dd>
           </div>
         ))}
       </dl>
