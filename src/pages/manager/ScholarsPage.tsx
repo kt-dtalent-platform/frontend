@@ -281,22 +281,23 @@ export function ScholarsPage() {
                     )}
                   </label>
                   {sel.length > 0 ? (
-                    <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+                    <div className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1">
                       {/* 고른 동안 열 제목 자리를 같은 높이로 바꾼다(행이 밀리지 않게).
-                          위계: 고른 수(굵게) | 할 일(아이콘과 글자) ... 해제(맨 오른쪽, 흐리게) */}
+                          위계: 고른 수(굵게) | 할 일(아이콘과 글자) ... 해제(맨 오른쪽, 흐리게).
+                          px-1: 가로로 밀리는 줄이 포커스 테두리 양끝을 자르지 않게. 휴대폰은 할 일을 아이콘만(이름은 낭독기에 남김) */}
                       <span className="shrink-0 text-label tabular-nums">{sel.length}명 고름</span>
                       <span aria-hidden className="mx-2 h-4 w-px shrink-0 bg-line" />
                       <Button size="compact" variant="ghost" className="shrink-0 px-2" onClick={() => (bulk.reset(), setBulkOpen(true))}>
                         <ArrowRightLeft size={16} strokeWidth={2} aria-hidden />
-                        상태 바꾸기
+                        <span className="max-md:sr-only">상태 바꾸기</span>
                       </Button>
                       <Button size="compact" variant="ghost" className="shrink-0 px-2" onClick={() => setNoticeOpen(true)}>
                         <Mail size={16} strokeWidth={2} aria-hidden />
-                        로그인 안내 보내기
+                        <span className="max-md:sr-only">로그인 안내 보내기</span>
                       </Button>
                       <Button size="compact" variant="ghost" className="ml-auto shrink-0 px-2 text-ink-3" onClick={() => setPicked([])}>
                         <X size={16} strokeWidth={2} aria-hidden />
-                        고르기 해제
+                        <span className="max-md:sr-only">고르기 해제</span>
                       </Button>
                     </div>
                   ) : (
