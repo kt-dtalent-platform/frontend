@@ -171,6 +171,9 @@ export const handlers = [
 
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const { email, password } = (await request.json()) as { email: string; password: string }
+    // 목업: locked로 시작하면 5번 틀려 잠긴 계정(30분 뒤 풀림, 백엔드 #112)
+    if (email.startsWith('locked'))
+      return fail('/v1/auth/login', 423, 'ACCOUNT_LOCKED', '잠긴 계정입니다.', { lockedUntil: new Date(Date.now() + 30 * 60_000).toISOString() })
     if (password.length < 8) {
       return fail('/v1/auth/login', 401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 올바르지 않습니다')
     }

@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { sortParam, type Sort } from '../lib/sort'
 import { ApiError, BASE_URL, api, authedFetch } from './client'
 import type { SubmissionStatus } from './types'
+import type { RequestStatus } from './manager'
 
 // 담당자 제출 현황과 개별 검토. 제출 현황, 개별 조회는 백엔드 KT-55(#85). 확인 완료, 보완 요청은 PR #89 머지 대기
 
@@ -22,7 +23,7 @@ export type SubmissionRow = {
   hasInputError: boolean
 }
 export type SubmissionPage = {
-  request: { id: number; title: string; cohortName: string | null; closesAt: string | null }
+  request: { id: number; title: string; cohortName: string | null; closesAt: string | null; status: RequestStatus }
   summary: StatusSummary
   items: SubmissionRow[]
   page: number
@@ -38,7 +39,7 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
   const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
-  // 열 정렬. 백엔드에 아직 없음(11/15 요청). 실제 서버일 때는 화면에서 보내지 않는다
+  // 열 정렬: sort=name|cohort|university|status|gpa|submittedAt,asc|desc (백엔드 #114)
   const order = sortParam(q.sort ?? null)
   if (order) params.set('sort', order)
   return useQuery({

@@ -131,7 +131,7 @@ export function submissionList(requestId: number, status: string | null, keyword
   )
   const p = Math.max(1, page)
   return {
-    request: { id: req.id, title: req.title, cohortName: req.cohortName, closesAt: req.closesAt },
+    request: { id: req.id, title: req.title, cohortName: req.cohortName, closesAt: req.closesAt, status: req.status },
     summary,
     items: filtered.slice((p - 1) * pageSize, p * pageSize).map(({ index: _i, ...r }) => r),
     page: p,

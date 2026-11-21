@@ -2,17 +2,10 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { nextSort, type Sort } from '../../lib/sort'
 
-type Props = { label: string; sortKey: string; sort: Sort; onSort: (next: Sort) => void; className?: string; disabled?: boolean; sortable?: boolean }
+type Props = { label: string; sortKey: string; sort: Sort; onSort: (next: Sort) => void; className?: string; disabled?: boolean }
 
 // 목록 머리의 열 이름. 누르면 그 열로 정렬한다.
-// sortable이 false면(서버가 아직 정렬을 안 할 때) 누를 수 없는 열 이름만 보인다. 행마다 읽히므로 스크린 리더에는 숨긴다
-export function SortHeader({ label, sortKey, sort, onSort, className, disabled, sortable = true }: Props) {
-  if (!sortable)
-    return (
-      <span aria-hidden className={cn('text-caption text-ink-3', className)}>
-        {label}
-      </span>
-    )
+export function SortHeader({ label, sortKey, sort, onSort, className, disabled }: Props) {
   const dir = sort?.key === sortKey ? sort.dir : null
   const Icon = dir === 'asc' ? ArrowUp : dir === 'desc' ? ArrowDown : ArrowUpDown
   const state = dir === 'asc' ? '오름차순으로 정렬됨' : dir === 'desc' ? '내림차순으로 정렬됨' : '정렬 안 됨'

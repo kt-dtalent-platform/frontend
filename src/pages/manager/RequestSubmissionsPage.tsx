@@ -10,7 +10,6 @@ import {
   type StatusFilter,
   type SubmissionRow,
 } from '../../api/review'
-import { useRequestDetail } from '../../api/manager'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, kstParts, kstToUtc, kstToday, toDate } from '../../lib/time'
 import { ApiError } from '../../api/client'
@@ -33,7 +32,6 @@ import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
-import { liveRequestsOn } from '../../lib/env'
 import { MetaList } from '../../components/ui/MetaList'
 import { errorText } from '../../api/errorText'
 
@@ -61,9 +59,8 @@ export function RequestSubmissionsPage() {
   const status = (filters.find((f) => f.value === params.get('status'))?.value ?? null) as StatusFilter | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
   const keyword = params.get('q') ?? ''
-  // 실제 서버의 제출 현황은 아직 열 정렬을 하지 않는다(서버 순서: 검토 대기, 보완 필요, 미제출, 확인 완료). 그동안은 열 이름만 보인다
-  const canSort = !liveRequestsOn
-  const sort = canSort ? parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt']) : null
+  // 열 정렬(백엔드 #114). 기본 순서는 검토 대기, 보완 필요, 미제출, 확인 완료
+  const sort = parseSort(params.get('sort'), ['name', 'cohort', 'university', 'status', 'gpa', 'submittedAt'])
   const [typed, setTyped] = useState(keyword)
   // 뒤로 가기 등으로 주소의 검색어가 바뀌면 입력칸도 맞춘다
   const [seen, setSeen] = useState(keyword)
@@ -135,9 +132,10 @@ export function RequestSubmissionsPage() {
   }, [data, query.isPlaceholderData, page, lastPage, params, setParams])
 
   // 마감을 늘릴 장학생(미제출, 작성 중). 고르면 대화상자가 열린다.
-  // 백엔드는 진행 중인 요청만 늘려 준다. 제출 현황 응답에 요청 상태가 없어 요청 상세에서 읽는다
+  // 백엔드는 진행 중인 요청만 늘려 준다. 요청 상태는 제출 현황 응답에 함께 온다(백엔드 #114)
   const [extending, setExtending] = useState<{ scholarId: number; name: string } | null>(null)
-  const canExtend = useRequestDetail(requestId).data?.status === 'IN_PROGRESS'
+  // 다른 요청으로 넘어가는 동안 이전 요청의 상태로 버튼을 보이지 않게, 이 요청의 응답일 때만 본다
+  const canExtend = data?.request.id === requestId && data.request.status === 'IN_PROGRESS'
 
   return (
     <div className="flex flex-col gap-6">
@@ -213,53 +211,12 @@ export function RequestSubmissionsPage() {
             <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
+                  <SortHeader label="이름" sortKey="name" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
+                  <SortHeader label="기수" sortKey="cohort" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28" />
+                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-44" />
+                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-48" />
+                  <SortHeader label="평점" sortKey="gpa" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-20 text-right" />
                   <SortHeader
-                    sortable={canSort}
-                    label="이름"
-                    sortKey="name"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="flex-1"
-                  />
-                  <SortHeader
-                    sortable={canSort}
-                    label="기수"
-                    sortKey="cohort"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="w-28"
-                  />
-                  <SortHeader
-                    sortable={canSort}
-                    label="학교"
-                    sortKey="university"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="w-44"
-                  />
-                  <SortHeader
-                    sortable={canSort}
-                    label="상태"
-                    sortKey="status"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="w-48"
-                  />
-                  <SortHeader
-                    sortable={canSort}
-                    label="평점"
-                    sortKey="gpa"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="w-20 text-right"
-                  />
-                  <SortHeader
-                    sortable={canSort}
                     label="제출"
                     sortKey="submittedAt"
                     sort={sort}

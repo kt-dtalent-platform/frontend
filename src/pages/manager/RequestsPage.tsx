@@ -6,7 +6,6 @@ import { daysUntil, isPastDue } from '../../api/tasks'
 import { Banner } from '../../components/ui/Banner'
 import { Pagination } from '../../components/ui/Pagination'
 import { SortHeader } from '../../components/ui/SortHeader'
-import { liveRequestsOn } from '../../lib/env'
 import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { buttonClass } from '../../components/ui/buttonClass'
 import type { Notice } from './RequestCreatePage'
@@ -34,9 +33,8 @@ export function RequestsPage() {
   const [params, setParams] = useSearchParams()
   const status = (tabs.find((t) => t.status === params.get('status'))?.status ?? null) as RequestStatus | null
   const page = Math.max(1, Math.floor(Number(params.get('page'))) || 1)
-  // 실제 서버의 요청 목록은 아직 열 정렬을 하지 않는다. 눌러도 순서가 그대로면 헷갈리니 그동안은 열 이름만 보인다
-  const canSort = !liveRequestsOn
-  const sort = canSort ? parseSort(params.get('sort'), ['title', 'status', 'closesAt']) : null
+  // 열 정렬(백엔드 #114): sort=title|status|closesAt,asc|desc
+  const sort = parseSort(params.get('sort'), ['title', 'status', 'closesAt'])
   const query = useRequests({ status, page, sort })
   // 요청 만들기에서 넘어온 결과 안내(작성 중으로 저장, 공개). 한 번 보여 준 뒤 기록에서 지워 새로고침하면 사라지게 한다
   const location = useLocation()
@@ -105,25 +103,9 @@ export function RequestsPage() {
           <div className="overflow-hidden rounded-lg bg-surface">
             {/* 머리 행: 넓은 화면에서만. 좁은 화면은 행 안에서 이름을 붙여 보여 준다 */}
             <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-              {canSort ? (
-                <>
-                  <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
-                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
-                  <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
-                </>
-              ) : (
-                <>
-                  <span aria-hidden className="flex-1">
-                    요청
-                  </span>
-                  <span aria-hidden className="w-24">
-                    상태
-                  </span>
-                  <span aria-hidden className="w-52">
-                    마감
-                  </span>
-                </>
-              )}
+              <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
+              <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
+              <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
               <span aria-hidden className="w-24 text-right">
                 제출
               </span>
