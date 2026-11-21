@@ -65,8 +65,30 @@ function saveBank(a: MockBank) {
 const roleOf = (request: Request): 'MANAGER' | 'SCHOLAR' | null => {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/, '')
   if (!token) return null
-  if (token.startsWith('mock-')) return token.includes('manager') ? 'MANAGER' : 'SCHOLAR'
+  if (token.startsWith('mock-')) return mockTokenRole(token)
   return jwtRole(token)
+}
+
+// 목업 토큰: mock-access-역할-만료시각(ms), mock-refresh-역할-번호. 백엔드처럼 액세스 30분, 리프레시는 한 번 쓰면 바뀐다
+const ACCESS_MS = 30 * 60_000
+const USED_REFRESH = 'kt-dtalent:mock-used-refresh'
+const mockTokens = (role: 'MANAGER' | 'SCHOLAR') => ({
+  accessToken: `mock-access-${role.toLowerCase()}-${Date.now() + ACCESS_MS}`,
+  refreshToken: `mock-refresh-${role.toLowerCase()}-${Math.random().toString(36).slice(2)}`,
+})
+function mockTokenRole(token: string): 'MANAGER' | 'SCHOLAR' | null {
+  const [, kind, role, exp] = token.split('-')
+  if (kind !== 'access') return null
+  // 예전 목업 토큰(만료 시각 없음)은 그대로 받는다
+  if (exp && Number(exp) < Date.now()) return null
+  return role === 'manager' ? 'MANAGER' : 'SCHOLAR'
+}
+function usedRefresh(): string[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(USED_REFRESH) ?? '[]') as string[]
+  } catch {
+    return []
+  }
 }
 
 function jwtRole(token: string): 'MANAGER' | 'SCHOLAR' | null {
@@ -100,6 +122,13 @@ function mockDeadline(requestId: number, scholarId: number) {
 }
 
 export const handlers = [
+  // 백엔드처럼 토큰이 없거나 만료되면 어느 API든 먼저 401(담당자 전용 API의 403보다 앞선다). 로그인과 재발급은 빼고
+  http.all(`${BASE}/*`, ({ request }) => {
+    const path = new URL(request.url).pathname
+    if (/\/v1\/auth\/(login|refresh|logout)$/.test(path)) return
+    const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/, '')
+    if (!token || (token.startsWith('mock-') && !mockTokenRole(token))) return unauthorized(path)
+  }),
   // 로그인 안내 메일(백엔드 KT-60). /scholars/:id보다 먼저 둔다
   http.get(`${BASE}/scholars/login-notices/sender`, ({ request }) => {
     const path = '/v1/scholars/login-notices/sender'
@@ -150,14 +179,29 @@ export const handlers = [
     // 목업: new로 시작하는 계정이 temp로 시작하는 임시 비밀번호로 들어오면 첫 로그인
     const first = email.startsWith('new') && password.startsWith('temp')
     return ok('/v1/auth/login', {
-      accessToken: `mock-access-${role.toLowerCase()}`,
+      ...mockTokens(role),
       role,
       name: ME[role].name,
       passwordChangeRequired: first,
     })
   }),
 
-  // 백엔드에 아직 없음. 리프레시 토큰이 생기면 쓴다
+  // 토큰 재발급(백엔드 #108): 리프레시 토큰은 한 번만 쓸 수 있고 새 쌍을 준다
+  http.post(`${BASE}/auth/refresh`, async ({ request }) => {
+    const path = '/v1/auth/refresh'
+    const { refreshToken } = (await request.json()) as { refreshToken: string }
+    const [, kind, role] = (refreshToken ?? '').split('-')
+    const used = usedRefresh()
+    if (kind !== 'refresh' || used.includes(refreshToken))
+      return fail(path, 401, 'INVALID_REFRESH_TOKEN', '만료되었거나 이미 사용된 토큰입니다. 다시 로그인해 주세요.')
+    try {
+      sessionStorage.setItem(USED_REFRESH, JSON.stringify([...used, refreshToken].slice(-50)))
+    } catch {
+      // 저장소를 못 쓰면 한 번 쓰기 검사만 건너뛴다
+    }
+    return ok(path, mockTokens(role === 'manager' ? 'MANAGER' : 'SCHOLAR'))
+  }),
+
   http.post(`${BASE}/auth/logout`, () => ok('/v1/auth/logout', null)),
 
   http.get(`${BASE}/me`, ({ request }) => {
@@ -175,7 +219,8 @@ export const handlers = [
     if (newPassword.length < 8 || newPassword.length > 64) return fail(path, 400, 'INVALID_REQUEST', '요청 값이 올바르지 않습니다.')
     if (!currentPassword.startsWith('temp')) return fail(path, 400, 'PASSWORD_MISMATCH', '현재 비밀번호가 올바르지 않습니다.')
     if (newPassword === currentPassword) return fail(path, 400, 'SAME_AS_CURRENT', '기존 비밀번호와 동일합니다.')
-    return ok(path, { passwordChangedAt: now() })
+    // 백엔드 #108: 이전 토큰은 끊기고 이 기기에서 쓸 새 쌍을 준다
+    return ok(path, { passwordChangedAt: now(), ...mockTokens(roleOf(request)!) })
   }),
 
   // 장학금 받을 계좌(백엔드 #77). 목업은 이 브라우저에만 저장하고, 응답에는 뒤 4자리만 준다

@@ -29,8 +29,74 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, 'body'> & { body?: unknown }
 
+// 로그인, 재발급, 로그아웃은 토큰 재발급 대상이 아니다
+const NO_REFRESH = /^\/auth\/(login|refresh|logout)$/
+
+// 액세스 토큰을 새로 받는다(백엔드 #108). 동시에 여러 요청이 401을 받아도 재발급은 한 번만 한다.
+// 리프레시 토큰은 한 번 쓰면 바뀌므로 두 번 보내면 두 번째가 실패한다.
+let refreshing: Promise<boolean> | null = null
+export function refreshTokens(): Promise<boolean> {
+  const refreshToken = tokenStore.refresh()
+  if (!refreshToken) return Promise.resolve(false)
+  refreshing ??= (async () => {
+    const session = tokenStore.session()
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      const json = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken: string; refreshToken: string }> | null
+      // 그사이 로그아웃하거나 다른 계정으로 들어왔으면 받은 토큰을 쓰지 않는다
+      if (session !== tokenStore.session()) return false
+      if (json?.resultType !== 'SUCCESS') {
+        // 리프레시 토큰이 만료되었거나 이미 쓰였으면 다시 로그인해야 한다. 연결 문제면 토큰을 남겨 둔다
+        if (res.status === 401) tokenStore.clear()
+        return false
+      }
+      tokenStore.rotate(json.success.data)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshing = null
+    }
+  })()
+  return refreshing
+}
+
+// 파일 내려받기처럼 공통 응답이 아닌 요청. 토큰을 붙이고, 401이면 한 번 재발급하고 다시 보낸다
+export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!tokenStore.access() && tokenStore.refresh()) await refreshTokens()
+  const go = () => {
+    const headers = new Headers(init.headers)
+    const token = tokenStore.access()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    return fetch(url, { ...init, headers })
+  }
+  const res = await go()
+  if (res.status !== 401 || !(await refreshTokens())) return res
+  return go()
+}
+
 // 공통 응답을 풀어서 data만 돌려준다. 실패면 ApiError를 던진다.
-export async function api<T>(path: string, { body, headers, ...init }: RequestOptions = {}): Promise<T> {
+// 액세스 토큰이 없거나(새로고침 직후) 401이면 한 번 재발급하고 다시 보낸다.
+export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const canRefresh = !NO_REFRESH.test(path)
+  if (canRefresh && !tokenStore.access() && tokenStore.refresh()) await refreshTokens()
+  const sent = tokenStore.access()
+  try {
+    return await send<T>(path, options)
+  } catch (err) {
+    if (!(canRefresh && err instanceof ApiError && err.status === 401 && tokenStore.refresh())) throw err
+    // 기다리는 사이 다른 요청이 이미 새로 받았으면 그 토큰으로 다시 보낸다
+    const renewed = tokenStore.access() !== sent && tokenStore.access() !== null
+    if (!renewed && !(await refreshTokens())) throw err
+    return send<T>(path, options)
+  }
+}
+
+async function send<T>(path: string, { body, headers, ...init }: RequestOptions): Promise<T> {
   const token = tokenStore.access()
   // 호출하는 쪽이 넘긴 헤더가 먼저다. 없을 때만 기본값을 채운다.
   const merged = new Headers(headers)
