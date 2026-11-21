@@ -113,12 +113,38 @@ export type SubmitResult = {
   version?: number
 }
 
+// 문서 분석(OCR, 백엔드 #101). 제출과 재제출이 끝난 뒤에 부른다.
+// 서버는 부르는 순간 저장된 입력값과 비교하고, 입력값이 나중에 바뀌면 그 결과를 검토 화면에 주지 않는다.
+// 그래서 파일을 올릴 때가 아니라 입력값이 정해진 제출 뒤에 부른다. 서버가 스스로 다시 분석하지는 않는다.
+// 비교하는 입력값은 gpa, gpa_scale, credits로 서버에 고정돼 있다. 이 값이 없는 요청은 부르지 않는다.
+// 다시 부르면 이전 결과는 무효라 성적증명서 칸의 마지막 파일 하나만 부른다. 장학생 화면은 결과를 기다리지 않는다.
+const COMPARED_KEYS = ['gpa', 'gpa_scale', 'credits']
+
+function analyzedFileField(fields: FormField[]) {
+  const files = fields.filter((f) => f.fieldType === 'FILE')
+  return files.find((f) => f.fieldKey === 'transcript') ?? (files.length === 1 ? files[0] : undefined)
+}
+
+function requestAnalysis(form: SubmissionForm, submissionId: number) {
+  if (!form.fields.some((f) => COMPARED_KEYS.includes(f.fieldKey))) return
+  const field = analyzedFileField(form.fields)
+  if (!field) return
+  // 재제출에서 성적증명서도 비교 값도 고치지 않았으면 지난 결과가 그대로 맞다
+  const changed = form.editableFieldKeys.some((k) => k === field.fieldKey || COMPARED_KEYS.includes(k))
+  if (!changed) return
+  const file = form.files.filter((f) => f.fieldKey === field.fieldKey).at(-1)
+  if (!file) return
+  api(`/submissions/${submissionId}/files/${file.id}/analysis`, { method: 'POST' }).catch((err) => console.warn('문서 분석 요청 실패', err))
+}
+
 export function useSubmit(requestId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ resubmit, ...body }: { answers: Answers; version: number; resubmit: boolean }) =>
       api<SubmitResult>(`/me/submissions/${requestId}/${resubmit ? 'resubmit' : 'submit'}`, { method: 'POST', body }),
     onSuccess: (result) => {
+      const prev = queryClient.getQueryData<SubmissionForm>(submissionKey(requestId))
+      if (prev) requestAnalysis(prev, result.submissionId)
       // 다시 불러오기 전에도 바로 잠기도록 상태와 수정 가능 항목을 먼저 바꾼다
       queryClient.setQueryData<SubmissionForm>(submissionKey(requestId), (prev) => (prev ? { ...prev, status: result.status, editableFieldKeys: [] } : prev))
       // 버전 등 나머지는 서버 값으로 다시 불러온다

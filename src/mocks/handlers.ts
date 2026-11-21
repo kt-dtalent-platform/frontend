@@ -287,6 +287,26 @@ export const handlers = [
   }),
 
   // 파일 3단계: 업로드 완료 처리
+  // 문서 분석(백엔드 #94 #101): 목업은 분석하지 않고 완료 응답만 준다. 검토 화면 비교는 review.ts가 따로 만든다
+  http.post(`${BASE}/submissions/:submissionId/files/:fileId/analysis`, async ({ params, request }) => {
+    const path = `/v1/submissions/${params.submissionId}/files/${params.fileId}/analysis`
+    if (!roleOf(request)) return unauthorized(path)
+    await delay(800)
+    return ok(path, {
+      id: Date.now(),
+      submissionId: Number(params.submissionId),
+      fileId: Number(params.fileId),
+      attemptNumber: 1,
+      status: 'COMPLETED',
+      overallResult: 'MATCH',
+      comparisons: [],
+      failureReason: null,
+      outdated: false,
+      requestedAt: now(),
+      completedAt: now(),
+    })
+  }),
+
   http.post(`${BASE}/submissions/:submissionId/files/:fileId/complete`, ({ params, request }) => {
     const fileId = Number(params.fileId)
     const path = `/v1/submissions/${params.submissionId}/files/${fileId}/complete`
