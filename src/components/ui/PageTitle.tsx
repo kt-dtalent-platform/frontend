@@ -4,7 +4,8 @@ import type { ReactNode } from 'react'
 export function PageTitle({ children, description }: { children: ReactNode; description?: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h1 className="m-0 text-title-1">{children}</h1>
+      {/* 제목 줄은 버튼(40px)이 옆에 있든 없든 40px. 화면을 옮겨도 제목과 그 아래 필터의 위치가 같다 */}
+      <h1 className="m-0 flex min-h-control-default items-center text-title-1">{children}</h1>
       {description && <p className="m-0 text-caption text-ink-3">{description}</p>}
     </div>
   )

@@ -1,4 +1,4 @@
-import { Ban, ChevronDown, Download, Lock, Plus, Search } from 'lucide-react'
+import { ArrowRightLeft, Ban, ChevronDown, Download, Lock, Mail, Plus, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -263,7 +263,7 @@ export function ScholarsPage() {
             <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
-                <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
+                <div className="flex h-control-default items-center gap-4 border-b border-line-subtle px-6">
                   {/* 상자는 16px, 누르는 영역은 줄 높이만큼 */}
                   <label className="-mx-3 flex cursor-pointer items-center gap-3 self-stretch px-3">
                     <Checkbox
@@ -281,15 +281,21 @@ export function ScholarsPage() {
                     )}
                   </label>
                   {sel.length > 0 ? (
-                    <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 py-2">
-                      <span className="mr-2 text-label tabular-nums">{sel.length}명 고름</span>
-                      <Button size="compact" onClick={() => (bulk.reset(), setBulkOpen(true))}>
+                    <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+                      {/* 고른 동안 열 제목 자리를 같은 높이로 바꾼다(행이 밀리지 않게).
+                          위계: 고른 수(굵게) | 할 일(아이콘과 글자) ... 해제(맨 오른쪽, 흐리게) */}
+                      <span className="shrink-0 text-label tabular-nums">{sel.length}명 고름</span>
+                      <span aria-hidden className="mx-2 h-4 w-px shrink-0 bg-line" />
+                      <Button size="compact" variant="ghost" className="shrink-0 px-2" onClick={() => (bulk.reset(), setBulkOpen(true))}>
+                        <ArrowRightLeft size={16} strokeWidth={2} aria-hidden />
                         상태 바꾸기
                       </Button>
-                      <Button size="compact" onClick={() => setNoticeOpen(true)}>
+                      <Button size="compact" variant="ghost" className="shrink-0 px-2" onClick={() => setNoticeOpen(true)}>
+                        <Mail size={16} strokeWidth={2} aria-hidden />
                         로그인 안내 보내기
                       </Button>
-                      <Button size="compact" variant="ghost" onClick={() => setPicked([])}>
+                      <Button size="compact" variant="ghost" className="ml-auto shrink-0 px-2 text-ink-3" onClick={() => setPicked([])}>
+                        <X size={16} strokeWidth={2} aria-hidden />
                         고르기 해제
                       </Button>
                     </div>
