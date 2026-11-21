@@ -38,7 +38,7 @@ export class UploadError extends Error {
   }
 }
 
-// 성적증명서 칸에 올린 파일은 바로 문서 분석(OCR)을 요청한다(백엔드 #94 #101).
+// 성적증명서 칸에 올린 파일은 바로 문서 분석(OCR)을 요청한다(백엔드 #101).
 // 결과는 담당자 검토 화면의 analysis로 본다. 장학생 화면은 기다리지 않고, 실패해도 올리기는 끝난 것으로 둔다.
 // 칸 이름 transcript는 백엔드 테스트와 목업 기준(실제 템플릿 값은 확인 필요)
 const ANALYZED_FIELD = 'transcript'

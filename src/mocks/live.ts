@@ -54,7 +54,6 @@ export function isLive(pathname: string) {
 // 확인 완료, 보완 요청(#89), 파일 올리기 완료와 원본 보기(#62, #59)는 목업에 남기지 않는다.
 // 실제 서버에서 만든 제출 ID를 목업이 모르기 때문이다. 백엔드 PR이 머지되기 전에는 실패로 보인다(11/18 오후 기준).
 const notYet: [method: string, path: RegExp][] = [
-  ['POST', /^\/submissions\/\d+\/files\/\d+\/analysis$/], // 문서 분석(백엔드 #101 머지되면 지운다)
   // 로그인 안내 메일(백엔드 KT-60 머지되면 지운다)
   ['GET', /^\/scholars\/login-notices/],
   ['PUT', /^\/scholars\/login-notices\/sender$/],

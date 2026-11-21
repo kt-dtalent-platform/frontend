@@ -118,7 +118,7 @@ function fileNameOf(header: string | null) {
 }
 
 // GET /submissions/{submissionId}
-// analysis(문서 분석 결과)는 명세서에서 별도 API(/analysis-results/{id})지만, 연결 키가 없어 상세에 함께 온다고 가정한다(확인 필요)
+// analysis(문서 분석 결과)는 상세에 함께 온다(백엔드 #94 AnswerComparison). 분석 전이면 null
 export type Comparison = { field: string; label: string; entered: string; extracted: string | null; result: 'MATCH' | 'MISMATCH' | 'UNREADABLE' }
 export type SubmissionDetail = {
   id: number
