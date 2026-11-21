@@ -145,6 +145,9 @@ export const handlers = [
     if (password.length < 8) {
       return fail('/v1/auth/login', 401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 올바르지 않습니다')
     }
+    // 목업: locked로 시작하면 5번 틀려 잠긴 계정(30분 뒤 풀림, 백엔드 #112)
+    if (email.startsWith('locked'))
+      return fail('/v1/auth/login', 423, 'ACCOUNT_LOCKED', '잠긴 계정입니다.', { lockedUntil: new Date(Date.now() + 30 * 60_000).toISOString() })
     // 목업: admin 또는 newadmin으로 시작하면 담당자, new로 시작하면 임시 비밀번호로 처음 로그인한 계정
     const role = /^(new)?admin/.test(email) ? 'MANAGER' : 'SCHOLAR'
     // 목업: new로 시작하는 계정이 temp로 시작하는 임시 비밀번호로 들어오면 첫 로그인

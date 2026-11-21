@@ -51,14 +51,8 @@ export function isLive(pathname: string) {
 }
 
 // 묶음을 켜도 백엔드에 아직 없는 API는 목업에 남긴다(백엔드가 만들면 여기서 지운다).
-// 확인 완료, 보완 요청(#89), 파일 올리기 완료와 원본 보기(#62, #59)는 목업에 남기지 않는다.
-// 실제 서버에서 만든 제출 ID를 목업이 모르기 때문이다. 백엔드 PR이 머지되기 전에는 실패로 보인다(11/18 오후 기준).
-const notYet: [method: string, path: RegExp][] = [
-  // 로그인 안내 메일(백엔드 KT-60 머지되면 지운다)
-  ['GET', /^\/scholars\/login-notices/],
-  ['PUT', /^\/scholars\/login-notices\/sender$/],
-  ['POST', /^\/scholars\/login-notices$/],
-]
+// 11/21 기준 프론트가 쓰는 API는 모두 백엔드 main에 있어 비어 있다.
+const notYet: [method: string, path: RegExp][] = []
 
 // 목업 처리기 맨 앞에 둔다. 실제 서버로 갈 요청은 그대로 내보낸다.
 export const liveHandler = http.all('*/v1/*', ({ request }) => {

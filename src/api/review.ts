@@ -3,6 +3,7 @@ import { sortParam, type Sort } from '../lib/sort'
 import { ApiError, BASE_URL, api } from './client'
 import { tokenStore } from './token'
 import type { SubmissionStatus } from './types'
+import type { RequestStatus } from './manager'
 
 // 담당자 제출 현황과 개별 검토. 제출 현황, 개별 조회는 백엔드 KT-55(#85). 확인 완료, 보완 요청은 PR #89 머지 대기
 
@@ -23,7 +24,7 @@ export type SubmissionRow = {
   hasInputError: boolean
 }
 export type SubmissionPage = {
-  request: { id: number; title: string; cohortName: string | null; closesAt: string | null }
+  request: { id: number; title: string; cohortName: string | null; closesAt: string | null; status: RequestStatus }
   summary: StatusSummary
   items: SubmissionRow[]
   page: number

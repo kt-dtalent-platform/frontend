@@ -1,3 +1,4 @@
+import { formatTime } from '../lib/format'
 import { ApiError } from './client'
 
 // 오류 문구 규칙(디자인 시스템 05-patterns "오류 문구")
@@ -11,7 +12,7 @@ function askHelp() {
 
 const REFRESH = '새로고침해서 지금 상태를 확인하세요.'
 
-const TEXT: Record<string, () => string> = {
+const TEXT: Record<string, (err: unknown) => string> = {
   // 연결, 서버
   NETWORK_ERROR: () => '서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 해 보세요.',
   INTERNAL_SERVER_ERROR: () => `서버 문제로 처리하지 못했어요. 다시 해도 안 되면 ${askHelp()}.`,
@@ -24,7 +25,15 @@ const TEXT: Record<string, () => string> = {
   LOGIN_FAILED: () => '이메일이나 비밀번호가 맞지 않아요.',
   // 사용 중지는 중단된 장학생, 잠김은 비밀번호를 5번 틀린 계정이고 시간이 지나면 풀린다(백엔드 정책)
   ACCOUNT_DISABLED: () => '이용이 중단된 계정이에요. 담당자에게 문의하세요.',
-  ACCOUNT_LOCKED: () => '비밀번호를 여러 번 틀려 계정이 잠겼어요. 잠시 뒤 다시 로그인하세요.',
+  // 5번 틀리면 30분 잠금(백엔드 #112). details.lockedUntil에 풀리는 시각이 온다
+  ACCOUNT_LOCKED: (err) => {
+    const until = lockedUntil(err)
+    return until
+      ? `비밀번호를 5번 틀려 계정이 잠겼어요. ${formatTime(until)}부터 다시 로그인할 수 있어요.`
+      : '비밀번호를 여러 번 틀려 계정이 잠겼어요. 잠시 뒤 다시 로그인하세요.'
+  },
+  INVALID_REFRESH_TOKEN: () => '로그인 시간이 지났어요. 다시 로그인하세요.',
+  NOT_A_TARGET: () => `이 요청의 대상이 아니에요. 잘못 보낸 요청이면 ${askHelp()}.`,
   PASSWORD_MISMATCH: () => '지금 비밀번호가 맞지 않아요.',
   SAME_AS_CURRENT: () => '지금 비밀번호와 다른 비밀번호를 입력하세요.',
 
@@ -52,6 +61,8 @@ const TEXT: Record<string, () => string> = {
   DEADLINE_PASSED: () => '마감이 지났어요. 담당자에게 기한 연장을 요청하세요.',
   SUBMISSION_NOT_REVIEWABLE: () => `제출 상태가 바뀌어 검토할 수 없어요. ${REFRESH}`,
   REQUEST_NOT_EDITABLE: () => '이미 공개된 요청이라 고칠 수 없어요.',
+  REQUEST_NOT_PUBLISHABLE: () => `공개할 수 없는 요청이에요. ${REFRESH}`,
+  ANALYSIS_NOT_FOUND: () => '문서 분석 결과가 없어요. 서류를 다시 올리면 다시 분석해요.',
 
   // 파일
   FILE_LOCKED: () => `지금은 이 항목의 파일을 바꿀 수 없어요. ${REFRESH}`,
@@ -60,6 +71,12 @@ const TEXT: Record<string, () => string> = {
   FILE_COUNT_EXCEEDED: () => '더 올릴 수 없어요. 올린 파일을 지운 뒤 올리세요.',
   FILE_MISMATCH: () => '올린 파일을 확인하지 못했어요. 다시 올리세요.',
   UPLOAD_NOT_FOUND: () => '올린 파일을 확인하지 못했어요. 다시 올리세요.',
+}
+
+function lockedUntil(err: unknown): string | null {
+  const d = err instanceof ApiError ? err.details : null
+  const v = d && typeof d === 'object' && 'lockedUntil' in d ? (d as { lockedUntil: unknown }).lockedUntil : null
+  return typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : null
 }
 
 export function errorCode(err: unknown) {
@@ -75,5 +92,5 @@ export function errorCode(err: unknown) {
 // 오류를 "왜 안 됐는지 + 할 일" 한두 문장으로
 export function errorText(err: unknown) {
   const text = TEXT[errorCode(err)]
-  return text ? text() : `처리하지 못했어요. 다시 해도 안 되면 ${askHelp()}.`
+  return text ? text(err) : `처리하지 못했어요. 다시 해도 안 되면 ${askHelp()}.`
 }
