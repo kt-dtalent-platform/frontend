@@ -476,18 +476,18 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
         to={`/manager/scholars/${s.id}`}
         className="flex min-w-0 flex-1 items-center gap-4 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:py-2"
       >
-        {/* 휴대폰: 두 줄. 윗줄은 이름과 상태 배지, 아랫줄은 기수와 학교, 상태 설명(수료 연도, 중단 사유, 잠김).
-            줄마다 한 행으로 묶어 왼쪽과 오른쪽 글자가 같은 높이에 온다. 오른쪽 설명은 배지 글자 끝(배지 안쪽 여백 8px)에 맞춘다.
-            가운데 정렬은 설명이 배지보다 길 때 배지 위치가 행마다 흔들려 쓰지 않는다 */}
+        {/* 휴대폰: 두 줄. 윗줄은 이름과 상태(점과 글자), 아랫줄은 기수와 학교, 상태 설명(수료 연도, 중단 사유, 잠김).
+            줄마다 한 행으로 묶어 왼쪽과 오른쪽 글자가 같은 높이에 오고, 오른쪽은 끝이 한 줄로 맞는다.
+            상태는 바탕 없이(plain) 쓴다: 상자 배지 아래에 맨 글자를 쌓으면 따로 놀아 보인다 */}
         <span className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
-          <span className="flex items-center justify-between gap-3">
+          <span className="flex items-baseline justify-between gap-3">
             <span className="truncate text-body-strong">{s.name}</span>
-            <ScholarStatusBadge status={s.status} />
+            <ScholarStatusBadge status={s.status} plain />
           </span>
           <span className="flex items-baseline justify-between gap-3 text-caption text-ink-3">
             <MetaList oneLine items={[s.cohortName, s.university]} className="flex min-w-0" />
             {(mobileNote || mobileNotes) && (
-              <span className="flex shrink-0 items-center gap-2 pr-2">
+              <span className="flex shrink-0 items-center gap-2">
                 {mobileNote && <span>{mobileNote}</span>}
                 {mobileNotes}
               </span>
