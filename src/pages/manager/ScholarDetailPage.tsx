@@ -121,8 +121,16 @@ function Detail({ s }: { s: ScholarDetail }) {
             <Item label="기수" value={s.cohort.name} />
             <Item label="학교" value={s.university} />
             <Item label="전공" value={s.major} />
-            <Item label="장학금 받을 계좌" value={s.bankAccount && `${s.bankAccount.bankName} ${s.bankAccount.accountNumber}`} />
-            <Item label="예금주" value={s.bankAccount?.accountHolder ?? null} />
+            {/* 계좌와 예금주는 한 칸에(두 칸이면 2열 격자에서 서로 다른 줄로 갈라진다) */}
+            <Item
+              label="장학금 받을 계좌"
+              value={
+                s.bankAccount &&
+                [s.bankAccount.bankName, s.bankAccount.accountNumber, s.bankAccount.accountHolder && `(예금주 ${s.bankAccount.accountHolder})`]
+                  .filter(Boolean)
+                  .join(' ')
+              }
+            />
           </dl>
         </section>
       )}

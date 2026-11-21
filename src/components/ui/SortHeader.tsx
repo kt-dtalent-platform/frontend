@@ -2,10 +2,11 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { nextSort, type Sort } from '../../lib/sort'
 
-type Props = { label: string; sortKey: string; sort: Sort; onSort: (next: Sort) => void; className?: string; disabled?: boolean }
+type Props = { label: string; sortKey: string; sort: Sort; onSort: (next: Sort) => void; className?: string; disabled?: boolean; align?: 'start' | 'end' }
 
 // 목록 머리의 열 이름. 누르면 그 열로 정렬한다.
-export function SortHeader({ label, sortKey, sort, onSort, className, disabled }: Props) {
+// align='end': 오른쪽 정렬 열(숫자, 날짜). 화살표를 글자 왼쪽에 둬서 글자 끝이 값의 끝과 맞는다
+export function SortHeader({ label, sortKey, sort, onSort, className, disabled, align = 'start' }: Props) {
   const dir = sort?.key === sortKey ? sort.dir : null
   const Icon = dir === 'asc' ? ArrowUp : dir === 'desc' ? ArrowDown : ArrowUpDown
   const state = dir === 'asc' ? '오름차순으로 정렬됨' : dir === 'desc' ? '내림차순으로 정렬됨' : '정렬 안 됨'
@@ -22,6 +23,7 @@ export function SortHeader({ label, sortKey, sort, onSort, className, disabled }
           'group inline-flex cursor-pointer items-center gap-1 rounded-xs text-caption hover:text-ink aria-disabled:cursor-default',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           dir ? 'font-semibold text-ink' : 'text-ink-3',
+          align === 'end' && 'flex-row-reverse',
         )}
       >
         {label}

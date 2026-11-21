@@ -466,7 +466,7 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
           <ScholarStatusBadge status={s.status} />
           {note && <span className="truncate text-caption text-ink-3">{note}</span>}
         </span>
-        <span className="hidden min-w-0 flex-1 truncate text-caption text-ink-3 md:block">{s.email}</span>
+        <span className="hidden min-w-0 flex-1 truncate text-ink-2 md:block">{s.email}</span>
       </Link>
     </li>
   )
