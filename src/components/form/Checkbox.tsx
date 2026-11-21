@@ -43,7 +43,8 @@ export function Checkbox({ indeterminate = false, className, ref, ...props }: Pr
         size={12}
         strokeWidth={3}
         aria-hidden
-        className="pointer-events-none absolute inset-0 m-auto hidden text-on-action peer-checked:block peer-indeterminate:hidden"
+        // 체크될 때마다 작게 시작해 나타난다(hidden이 풀릴 때 다시 재생)
+        className="pointer-events-none absolute inset-0 m-auto hidden animate-check-pop text-on-action peer-checked:block peer-indeterminate:hidden"
       />
       <Minus size={12} strokeWidth={3} aria-hidden className="pointer-events-none absolute inset-0 m-auto hidden text-on-action peer-indeterminate:block" />
     </span>

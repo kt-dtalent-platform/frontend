@@ -25,7 +25,7 @@ const sizes: Record<Size, string> = {
 // 링크를 버튼 모양으로 보여 줄 때도 같은 클래스를 쓴다(예: "요청 만들기" 링크)
 export function buttonClass({ variant = 'secondary', size = 'md', className }: { variant?: Variant; size?: Size; className?: string } = {}) {
   return cn(
-    'inline-flex items-center justify-center gap-2 rounded-md font-bold whitespace-nowrap no-underline transition-colors',
+    'press inline-flex items-center justify-center gap-2 rounded-md font-bold whitespace-nowrap no-underline',
     // 비활성은 흐리게(opacity) 하지 않고 회색 면으로 바꾼다.
     'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-gray-150 disabled:text-ink-disabled',
     variants[variant],

@@ -44,7 +44,12 @@ export function SubmissionReviewPage() {
       {query.isPending && <LoadingCards count={2} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {/* key: 다음 제출로 넘어가면 대화상자·안내 상태를 새로 시작한다 */}
-      {d && <Review key={d.id} d={d} />}
+      {/* 불러오는 모양에서 내용으로 바뀔 때 0.16초 페이드 */}
+      {d && (
+        <div className="flex animate-fade-in flex-col gap-6">
+          <Review key={d.id} d={d} />
+        </div>
+      )}
     </div>
   )
 }
@@ -52,6 +57,7 @@ export function SubmissionReviewPage() {
 function Review({ d }: { d: SubmissionDetail }) {
   const navigate = useNavigate()
   const toast = useToast()
+  const [openedStatus] = useState(d.status)
 
   // 검토 순서: 같은 요청의 검토 대기 전체(이전·다음). 한 요청 대상은 수백 명 안이라 한 번에 받는다
   const queue = useRequestSubmissions(d.requestId, { status: 'WAITING', keyword: '', page: 1, pageSize: 500 })
@@ -115,7 +121,8 @@ function Review({ d }: { d: SubmissionDetail }) {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={d.status} />
+          {/* 확인 완료나 보완 요청으로 상태가 바뀌면 배지가 살짝 커지며 바뀐다. 처음 열 때는 그대로 */}
+          <StatusBadge key={d.status} status={d.status} className={d.status !== openedStatus ? 'animate-status-pop' : undefined} />
           {d.late && <Tag tone="neutral">마감 후</Tag>}
         </div>
         <PageTitle

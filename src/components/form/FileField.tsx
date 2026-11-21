@@ -1,4 +1,4 @@
-import { FileText, Paperclip, RotateCw, X } from 'lucide-react'
+import { CircleCheck, FileText, Paperclip, RotateCw, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { checkFile, uploadErrorText } from '../../api/files'
 import type { FormField as Field, UploadedFile } from '../../api/submissions'
@@ -41,6 +41,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   const [removing, setRemoving] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  // 이번에 올린 파일: 완료 표시(체크)를 보여 준다
+  const [justUploaded, setJustUploaded] = useState<number[]>([])
 
   const rule = field.validation
   const maxFiles = rule?.maxFiles ?? 1
@@ -83,7 +85,9 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   async function start(item: Pending) {
     if (!handlers) return
     try {
-      await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
+      const uploaded = await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
+      const id = (uploaded as { id?: number } | null)?.id
+      if (typeof id === 'number') setJustUploaded((ids) => [...ids, id])
       drop(item.key)
       setLive(`${item.file.name}을(를) 올렸어요.`)
     } catch (error) {
@@ -166,7 +170,11 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
       </p>
       {files.map((f) => (
         <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-surface-sunken pr-1 pl-4 text-ink-2">
-          <FileText size={16} strokeWidth={2} className="shrink-0" aria-hidden />
+          {justUploaded.includes(f.id) ? (
+            <CircleCheck size={16} strokeWidth={2} className="shrink-0 animate-check-pop text-success-text" aria-hidden />
+          ) : (
+            <FileText size={16} strokeWidth={2} className="shrink-0" aria-hidden />
+          )}
           <span className="min-w-0 flex-1 truncate">{f.originalName}</span>
           {f.sizeBytes !== undefined && <span className="shrink-0 text-caption text-ink-3 tabular-nums">{formatBytes(f.sizeBytes)}</span>}
           {editable && handlers && (
@@ -218,7 +226,8 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
               aria-valuenow={Math.round(p.progress * 100)}
               className="h-1 overflow-hidden rounded-full bg-line-control"
             >
-              <div className="h-full bg-action transition-all" style={{ width: `${Math.round(p.progress * 100)}%` }} />
+              {/* 폭 대신 가로 크기(scaleX)를 바꿔 매끄럽게 */}
+              <div className="h-full origin-left bg-action transition-transform" style={{ transform: `scaleX(${p.progress})` }} />
             </div>
           )}
         </div>

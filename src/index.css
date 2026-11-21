@@ -48,6 +48,55 @@
   /* 장학생 화면용: 더 길고 멀리(400ms, 12px) */
   --animate-page-in-expressive: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
   --animate-success-in: success-in var(--motion-expressive) var(--ease-expressive-enter) backwards;
+  /* 11/21 추가: 닫힐 때(나갈 때는 들어올 때보다 짧게), 작은 표시가 톡 나타날 때, 상태가 바뀔 때 */
+  --animate-fade-out: fade-out var(--motion-fast) var(--ease-exit) forwards;
+  --animate-check-pop: check-pop var(--motion-moderate) var(--ease-expressive-enter) backwards;
+  --animate-status-pop: status-pop var(--motion-slow) var(--ease-expressive-enter) backwards;
+}
+
+/* 누르는 느낌: 누르는 동안 97%로 작아진다. 비활성 버튼은 그대로 */
+@utility press {
+  transition-property: color, background-color, border-color, transform;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+  &:active:not(:disabled, [aria-disabled='true']) {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* 체크 표시, 완료 아이콘: 작게 시작해 제자리로 */
+@keyframes check-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* 상태 배지가 바뀔 때 */
+@keyframes status-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+/* 완료 아이콘의 원과 체크를 선으로 그린다(학기에 한 번 보는 제출 완료에만). 끝난 뒤 그린 상태로 남는다 */
+.check-draw :is(path, circle) {
+  stroke-dasharray: 64;
+  stroke-dashoffset: 64;
+  animation: check-draw var(--motion-expressive) var(--ease-expressive-enter) var(--motion-fast) forwards;
+}
+
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* 장학생 화면 전환: 본문이 12px 아래에서 떠오름 */
