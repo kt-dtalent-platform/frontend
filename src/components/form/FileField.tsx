@@ -8,7 +8,7 @@ import { Button } from '../ui/Button'
 import { errorText } from '../../api/errorText'
 
 export type FileHandlers = {
-  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<unknown>
+  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<UploadedFile>
   remove: (fileId: number) => Promise<unknown>
   onBusyChange: (fieldKey: string, busy: boolean) => void
 }
@@ -86,8 +86,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
     if (!handlers) return
     try {
       const uploaded = await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
-      const id = (uploaded as { id?: number } | null)?.id
-      if (typeof id === 'number') setJustUploaded((ids) => [...ids, id])
+      setJustUploaded((ids) => [...ids, uploaded.id])
       drop(item.key)
       setLive(`${item.file.name}을(를) 올렸어요.`)
     } catch (error) {

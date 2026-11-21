@@ -42,6 +42,12 @@ function ToastHost({ toast, onClose }: { toast: { id: number; message: string } 
     const t = setTimeout(() => setLeaving(true), DURATION)
     return () => clearTimeout(t)
   }, [toast, paused])
+  // 페이드가 끝났다는 신호(animationend)가 오지 않아도(애니메이션이 취소되거나 탭이 가려진 경우) 닫히게 한다
+  useEffect(() => {
+    if (!leaving) return
+    const t = setTimeout(() => close.current(), 300)
+    return () => clearTimeout(t)
+  }, [leaving])
 
   return (
     <div role="status" className="toast-host pointer-events-none fixed inset-x-0 z-(--z-toast) flex justify-center px-4">

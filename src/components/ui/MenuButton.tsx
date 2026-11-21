@@ -50,6 +50,17 @@ export function MenuButton({
     if (open) itemRefs.current[start === 'first' ? 0 : items.length - 1]?.focus()
   }, [open, start, items.length])
 
+  const finishClose = () => {
+    setOpen(false)
+    setClosing(false)
+  }
+  // 페이드가 끝났다는 신호가 오지 않아도(애니메이션이 취소된 경우) 닫힌 상태로 마무리한다
+  useEffect(() => {
+    if (!closing) return
+    const t = setTimeout(finishClose, 300)
+    return () => clearTimeout(t)
+  }, [closing])
+
   const close = () => {
     setOpen(false)
     setClosing(false)
@@ -91,11 +102,7 @@ export function MenuButton({
         role="menu"
         aria-label={label}
         hidden={!open}
-        onAnimationEnd={(e) => {
-          if (e.animationName !== 'fade-out') return
-          setOpen(false)
-          setClosing(false)
-        }}
+        onAnimationEnd={(e) => e.animationName === 'fade-out' && finishClose()}
         onKeyDown={(e) => {
           const i = itemRefs.current.findIndex((el) => el === document.activeElement)
           if (e.key === 'Escape') {
