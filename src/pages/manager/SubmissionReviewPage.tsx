@@ -7,10 +7,13 @@ import {
   useRequestRevision,
   useRequestSubmissions,
   useSubmissionDetail,
+  useTargetDeadline,
   type Comparison,
   type SubmissionDetail,
 } from '../../api/review'
-import { fieldBase, fieldBorder } from '../../components/form/fieldClass'
+import { fieldBase, fieldBorder, fieldControl } from '../../components/form/fieldClass'
+import { RequiredMark } from '../../components/form/LabeledField'
+import { ApiError } from '../../api/client'
 import { Banner } from '../../components/ui/Banner'
 import { Button } from '../../components/ui/Button'
 import { buttonClass } from '../../components/ui/buttonClass'
@@ -22,6 +25,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Tag } from '../../components/ui/Tag'
 import { cn } from '../../lib/cn'
 import { formatBytes, formatDue } from '../../lib/format'
+import { kstToUtc, kstToday } from '../../lib/time'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { Checkbox } from '../../components/form/Checkbox'
@@ -61,6 +65,8 @@ function Review({ d }: { d: SubmissionDetail }) {
   const [confirming, setConfirming] = useState(false)
   const [revising, setRevising] = useState(false)
   const [revisionRound, setRevisionRound] = useState(0)
+  // 서버가 보완 기한을 받지 않은 이유(창 안 기한 칸에 보인다)
+  const [dueError, setDueError] = useState<string | null>(null)
   const waiting = d.status === 'SUBMITTED' || d.status === 'RESUBMITTED'
   const mismatched = (d.analysis?.comparisons ?? []).filter((c) => c.result !== 'MATCH')
 
@@ -143,7 +149,7 @@ function Review({ d }: { d: SubmissionDetail }) {
           )}
           {waiting && (
             <div className="grid grid-cols-2 gap-3">
-              <Button disabled={confirm.isPending || revision.isPending} onClick={() => (setRevisionRound((n) => n + 1), setRevising(true))}>
+              <Button disabled={confirm.isPending || revision.isPending} onClick={() => (setRevisionRound((n) => n + 1), setDueError(null), setRevising(true))}>
                 보완 요청
               </Button>
               <Button variant="primary" disabled={confirm.isPending || revision.isPending} onClick={() => setConfirming(true)}>
@@ -206,17 +212,22 @@ function Review({ d }: { d: SubmissionDetail }) {
         d={d}
         preselect={mismatched.map((c) => c.field)}
         busy={revision.isPending}
+        dueError={dueError}
+        onDueChange={() => setDueError(null)}
         onCancel={() => setRevising(false)}
-        onSubmit={(fieldKeys, reason) => (
+        onSubmit={(fieldKeys, reason, dueAt) => (
           confirm.reset(),
+          setDueError(null),
           revision.mutate(
-            { fieldKeys, reason, dueAt: null, version: d.version },
+            { fieldKeys, reason, dueAt, version: d.version },
             {
               onSuccess: () => {
                 setRevising(false)
                 afterAction(`${d.scholar.name} 님에게 보완 요청을 보냈어요`)
               },
-              onError: () => setRevising(false),
+              // 기한 칸 때문이면 창을 닫지 않고 그 칸에 알린다(마감이 지났는데 기한이 없거나 지난 기한, 백엔드 #103)
+              onError: (err) =>
+                isDueError(err) ? (revision.reset(), setDueError(dueAt ? '지금보다 뒤로 고르세요.' : '기한을 고르세요.')) : setRevising(false),
             },
           )
         )}
@@ -435,11 +446,16 @@ function DocumentViewer({ d }: { d: SubmissionDetail }) {
   )
 }
 
+// 400 INVALID_REQUEST의 details에 dueAt이 있으면 기한 칸 문제
+const isDueError = (err: unknown) => err instanceof ApiError && err.code === 'INVALID_REQUEST' && Array.isArray(err.details) && err.details.includes('dueAt')
+
 function RevisionDialog({
   open,
   d,
   preselect,
   busy,
+  dueError,
+  onDueChange,
   onCancel,
   onSubmit,
 }: {
@@ -447,26 +463,48 @@ function RevisionDialog({
   d: SubmissionDetail
   preselect: string[]
   busy: boolean
+  dueError: string | null
+  onDueChange: () => void
   onCancel: () => void
-  onSubmit: (fieldKeys: string[], reason: string) => void
+  onSubmit: (fieldKeys: string[], reason: string, dueAt: string | null) => void
 }) {
   const [keys, setKeys] = useState<string[]>(preselect)
   const [reason, setReason] = useState('')
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('23:59')
   const [tried, setTried] = useState(false)
+  // 기한 칸 오류는 보낼 때 정한다(그때의 시각 기준). 날짜나 시각을 바꾸면 지운다
+  const [dueCheck, setDueCheck] = useState<string | null>(null)
   const reasonId = useId()
+  const dueId = useId()
+  const dateRef = useRef<HTMLInputElement>(null)
+  // 이 장학생의 지금 마감(연장했으면 그 마감). 지났으면 다시 낼 기한을 꼭 받는다
+  const deadline = useTargetDeadline(d.requestId, open ? d.scholar.id : null)
+  const current = deadline.data?.dueAt ?? null
+  // 창을 연 시각 기준으로 필수 표시를 정한다(창은 열 때마다 새로 만든다)
+  const [openedAt] = useState(() => Date.now())
+  const passed = current !== null && Date.parse(current) <= openedAt
+  const dueAt = date ? kstToUtc(date, time || '23:59') : null
   const keysError = tried && keys.length === 0 ? '보완할 항목을 하나 이상 고르세요.' : null
   const reasonError = tried && !reason.trim() ? '보완 사유를 입력하세요.' : null
+  const dateError = dueCheck ?? dueError
+  const changeDue = (set: () => void) => (set(), setDueCheck(null), onDueChange())
 
   return (
     <FormDialog
       open={open}
       title="보완 요청 보내기"
       submitLabel="보완 요청 보내기"
-      busy={busy}
+      // 지금 마감을 확인하는 동안에도 보내지 않는다
+      busy={busy || deadline.isPending}
       onCancel={onCancel}
       onSubmit={() => {
         setTried(true)
-        if (keys.length && reason.trim()) onSubmit(keys, reason.trim())
+        const now = Date.now()
+        const check = passed && !dueAt ? '기한을 고르세요.' : dueAt && Date.parse(dueAt) <= now ? '지금보다 뒤로 고르세요.' : null
+        setDueCheck(check)
+        if (check) dateRef.current?.focus()
+        if (keys.length && reason.trim() && !check) onSubmit(keys, reason.trim(), dueAt)
       }}
     >
       <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
@@ -501,6 +539,45 @@ function RevisionDialog({
           {reasonError ?? '장학생에게 그대로 보여요.'}
         </p>
       </div>
+      <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+        <legend className="mb-1 p-0 text-label">다시 낼 기한{passed && <RequiredMark />}</legend>
+        <p className="m-0 text-caption text-ink-3">
+          {deadline.isPending
+            ? '지금 마감 확인 중'
+            : !current
+              ? '지금 마감을 불러오지 못했어요. 기한을 고르면 그때까지 다시 낼 수 있어요.'
+              : passed
+                ? `마감(${formatDue(current)})이 지났어요. 기한을 골라야 장학생이 다시 낼 수 있어요.`
+                : `비워 두면 지금 마감(${formatDue(current)})까지 다시 낼 수 있어요. 지금 마감보다 이른 날짜를 골라도 마감은 줄지 않아요.`}
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            ref={dateRef}
+            type="date"
+            aria-label="기한 날짜"
+            min={kstToday()}
+            value={date}
+            onChange={(e) => changeDue(() => setDate(e.target.value))}
+            aria-invalid={!!dateError}
+            aria-describedby={dateError ? dueId : undefined}
+            className={cn(fieldControl, fieldBorder(!!dateError))}
+          />
+          <input
+            type="time"
+            aria-label="기한 시각"
+            value={time}
+            onChange={(e) => changeDue(() => setTime(e.target.value))}
+            aria-invalid={!!dateError}
+            aria-describedby={dateError ? dueId : undefined}
+            className={cn(fieldControl, fieldBorder(!!dateError))}
+          />
+        </div>
+        {dateError && (
+          <p id={dueId} role="alert" className="m-0 text-caption text-danger-text">
+            {dateError}
+          </p>
+        )}
+      </fieldset>
     </FormDialog>
   )
 }
