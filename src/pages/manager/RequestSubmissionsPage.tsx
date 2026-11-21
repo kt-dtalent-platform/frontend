@@ -247,7 +247,7 @@ export function RequestSubmissionsPage() {
                     align="end"
                     className="w-32 shrink-0 text-right"
                   />
-                  <span className="w-5" />
+                  <span className="w-5 shrink-0" />
                 </div>
                 <ul className="m-0 list-none p-0">
                   {data.items.map((r) => (
@@ -357,21 +357,15 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
         // 미제출, 작성 중은 볼 내용이 없어 행을 누를 수 없다. 대신 이 장학생의 마감을 늘릴 수 있다
         <div className={cn(cls, 'text-ink')}>
           {body}
-          {onExtend ? (
-            <Button
-              size="compact"
-              variant="ghost"
-              className="self-start md:-mr-2 md:self-auto"
-              aria-label={`${row.scholarName} 마감 연장`}
-              title="마감 연장"
-              onClick={onExtend}
-            >
-              <CalendarPlus size={16} strokeWidth={2} aria-hidden />
-              <span className="md:sr-only">마감 연장</span>
-            </Button>
-          ) : (
-            <span className="hidden w-5 md:block" />
-          )}
+          {/* PC: 끝 칸은 화살표 칸과 같은 폭(20px). 버튼은 그 칸 가운데에 두고 넘쳐도 열 위치를 밀지 않는다 */}
+          <span className="flex self-start md:w-5 md:shrink-0 md:justify-center md:self-auto">
+            {onExtend && (
+              <Button size="compact" variant="ghost" aria-label={`${row.scholarName} 마감 연장`} title="마감 연장" onClick={onExtend}>
+                <CalendarPlus size={16} strokeWidth={2} aria-hidden />
+                <span className="md:sr-only">마감 연장</span>
+              </Button>
+            )}
+          </span>
         </div>
       )}
     </li>
