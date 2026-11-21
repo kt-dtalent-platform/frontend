@@ -1,7 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { sortParam, type Sort } from '../lib/sort'
-import { ApiError, BASE_URL, api } from './client'
-import { tokenStore } from './token'
+import { ApiError, BASE_URL, api, authedFetch } from './client'
 import type { SubmissionStatus } from './types'
 
 // 담당자 제출 현황과 개별 검토. 제출 현황, 개별 조회는 백엔드 KT-55(#85). 확인 완료, 보완 요청은 PR #89 머지 대기
@@ -85,9 +84,7 @@ export async function downloadExport(requestId: number, choice: { scopes: string
 export async function downloadFile(path: string, choice: { scopes: string[]; columns: string[] }, fallbackName: string, extra: Record<string, string> = {}) {
   const params = new URLSearchParams({ format: 'xlsx', columns: choice.columns.join(','), ...extra })
   if (choice.scopes.length) params.set('status', choice.scopes.join(','))
-  const res = await fetch(`${BASE_URL}${path}?${params}`, {
-    headers: tokenStore.access() ? { Authorization: `Bearer ${tokenStore.access()}` } : {},
-  })
+  const res = await authedFetch(`${BASE_URL}${path}?${params}`)
   if (!res.ok) {
     // 실패 응답은 공통 형식(JSON)이라 오류 코드를 꺼내 이유를 보여 준다
     const json = (await res.json().catch(() => null)) as { resultType?: string; error?: { code: string; message: string } } | null

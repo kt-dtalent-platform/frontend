@@ -12,7 +12,7 @@ import { usePageTitle } from '../lib/usePageTitle'
 export function PasswordChangePage() {
   usePageTitle('비밀번호 변경')
   const me = useMe()
-  if (tokenStore.access() === null || (me.error instanceof ApiError && me.error.status === 401)) return <Navigate to="/login" replace />
+  if (!tokenStore.loggedIn() || (me.error instanceof ApiError && me.error.status === 401)) return <Navigate to="/login" replace />
   if (me.isPending) return <FullPageLoading />
   if (me.isError) {
     return (
