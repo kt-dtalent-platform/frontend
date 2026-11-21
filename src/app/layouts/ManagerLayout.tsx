@@ -105,7 +105,10 @@ function MobileNav() {
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal()
+    if (open && !d.open) {
+      d.showModal()
+      d.focus()
+    }
     if (!open && d.open) d.close()
   }, [open])
 
@@ -119,7 +122,9 @@ function MobileNav() {
         aria-label="담당자 메뉴"
         onClose={() => setOpen(false)}
         onClick={(e) => e.target === e.currentTarget && setOpen(false)}
-        className="m-0 h-dvh max-h-none w-sidebar-w bg-surface p-0 backdrop:bg-scrim lg:hidden"
+        // 열 때 첫 링크(로고)가 아니라 메뉴 상자에 포커스를 둔다. Safari는 열면서 옮긴 포커스에도 테두리를 그려 로고에 검은 네모가 생겼다. Tab을 누르면 로고부터 차례로 간다
+        tabIndex={-1}
+        className="m-0 h-dvh max-h-none w-sidebar-w bg-surface p-0 outline-none backdrop:bg-scrim lg:hidden"
       >
         <div className="flex h-full flex-col gap-6 px-3 py-4">
           <div className="flex h-10 items-center justify-between pl-3">
@@ -171,14 +176,14 @@ export function ManagerLayout() {
         <Nav compact={compact} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-(--z-sticky) flex h-header-h items-center justify-between gap-2 bg-canvas px-4 md:px-8 lg:justify-end">
+        <header className="sticky top-0 z-(--z-sticky) flex h-header-h items-center justify-between gap-2 bg-canvas px-5 md:px-8 lg:justify-end">
           <div className="flex items-center gap-1 lg:hidden">
             <MobileNav />
             <Logo to="/manager" />
           </div>
           <UserMenu />
         </header>
-        <main className="min-w-0 flex-1 px-4 pt-4 pb-12 md:px-8">
+        <main className="min-w-0 flex-1 px-5 pt-4 pb-12 md:px-8">
           <div className="mx-auto max-w-page-wide">
             <PageTransition />
           </div>

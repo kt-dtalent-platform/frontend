@@ -391,7 +391,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
             <textarea
               {...p}
               rows={4}
-              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(false))}
+              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:pointer-fine:text-body-long', fieldBorder(false))}
               {...register('description')}
             />
           )}
@@ -402,7 +402,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
             <textarea
               {...p}
               rows={2}
-              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:text-body-long', fieldBorder(false))}
+              className={cn(fieldBase, 'resize-y py-3 text-input-touch md:pointer-fine:text-body-long', fieldBorder(false))}
               {...register('completionMessage')}
             />
           )}

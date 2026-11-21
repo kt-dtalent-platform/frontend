@@ -2,7 +2,8 @@
    그리기는 flow.ts(캔버스), 여기서는 배치와 들어오는 움직임만. */
 
 .brand-flow {
-  position: absolute;
+  /* fixed: 아이폰 Safari는 아래 주소창 뒤까지 화면을 그린다. absolute면 화면 높이(dvh)에서 바탕이 끊겨 보인다 */
+  position: fixed;
   inset: 0;
   overflow: hidden;
   background: linear-gradient(160deg, var(--color-gray-50), var(--color-gray-150));

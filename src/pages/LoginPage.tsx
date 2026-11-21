@@ -95,7 +95,8 @@ export function LoginPage() {
 
 function inputClass(invalid: boolean) {
   return cn(
-    'h-control-h w-full rounded-md border bg-surface px-4 text-body text-ink outline-hidden hover:border-line-control',
+    // 휴대폰은 16px: 아이폰 Safari는 16px보다 작은 입력칸을 누르면 화면을 확대한다(다른 입력칸 fieldClass와 같게)
+    'h-control-h w-full rounded-md border bg-surface px-4 text-input-touch text-ink outline-hidden hover:border-line-control md:pointer-fine:text-body',
     'focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus',
     invalid ? 'border-danger-line' : 'border-line-input',
   )

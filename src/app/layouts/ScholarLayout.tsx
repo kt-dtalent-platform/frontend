@@ -7,12 +7,12 @@ export function ScholarLayout() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-(--z-sticky) h-header-h bg-surface">
-        <div className="mx-auto flex h-full max-w-page-form items-center justify-between px-4 md:px-5">
+        <div className="mx-auto flex h-full max-w-page-form items-center justify-between px-5">
           <Logo to="/tasks" />
           <UserMenu />
         </div>
       </header>
-      <main className="mx-auto max-w-page-form px-4 py-8 md:px-5">
+      <main className="mx-auto max-w-page-form px-5 py-8">
         <PageTransition tone="expressive" />
       </main>
     </div>

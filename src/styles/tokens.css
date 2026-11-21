@@ -165,5 +165,6 @@
   --motion-moderate: 160ms;
   --motion-slow: 240ms;
   --motion-expressive: 400ms;
+  --motion-loader-delay: 300ms;
   --motion-stagger-step: 60ms;
 }

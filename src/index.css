@@ -46,6 +46,8 @@
   --animate-fade-in: fade-in var(--motion-moderate) var(--ease-enter) backwards;
   /* 목록의 새 결과: 불러오는 동안의 흐림(0.6)에서 이어서 또렷해지고 살짝 올라온다. 0부터 시작하면 한 번 깜빡여 보임 */
   --animate-list-in: list-in var(--motion-slow) var(--ease-enter) backwards;
+  /* 불러오는 중 표시: 0.3초 안에 끝나는 빠른 응답이면 아예 보이지 않게, 그 뒤에 천천히 나타난다(빈 화면과 회색 덩어리가 번쩍이지 않게) */
+  --animate-loader-in: fade-in var(--motion-moderate) var(--ease-enter) var(--motion-loader-delay) backwards;
   --animate-toast-in: toast-in var(--motion-slow) var(--ease-enter) backwards;
   /* 장학생 화면용: 더 길고 멀리(400ms, 12px) */
   --animate-page-in-expressive: page-in-expressive var(--motion-expressive) var(--ease-expressive-enter) backwards;
@@ -225,6 +227,11 @@
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* 불러오는 중 표시의 지연은 움직임이 아니라 번쩍임을 막는 시간이라 그대로 둔다 */
+  .animate-loader-in {
+    animation-delay: var(--motion-loader-delay) !important;
   }
 }
 

@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { Button } from './Button'
 import { errorText } from '../../api/errorText'
 
-// 불러오는 중: 실제 내용과 비슷한 회색 덩어리
+// 불러오는 중: 실제 내용과 비슷한 회색 덩어리. 0.3초 안에 끝나면 보이지 않는다(animate-loader-in)
 export function LoadingCards({ count = 3 }: { count?: number }) {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="불러오는 중">
+    <div className="flex animate-loader-in flex-col gap-3" aria-busy="true" aria-label="불러오는 중">
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="flex animate-pulse flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
           <div className="h-6 w-20 rounded-sm bg-gray-150" />
@@ -47,7 +47,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 
 export function FullPageLoading() {
   return (
-    <div className="grid min-h-dvh place-items-center text-ink-3" aria-busy="true">
+    <div className="grid min-h-dvh animate-loader-in place-items-center text-ink-3" aria-busy="true">
       불러오는 중
     </div>
   )

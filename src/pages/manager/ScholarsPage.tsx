@@ -453,6 +453,8 @@ export function ScholarsPage() {
 function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean; disabled: boolean; onPick: (on: boolean) => void }) {
   // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
+  // 휴대폰은 배지 바로 아래라 '수료'를 다시 쓰지 않는다(수료 배지 + '2026년')
+  const mobileNote = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년` : note
   // 비고: 계정 상태. INACTIVE는 백엔드에서 로그인할 수 없는 계정(ACCOUNT_DISABLED). 로그인 전이라는 뜻이 아니다
   const notes =
     s.accountStatus === 'LOCKED' ? (
@@ -462,6 +464,8 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
     ) : s.accountStatus === 'INACTIVE' ? (
       <RowNote icon={Ban}>사용 중지</RowNote>
     ) : null
+  // 휴대폰은 칸이 좁아 겹치는 표시를 뺀다: 중단 장학생은 늘 사용 중지라(백엔드 규칙) 중단 배지로 충분하다
+  const mobileNotes = s.status === 'WITHDRAWN' && s.accountStatus === 'INACTIVE' ? null : notes
   return (
     // 마우스를 올리면 고르기 칸까지 줄 전체를 같은 회색으로(요청 관리 목록과 같게)
     <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0 hover:bg-surface-hover', picked && 'bg-surface-hover')}>
@@ -472,19 +476,24 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
         to={`/manager/scholars/${s.id}`}
         className="flex min-w-0 flex-1 items-center gap-4 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:py-2"
       >
-        {/* 휴대폰: 이름 줄 오른쪽에 상태, 아래에 기수와 학교, 그 아래에 상태 설명과 비고 */}
+        {/* 휴대폰: 두 줄. 윗줄은 이름과 상태(점과 글자), 아랫줄은 기수와 학교, 상태 설명(수료 연도, 중단 사유, 잠김).
+            줄마다 한 행으로 묶어 왼쪽과 오른쪽 글자가 같은 높이에 오고, 오른쪽은 끝이 한 줄로 맞는다.
+            상태는 바탕 없이(plain) 쓴다: 상자 배지 아래에 맨 글자를 쌓으면 따로 놀아 보인다 */}
         <span className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
-          <span className="flex items-center justify-between gap-3">
+          <span className="flex items-baseline justify-between gap-3">
             <span className="truncate text-body-strong">{s.name}</span>
-            <ScholarStatusBadge status={s.status} />
+            <ScholarStatusBadge status={s.status} plain />
           </span>
-          <MetaList oneLine items={[s.cohortName, s.university]} className="flex text-caption text-ink-3" />
-          {(note || notes) && (
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-3">
-              {note && <span>{note}</span>}
-              {notes}
-            </span>
-          )}
+          <span className="flex items-baseline justify-between gap-3 text-caption text-ink-3">
+            {/* 아주 좁은 화면(320px)에서도 학교가 0이 되지 않게 최소 폭을 두고, 넘치면 오른쪽 설명이 줄어 말줄임 */}
+            <MetaList oneLine items={[s.cohortName, s.university]} className="flex min-w-16 flex-1" />
+            {(mobileNote || mobileNotes) && (
+              <span className="flex min-w-0 items-center gap-2 truncate">
+                {mobileNote && <span>{mobileNote}</span>}
+                {mobileNotes}
+              </span>
+            )}
+          </span>
         </span>
 
         {/* PC. 좁은 PC(기수, 학교 열이 없는 폭)는 이름 아래에 기수와 학교. 잘린 글자는 마우스를 올리면 전부 보인다 */}
