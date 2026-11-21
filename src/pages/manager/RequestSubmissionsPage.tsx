@@ -211,10 +211,24 @@ export function RequestSubmissionsPage() {
             <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                  <SortHeader label="이름" sortKey="name" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-40" />
-                  <SortHeader label="기수" sortKey="cohort" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28" />
-                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-44" />
-                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="min-w-0 flex-1" />
+                  <SortHeader
+                    label="이름"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="w-32 shrink-0 xl:w-40"
+                  />
+                  <SortHeader
+                    label="기수"
+                    sortKey="cohort"
+                    sort={sort}
+                    onSort={(o) => go({ sort: o })}
+                    disabled={loadingNext}
+                    className="hidden w-28 shrink-0 xl:block"
+                  />
+                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="min-w-0 flex-1" />
+                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28 shrink-0" />
                   <SortHeader
                     label="평점"
                     sortKey="gpa"
@@ -231,7 +245,7 @@ export function RequestSubmissionsPage() {
                     onSort={(o) => go({ sort: o })}
                     disabled={loadingNext}
                     align="end"
-                    className="w-32 text-right"
+                    className="w-32 shrink-0 text-right"
                   />
                   <span className="w-5" />
                 </div>
@@ -283,7 +297,7 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
   )
   const body = (
     <>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5 md:w-40 md:flex-none">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5 md:w-32 md:flex-none md:shrink-0 xl:w-40">
         {/* 휴대폰: 보조 표시는 이름 옆에 둬서 아래 줄이 꺾이지 않게 한다 */}
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-body-strong">{row.scholarName}</span>
@@ -291,16 +305,20 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
         </span>
         {/* 휴대폰: 이름 아래 기수와 학교 */}
         <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3 md:hidden" />
+        {/* 좁은 PC(기수 열이 없는 폭): 이름 아래 기수 */}
+        {row.cohortName && <span className="hidden truncate text-caption text-ink-3 md:block xl:hidden">{row.cohortName}</span>}
       </span>
-      <span className="hidden truncate text-ink-2 md:block md:w-28">{row.cohortName ?? '–'}</span>
-      <span className="hidden truncate text-ink-2 md:block md:w-44">{row.university ?? '–'}</span>
+      <span className="hidden shrink-0 truncate text-ink-2 xl:block xl:w-28">{row.cohortName ?? '–'}</span>
+      <span className="hidden min-w-0 flex-1 truncate text-ink-2 md:block" title={row.university ?? undefined}>
+        {row.university ?? '–'}
+      </span>
       {/* 휴대폰: 상태, 평점, 제출 시각을 한 줄에. PC에서는 각자 열이 된다 */}
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
-        <span className="flex flex-wrap items-center gap-2 md:min-w-0 md:flex-1">
+        {/* PC: 상태 칸에는 배지 하나만. 보조 표시는 그 표시가 말하는 값 아래에 둔다(형식 확인은 평점, 마감 후는 제출 일시) */}
+        <span className="flex items-center md:w-28 md:shrink-0">
           <StatusBadge status={row.status} />
-          <span className="hidden md:contents">{tags}</span>
         </span>
-        <span className="text-caption text-ink-2 tabular-nums md:w-24 md:text-right md:text-body">
+        <span className="text-caption text-ink-2 tabular-nums md:w-24 md:shrink-0 md:text-right md:text-body">
           {row.gpa != null ? (
             <>
               <span className="md:sr-only">평점 </span>
@@ -310,10 +328,12 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
           ) : (
             <span className="hidden text-ink-3 md:inline">–</span>
           )}
+          {row.hasInputError && <span className="hidden text-caption text-warning-text md:block">형식 확인</span>}
         </span>
-        <span className="text-caption text-ink-3 tabular-nums md:w-32 md:text-right md:text-body md:text-ink-2">
+        <span className="text-caption text-ink-3 tabular-nums md:w-32 md:shrink-0 md:text-right md:text-body md:text-ink-2">
           <span className="md:sr-only">제출 </span>
           {row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : '–'}
+          {row.late && <span className="hidden text-caption text-ink-3 md:block">마감 후</span>}
         </span>
       </span>
     </>
