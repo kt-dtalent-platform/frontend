@@ -14,6 +14,7 @@ import { RequestStatusBadge } from '../../components/ui/RequestStatusBadge'
 import { FilterChips } from '../../components/ui/FilterChips'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
+import { useChangeKey } from '../../lib/useChangeKey'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
@@ -57,6 +58,8 @@ export function RequestsPage() {
   }
 
   const data = query.data
+  // 필터, 쪽, 정렬로 새 결과가 오면 목록이 다시 나타난다. 같은 결과를 다시 불러오면 그대로
+  const listKey = useChangeKey(data?.items)
   const lastPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const loadingNext = query.isPlaceholderData // 탭·페이지를 바꿔 새 결과를 기다리는 중(이전 결과가 대신 보임)
 
@@ -100,6 +103,7 @@ export function RequestsPage() {
       {data && !loadingNext && !outOfRange && data.items.length === 0 && <EmptyState title="요청이 없어요">{tab.empty}</EmptyState>}
       {data && data.items.length > 0 && (
         <div
+          key={listKey}
           className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', query.isPlaceholderData && 'opacity-60')}
           aria-busy={query.isPlaceholderData}
         >

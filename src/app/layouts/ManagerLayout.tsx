@@ -1,6 +1,6 @@
 import { ClipboardList, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { NavLink } from 'react-router'
+import { NavLink, matchPath, useLocation } from 'react-router'
 import { PageTransition } from './PageTransition'
 import { Button } from '../../components/ui/Button'
 import { Logo } from '../../components/ui/Logo'
@@ -14,9 +14,23 @@ const menu: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
 ]
 
 // compact: 메뉴를 접었을 때. 아이콘만 보이고 이름은 낭독기와 마우스 툴팁으로 전한다.
+// 고른 메뉴의 바탕(과 KT 스퀘어)은 하나만 두고, 다른 메뉴로 옮기면 그 자리로 미끄러져 간다. 어디서 어디로 갔는지 보인다
 function Nav({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
+  const { pathname } = useLocation()
+  const active = menu.findIndex(({ to, end }) => matchPath({ path: to, end: !!end }, pathname))
   return (
-    <nav aria-label="담당자 메뉴" className="flex flex-col gap-1">
+    <nav aria-label="담당자 메뉴" className="relative flex flex-col gap-1">
+      {active >= 0 && (
+        <span
+          aria-hidden
+          // 메뉴 한 칸(40px)과 칸 사이(4px)만큼 내려간다
+          style={{ transform: `translateY(calc(${active} * (var(--spacing-control-default) + var(--spacing))))` }}
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 h-control-default rounded-md bg-surface-sunken transition-transform duration-(--motion-slow) ease-(--ease-standard)',
+            !compact && 'before:absolute before:top-4 before:left-2 before:size-kt-square before:rounded-xs before:bg-kt-red',
+          )}
+        />
+      )}
       {menu.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
@@ -28,11 +42,9 @@ function Nav({ onNavigate, compact }: { onNavigate?: () => void; compact?: boole
             cn(
               // 펼친 메뉴: 모든 상태에서 KT 스퀘어 자리(왼쪽 24px)를 비워 둬 글자 시작점이 같다.
               // 접은 메뉴: 아이콘만 있어 스퀘어 자리가 애매하므로 바탕과 진한 아이콘으로만 선택을 보인다(11/12)
-              'relative flex h-control-default items-center gap-2 rounded-md text-label font-normal text-ink-2 no-underline',
-              compact ? 'justify-center px-0' : 'pr-3 pl-6 before:absolute before:top-4 before:left-2 before:size-kt-square before:rounded-xs',
-              'hover:bg-surface-hover active:bg-surface-sunken',
-              isActive && 'bg-surface-sunken font-semibold text-ink',
-              isActive && !compact && 'before:bg-kt-red',
+              'relative flex h-control-default items-center gap-2 rounded-md text-label font-normal text-ink-2 no-underline transition-colors',
+              compact ? 'justify-center px-0' : 'pr-3 pl-6',
+              isActive ? 'font-semibold text-ink' : 'hover:bg-surface-hover active:bg-surface-sunken',
             )
           }
         >

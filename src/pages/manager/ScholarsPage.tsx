@@ -29,6 +29,7 @@ import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { RowNote } from '../../components/ui/RowNote'
 import { cn } from '../../lib/cn'
+import { useChangeKey } from '../../lib/useChangeKey'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
 import { ScholarStatusDialog } from './ScholarStatusDialog'
@@ -65,6 +66,8 @@ export function ScholarsPage() {
   const cohorts = useCohorts(me.data?.accessiblePrograms?.[0]?.id)
   const query = useScholars({ cohortId, status, keyword, page, pageSize, sort })
   const data = query.data
+  // 필터, 쪽, 정렬로 새 결과가 오면 목록이 다시 나타난다. 같은 결과를 다시 불러오면 그대로
+  const motionKey = useChangeKey(data?.items)
 
   const toast = useToast()
 
@@ -260,7 +263,7 @@ export function ScholarsPage() {
               </EmptyState>
             )
           ) : (
-            <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
+            <div key={motionKey} className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
                 <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
