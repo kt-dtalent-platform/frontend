@@ -64,6 +64,14 @@
   }
 }
 
+/* 가로로 미는 줄(필터 칩)의 스크롤 막대를 숨긴다. 밀기는 그대로 된다 */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @keyframes fade-out {
   to {
     opacity: 0;

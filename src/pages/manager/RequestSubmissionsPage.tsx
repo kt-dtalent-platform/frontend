@@ -1,4 +1,4 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, Download, Search } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Download, FileWarning, Search } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import {
@@ -28,7 +28,7 @@ import { FilterChips } from '../../components/ui/FilterChips'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { Tag } from '../../components/ui/Tag'
+import { RowNote } from '../../components/ui/RowNote'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
 import { usePageTitle } from '../../lib/usePageTitle'
@@ -169,100 +169,119 @@ export function RequestSubmissionsPage() {
             />
           )}
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <FilterChips
-              label="제출 상태"
-              items={filters.map((f) => ({ value: f.value, label: f.label, count: counts[f.value ?? 'all'] }))}
-              value={status}
-              onChange={(v) => go({ status: v })}
-            />
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 md:w-64 md:flex-none">
-                <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
-                <input
-                  type="search"
-                  aria-label="이름으로 찾기"
-                  placeholder="이름으로 찾기"
-                  value={typed}
-                  onChange={(e) => setTyped(e.target.value)}
-                  className={cn(filterField, 'pl-8')}
-                />
-              </div>
-              {/* 목록에 대한 보조 행동이라 테두리 없는 버튼으로 필터 옆에 둔다(11/12) */}
-              <Button
-                size="compact"
-                variant="ghost"
-                disabled={exporting || data.summary.target === 0}
-                onClick={() => (setExportError(null), setExportOpen(true))}
-              >
-                <Download size={16} strokeWidth={2} aria-hidden />
-                내보내기
-              </Button>
-            </div>
-          </div>
-
-          {data.items.length === 0 ? (
-            loadingNext ? (
-              <LoadingCards count={2} />
-            ) : (
-              <EmptyState title={keyword ? `'${keyword}'에 맞는 장학생이 없어요` : filter.empty}>{keyword ? '이름을 다시 확인하세요.' : undefined}</EmptyState>
-            )
-          ) : (
-            <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
-              <div className="overflow-hidden rounded-lg bg-surface">
-                <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-                  <SortHeader
-                    label="이름"
-                    sortKey="name"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="w-32 shrink-0 xl:w-40"
+          {/* 필터와 목록은 한 묶음: 필터 줄 사이 12px, 필터와 목록 사이 16px */}
+          <div className="flex flex-col gap-4">
+            {/* 칩은 늘 한 줄. 폭이 모자라면(1280px 미만) 찾기와 내보내기를 아랫줄로 */}
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <FilterChips
+                label="제출 상태"
+                items={filters.map((f) => ({ value: f.value, label: f.label, count: counts[f.value ?? 'all'] }))}
+                value={status}
+                onChange={(v) => go({ status: v })}
+              />
+              <div className="flex items-center justify-between gap-2">
+                <div className="relative w-full md:w-64">
+                  <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
+                  <input
+                    type="search"
+                    aria-label="이름으로 찾기"
+                    placeholder="이름으로 찾기"
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    className={cn(filterField, 'pl-8')}
                   />
-                  <SortHeader
-                    label="기수"
-                    sortKey="cohort"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    className="hidden w-28 shrink-0 xl:block"
-                  />
-                  <SortHeader label="학교" sortKey="university" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="min-w-0 flex-1" />
-                  <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-28 shrink-0" />
-                  <SortHeader
-                    label="평점"
-                    sortKey="gpa"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    align="end"
-                    className="w-24 text-right"
-                  />
-                  <SortHeader
-                    label="제출 일시"
-                    sortKey="submittedAt"
-                    sort={sort}
-                    onSort={(o) => go({ sort: o })}
-                    disabled={loadingNext}
-                    align="end"
-                    className="w-32 shrink-0 text-right"
-                  />
-                  <span className="w-5 shrink-0" />
                 </div>
-                <ul className="m-0 list-none p-0">
-                  {data.items.map((r) => (
-                    <Row
-                      key={r.scholarId}
-                      row={r}
-                      requestId={requestId}
-                      onExtend={canExtend ? () => setExtending({ scholarId: r.scholarId, name: r.scholarName }) : undefined}
-                    />
-                  ))}
-                </ul>
+                {/* 목록에 대한 보조 행동이라 테두리 없는 버튼으로 필터 옆에 둔다(11/12) */}
+                <Button
+                  size="compact"
+                  variant="ghost"
+                  disabled={exporting || data.summary.target === 0}
+                  onClick={() => (setExportError(null), setExportOpen(true))}
+                >
+                  <Download size={16} strokeWidth={2} aria-hidden />
+                  내보내기
+                </Button>
               </div>
-              <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
             </div>
-          )}
+
+            {data.items.length === 0 ? (
+              loadingNext ? (
+                <LoadingCards count={2} />
+              ) : (
+                <EmptyState title={keyword ? `'${keyword}'에 맞는 장학생이 없어요` : filter.empty}>
+                  {keyword ? '이름을 다시 확인하세요.' : undefined}
+                </EmptyState>
+              )
+            ) : (
+              <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
+                <div className="overflow-hidden rounded-lg bg-surface">
+                  <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
+                    {/* 열 순서: 누구 → 상태 → 소속 → 숫자 → 비고. 비고는 늘 맨 끝. 상태, 평점처럼 값 길이가 정해진 열은 가장 긴 값만큼만 둔다
+                        정렬: 글자와 배지 열은 왼쪽, 숫자와 날짜 열은 오른쪽. 열 제목은 그 열의 값과 같은 쪽에 맞춘다 */}
+                    <SortHeader
+                      label="이름"
+                      sortKey="name"
+                      sort={sort}
+                      onSort={(o) => go({ sort: o })}
+                      disabled={loadingNext}
+                      className="min-w-0 flex-1 xl:w-40 xl:flex-none xl:shrink-0"
+                    />
+                    <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-20 shrink-0" />
+                    <SortHeader
+                      label="기수"
+                      sortKey="cohort"
+                      sort={sort}
+                      onSort={(o) => go({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden w-28 shrink-0 xl:block"
+                    />
+                    <SortHeader
+                      label="학교"
+                      sortKey="university"
+                      sort={sort}
+                      onSort={(o) => go({ sort: o })}
+                      disabled={loadingNext}
+                      className="hidden min-w-0 shrink grow-0 basis-72 xl:block"
+                    />
+                    {/* 넓은 PC: 글자 열은 왼쪽에, 숫자 열(평점, 제출 일시)은 오른쪽으로 */}
+                    <span className="hidden flex-1 xl:block" />
+                    <SortHeader
+                      label="평점"
+                      sortKey="gpa"
+                      sort={sort}
+                      onSort={(o) => go({ sort: o })}
+                      disabled={loadingNext}
+                      align="end"
+                      className="w-20 shrink-0 text-right"
+                    />
+                    <SortHeader
+                      label="제출 일시"
+                      sortKey="submittedAt"
+                      sort={sort}
+                      onSort={(o) => go({ sort: o })}
+                      disabled={loadingNext}
+                      align="end"
+                      className="w-32 shrink-0 text-right"
+                    />
+                    {/* 오른쪽 정렬 열(제출 일시) 다음에 왼쪽 정렬 열이 오면 글자끼리 붙어 보여서 16px을 더 띄운다(열 사이 32px) */}
+                    <span className="w-28 shrink-0 pl-4">비고</span>
+                    <span className="w-5 shrink-0" />
+                  </div>
+                  <ul className="m-0 list-none p-0">
+                    {data.items.map((r) => (
+                      <Row
+                        key={r.scholarId}
+                        row={r}
+                        requestId={requestId}
+                        onExtend={canExtend ? () => setExtending({ scholarId: r.scholarId, name: r.scholarName }) : undefined}
+                      />
+                    ))}
+                  </ul>
+                </div>
+                <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -289,56 +308,68 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
 }
 
 function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: number; onExtend?: () => void }) {
-  const tags = (
-    <>
-      {row.late && <Tag tone="neutral">마감 후</Tag>}
-      {row.hasInputError && <Tag tone="warning">형식 확인</Tag>}
-    </>
-  )
+  // 비고: 마감 후, 서류와 다름. 상태와 섞지 않고 맨 끝 열에 둔다
+  const notes =
+    row.late || row.hasInputError ? (
+      <>
+        {row.late && <RowNote icon={Clock}>마감 후</RowNote>}
+        {row.hasInputError && (
+          <RowNote icon={FileWarning} tone="warning">
+            서류와 다름
+          </RowNote>
+        )}
+      </>
+    ) : null
+  const gpa =
+    row.gpa != null ? (
+      <>
+        {row.gpa.toFixed(2)}
+        {row.gpaScale && <span className="text-ink-3"> / {row.gpaScale}</span>}
+      </>
+    ) : null
+  const submitted = row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : null
+  const meta = [row.cohortName, row.university].filter(Boolean).join(' ')
   const body = (
     <>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5 md:w-32 md:flex-none md:shrink-0 xl:w-40">
-        {/* 휴대폰: 보조 표시는 이름 옆에 둬서 아래 줄이 꺾이지 않게 한다 */}
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-body-strong">{row.scholarName}</span>
-          <span className="flex shrink-0 gap-1 md:hidden">{tags}</span>
-        </span>
-        {/* 휴대폰: 이름 아래 기수와 학교 */}
-        <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3 md:hidden" />
-        {/* 좁은 PC(기수 열이 없는 폭): 이름 아래 기수 */}
-        {row.cohortName && <span className="hidden truncate text-caption text-ink-3 md:block xl:hidden">{row.cohortName}</span>}
-      </span>
-      <span className="hidden shrink-0 truncate text-ink-2 xl:block xl:w-28">{row.cohortName ?? '–'}</span>
-      <span className="hidden min-w-0 flex-1 truncate text-ink-2 md:block" title={row.university ?? undefined}>
-        {row.university ?? '–'}
-      </span>
-      {/* 휴대폰: 상태, 평점, 제출 시각을 한 줄에. PC에서는 각자 열이 된다 */}
-      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
-        {/* PC: 상태 칸에는 배지 하나만. 보조 표시는 그 표시가 말하는 값 아래에 둔다(형식 확인은 평점, 마감 후는 제출 일시) */}
-        <span className="flex items-center md:w-28 md:shrink-0">
+      {/* 휴대폰: 왼쪽은 누구인지(이름, 기수와 학교), 오른쪽은 상태. 아랫줄에 평점, 제출 시각, 비고 */}
+      <span className="flex min-w-0 flex-1 flex-col gap-2 md:hidden">
+        <span className="flex items-start justify-between gap-3">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-body-strong">{row.scholarName}</span>
+            <MetaList oneLine items={[row.cohortName, row.university]} className="flex text-caption text-ink-3" />
+          </span>
           <StatusBadge status={row.status} />
         </span>
-        <span className="text-caption text-ink-2 tabular-nums md:w-24 md:shrink-0 md:text-right md:text-body">
-          {row.gpa != null ? (
-            <>
-              <span className="md:sr-only">평점 </span>
-              {row.gpa.toFixed(2)}
-              {row.gpaScale && <span className="text-ink-3"> / {row.gpaScale}</span>}
-            </>
-          ) : (
-            <span className="hidden text-ink-3 md:inline">–</span>
-          )}
-          {row.hasInputError && <span className="hidden text-caption text-warning-text md:block">형식 확인</span>}
-        </span>
-        <span className="text-caption text-ink-3 tabular-nums md:w-32 md:shrink-0 md:text-right md:text-body md:text-ink-2">
-          <span className="md:sr-only">제출 </span>
-          {row.submittedAt ? submittedAt.format(toDate(row.submittedAt)) : '–'}
-          {row.late && <span className="hidden text-caption text-ink-3 md:block">마감 후</span>}
+        {(notes || gpa || submitted) && (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-2 tabular-nums">
+            {gpa && <span>평점 {gpa}</span>}
+            {submitted && <span className="text-ink-3">제출 {submitted}</span>}
+            {notes}
+          </span>
+        )}
+      </span>
+
+      {/* PC: 열마다 하나씩. 좁은 PC(기수, 학교 열이 없는 폭)는 이름 아래에 기수와 학교. 잘린 글자는 마우스를 올리면 전부 보인다 */}
+      <span className="hidden min-w-0 flex-1 flex-col gap-0.5 md:flex xl:w-40 xl:flex-none xl:shrink-0">
+        <span className="truncate text-body-strong">{row.scholarName}</span>
+        <span className="min-w-0 text-caption text-ink-3 xl:hidden" title={meta || undefined}>
+          <MetaList oneLine items={[row.cohortName, row.university]} className="flex" />
         </span>
       </span>
+      <span className="hidden w-20 shrink-0 md:flex">
+        <StatusBadge status={row.status} />
+      </span>
+      <span className="hidden w-28 shrink-0 truncate text-ink-2 xl:block">{row.cohortName ?? '–'}</span>
+      <span className="hidden min-w-0 shrink grow-0 basis-72 truncate text-ink-2 xl:block" title={row.university ?? undefined}>
+        {row.university ?? '–'}
+      </span>
+      <span className="hidden flex-1 xl:block" />
+      <span className="hidden w-20 shrink-0 text-right tabular-nums md:block">{gpa ?? <span className="text-ink-3">–</span>}</span>
+      <span className="hidden w-32 shrink-0 text-right text-ink-2 tabular-nums md:block">{submitted ?? '–'}</span>
+      <span className="hidden w-28 shrink-0 flex-col items-start gap-0.5 pl-4 md:flex">{notes}</span>
     </>
   )
-  const cls = 'flex flex-col gap-2 px-6 py-4 md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-3'
+  const cls = 'flex items-center gap-3 px-6 py-4 md:min-h-row-h md:gap-4 md:py-2'
   return (
     <li className="border-b border-line-subtle last:border-b-0">
       {row.submissionId && row.status !== 'DRAFT' ? (
@@ -357,12 +388,11 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
         // 미제출, 작성 중은 볼 내용이 없어 행을 누를 수 없다. 대신 이 장학생의 마감을 늘릴 수 있다
         <div className={cn(cls, 'text-ink')}>
           {body}
-          {/* PC: 끝 칸은 화살표 칸과 같은 폭(20px). 버튼은 그 칸 가운데에 두고 넘쳐도 열 위치를 밀지 않는다 */}
-          <span className="flex self-start md:w-5 md:shrink-0 md:justify-center md:self-auto">
+          {/* PC: 끝 칸은 화살표 칸과 같은 폭(20px). 버튼은 그 칸 가운데에 두고 넘쳐도 열 위치와 행 높이를 밀지 않는다 */}
+          <span className="flex w-5 shrink-0 justify-center">
             {onExtend && (
               <Button size="compact" variant="ghost" aria-label={`${row.scholarName} 마감 연장`} title="마감 연장" onClick={onExtend}>
                 <CalendarPlus size={16} strokeWidth={2} aria-hidden />
-                <span className="md:sr-only">마감 연장</span>
               </Button>
             )}
           </span>

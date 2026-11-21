@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Plus, Search } from 'lucide-react'
+import { Ban, ChevronDown, Download, Lock, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useMe } from '../../api/auth'
@@ -27,7 +27,7 @@ import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { SortHeader } from '../../components/ui/SortHeader'
 import { parseSort, sortParam, type Sort } from '../../lib/sort'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
-import { Tag } from '../../components/ui/Tag'
+import { RowNote } from '../../components/ui/RowNote'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { MetaList } from '../../components/ui/MetaList'
@@ -165,100 +165,102 @@ export function ScholarsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle>장학생</PageTitle>
+      {/* 인원 수는 제목 옆에. 따로 한 줄을 쓰지 않아 필터와 목록 사이가 고르다. 필터를 고르면 그 결과 수 */}
+      <PageTitle>
+        장학생
+        {data && <span className="ml-2 text-ink-3 tabular-nums">{data.total}</span>}
+      </PageTitle>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
-        <div className="flex items-center justify-between gap-2">
-          <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
-          <div className="md:hidden">{exportButton}</div>
-        </div>
-        {/* 기수는 '2025년 선발'이 들어가는 만큼만, 남는 폭은 찾기 칸에 */}
-        <div className="flex gap-2">
-          <div className="relative w-36 shrink-0 md:w-32">
-            <select
-              aria-label="기수"
-              value={cohortId ? String(cohortId) : ''}
-              onChange={(e) => set({ cohort: Number(e.target.value) || null })}
-              className={cn(filterField, 'appearance-none pr-8')}
-            >
-              <option value="">전체 기수</option>
-              {(cohorts.data ?? []).map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
+      {/* 필터와 목록은 한 묶음: 필터 줄 사이 12px, 필터와 목록 사이 16px */}
+      <div className="flex flex-col gap-4">
+        {/* 칩은 늘 한 줄. 폭이 모자라면(1280px 미만) 기수, 찾기, 내보내기를 아랫줄로 */}
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          {/* 휴대폰: 내보내기는 상태 칩 줄 오른쪽에 */}
+          <div className="flex items-center justify-between gap-2">
+            <FilterChips label="장학생 상태" items={statuses} value={status} onChange={(v) => set({ status: v })} />
+            <div className="md:hidden">{exportButton}</div>
           </div>
-          <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
-            <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
-            <input
-              type="search"
-              aria-label="이름 또는 이메일로 찾기"
-              placeholder="이름, 이메일"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              className={cn(filterField, 'pl-8')}
-            />
+          {/* 기수는 '2025년 선발'이 들어가는 만큼만, 남는 폭은 찾기 칸에 */}
+          <div className="flex gap-2">
+            <div className="relative w-36 shrink-0 md:w-32">
+              <select
+                aria-label="기수"
+                value={cohortId ? String(cohortId) : ''}
+                onChange={(e) => set({ cohort: Number(e.target.value) || null })}
+                className={cn(filterField, 'appearance-none pr-8')}
+              >
+                <option value="">전체 기수</option>
+                {(cohorts.data ?? []).map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
+            </div>
+            <div className="relative min-w-0 flex-1 md:w-72 md:flex-none">
+              <Search size={16} strokeWidth={2} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3" aria-hidden />
+              <input
+                type="search"
+                aria-label="이름 또는 이메일로 찾기"
+                placeholder="이름, 이메일"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                className={cn(filterField, 'pl-8')}
+              />
+            </div>
+            <div className="hidden md:ml-auto md:block xl:ml-0">{exportButton}</div>
           </div>
-          <div className="hidden md:block">{exportButton}</div>
         </div>
-      </div>
 
-      {query.isPending && <LoadingCards count={3} />}
-      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {bulk.isError && !bulkOpen && (
-        <Banner tone="danger" title="상태를 바꾸지 못했어요">
-          {errorText(bulk.error)}
-        </Banner>
-      )}
-      {noticeIssues.length > 0 && (
-        <Banner
-          tone="warning"
-          title={`${noticeIssues.length}명에게는 로그인 안내를 보내지 못했어요`}
-          action={
-            <Button size="compact" variant="ghost" onClick={() => setNoticeIssues([])}>
-              닫기
-            </Button>
-          }
-        >
-          {/* 이유마다 할 일이 달라 따로 적는다 */}
-          {(['ACCOUNT_DISABLED', 'SCHOLAR_NOT_FOUND'] as const).map((code) => {
-            const names = noticeIssues.filter((i) => i.code === code).map((i) => i.name)
-            if (!names.length) return null
-            return (
-              <p key={code} className="m-0">
-                {names.join(', ')}:{' '}
-                {code === 'ACCOUNT_DISABLED'
-                  ? '이용이 중단됐거나 잠긴 계정이에요. 잠긴 계정은 시간이 지나면 풀려요.'
-                  : '명단에서 지워진 장학생이에요. 새로고침해서 확인하세요.'}
-              </p>
+        {query.isPending && <LoadingCards count={3} />}
+        {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
+        {bulk.isError && !bulkOpen && (
+          <Banner tone="danger" title="상태를 바꾸지 못했어요">
+            {errorText(bulk.error)}
+          </Banner>
+        )}
+        {noticeIssues.length > 0 && (
+          <Banner
+            tone="warning"
+            title={`${noticeIssues.length}명에게는 로그인 안내를 보내지 못했어요`}
+            action={
+              <Button size="compact" variant="ghost" onClick={() => setNoticeIssues([])}>
+                닫기
+              </Button>
+            }
+          >
+            {/* 이유마다 할 일이 달라 따로 적는다 */}
+            {(['ACCOUNT_DISABLED', 'SCHOLAR_NOT_FOUND'] as const).map((code) => {
+              const names = noticeIssues.filter((i) => i.code === code).map((i) => i.name)
+              if (!names.length) return null
+              return (
+                <p key={code} className="m-0">
+                  {names.join(', ')}:{' '}
+                  {code === 'ACCOUNT_DISABLED'
+                    ? '이용이 중단됐거나 잠긴 계정이에요. 잠긴 계정은 시간이 지나면 풀려요.'
+                    : '명단에서 지워진 장학생이에요. 새로고침해서 확인하세요.'}
+                </p>
+              )
+            })}
+          </Banner>
+        )}
+        {exportError != null && (
+          <Banner tone="danger" title="파일을 만들지 못했어요">
+            {errorText(exportError)}
+          </Banner>
+        )}
+        {data &&
+          (data.items.length === 0 ? (
+            loadingNext ? (
+              <LoadingCards count={2} />
+            ) : (
+              <EmptyState title={keyword ? `'${keyword}'에 맞는 장학생이 없어요` : '조건에 맞는 장학생이 없어요'}>
+                {keyword ? '이름이나 이메일을 다시 확인하세요.' : undefined}
+              </EmptyState>
             )
-          })}
-        </Banner>
-      )}
-      {exportError != null && (
-        <Banner tone="danger" title="파일을 만들지 못했어요">
-          {errorText(exportError)}
-        </Banner>
-      )}
-      {data &&
-        (data.items.length === 0 ? (
-          loadingNext ? (
-            <LoadingCards count={2} />
           ) : (
-            <EmptyState title={keyword ? `'${keyword}'에 맞는 장학생이 없어요` : '조건에 맞는 장학생이 없어요'}>
-              {keyword ? '이름이나 이메일을 다시 확인하세요.' : undefined}
-            </EmptyState>
-          )
-        ) : (
-          <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
-            {/* 인원 수는 표 위 왼쪽. 표 머리 오른쪽 끝은 눈이 잘 가지 않는다 */}
-            <div className="flex flex-col gap-2">
-              <p className="m-0 text-caption text-ink-2 tabular-nums">
-                총 <span className="text-label text-ink">{data.total}</span>명
-              </p>
+            <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
               <div className="overflow-hidden rounded-lg bg-surface">
                 {/* 표 머리: 인원 수 또는 고른 인원과 할 일 */}
                 <div className="flex min-h-control-h items-center gap-4 border-b border-line-subtle px-6">
@@ -293,29 +295,14 @@ export function ScholarsPage() {
                     </div>
                   ) : (
                     <>
+                      {/* 열 순서: 누구 → 상태 → 소속 → 연락처 → 비고 */}
                       <SortHeader
                         label="이름"
                         sortKey="name"
                         sort={sort}
                         onSort={(o) => set({ sort: o })}
                         disabled={loadingNext}
-                        className="hidden w-40 md:block"
-                      />
-                      <SortHeader
-                        label="기수"
-                        sortKey="cohort"
-                        sort={sort}
-                        onSort={(o) => set({ sort: o })}
-                        disabled={loadingNext}
-                        className="hidden w-28 md:block"
-                      />
-                      <SortHeader
-                        label="학교"
-                        sortKey="university"
-                        sort={sort}
-                        onSort={(o) => set({ sort: o })}
-                        disabled={loadingNext}
-                        className="hidden w-44 md:block"
+                        className="hidden min-w-0 flex-1 md:block xl:w-40 xl:flex-none xl:shrink-0"
                       />
                       <SortHeader
                         label="상태"
@@ -323,7 +310,23 @@ export function ScholarsPage() {
                         sort={sort}
                         onSort={(o) => set({ sort: o })}
                         disabled={loadingNext}
-                        className="hidden w-56 md:block"
+                        className="hidden w-48 shrink-0 md:block"
+                      />
+                      <SortHeader
+                        label="기수"
+                        sortKey="cohort"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden w-28 shrink-0 xl:block"
+                      />
+                      <SortHeader
+                        label="학교"
+                        sortKey="university"
+                        sort={sort}
+                        onSort={(o) => set({ sort: o })}
+                        disabled={loadingNext}
+                        className="hidden min-w-0 shrink grow-0 basis-44 xl:block"
                       />
                       <SortHeader
                         label="이메일"
@@ -331,8 +334,9 @@ export function ScholarsPage() {
                         sort={sort}
                         onSort={(o) => set({ sort: o })}
                         disabled={loadingNext}
-                        className="hidden flex-1 md:block"
+                        className="hidden min-w-0 flex-1 xl:block"
                       />
+                      <span className="hidden w-24 shrink-0 text-caption text-ink-3 md:block">비고</span>
                     </>
                   )}
                 </div>
@@ -349,8 +353,8 @@ export function ScholarsPage() {
                 </ul>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+      </div>
 
       {/* 목록 아래: 쪽 번호는 가운데, 몇 명씩 보기와 장학생 등록은 오른쪽. 휴대폰은 위아래로
           장학생 등록은 1년에 한 번쯤이라 위가 아닌 아래에 둔다(11/17). 한 명 / 엑셀로 여러 명을 메뉴 하나로 묶는다
@@ -439,6 +443,15 @@ export function ScholarsPage() {
 function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean; disabled: boolean; onPick: (on: boolean) => void }) {
   // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
+  // 비고: 계정 상태. INACTIVE는 백엔드에서 로그인할 수 없는 계정(ACCOUNT_DISABLED). 로그인 전이라는 뜻이 아니다
+  const notes =
+    s.accountStatus === 'LOCKED' ? (
+      <RowNote icon={Lock} tone="warning">
+        잠김
+      </RowNote>
+    ) : s.accountStatus === 'INACTIVE' ? (
+      <RowNote icon={Ban}>사용 중지</RowNote>
+    ) : null
   return (
     // 마우스를 올리면 고르기 칸까지 줄 전체를 같은 회색으로(요청 관리 목록과 같게)
     <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0 hover:bg-surface-hover', picked && 'bg-surface-hover')}>
@@ -447,26 +460,47 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
       </label>
       <Link
         to={`/manager/scholars/${s.id}`}
-        className="flex min-w-0 flex-1 flex-col gap-1 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:flex-row md:items-center md:gap-4 md:py-2"
+        className="flex min-w-0 flex-1 items-center gap-4 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:py-2"
       >
-        <span className="flex min-w-0 items-center gap-2 md:w-40">
-          <span className="truncate text-body-strong">{s.name}</span>
-          {s.accountStatus === 'LOCKED' && <Tag tone="warning">잠김</Tag>}
-          {/* INACTIVE는 백엔드에서 로그인할 수 없는 계정(ACCOUNT_DISABLED). 로그인 전이라는 뜻이 아니다 */}
-          {s.accountStatus === 'INACTIVE' && <Tag tone="neutral">사용 중지</Tag>}
-          <span className="ml-auto shrink-0 md:hidden">
+        {/* 휴대폰: 이름 줄 오른쪽에 상태, 아래에 기수와 학교, 그 아래에 상태 설명과 비고 */}
+        <span className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
+          <span className="flex items-center justify-between gap-3">
+            <span className="truncate text-body-strong">{s.name}</span>
             <ScholarStatusBadge status={s.status} />
           </span>
+          <MetaList oneLine items={[s.cohortName, s.university]} className="flex text-caption text-ink-3" />
+          {(note || notes) && (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-3">
+              {note && <span>{note}</span>}
+              {notes}
+            </span>
+          )}
         </span>
-        {/* 휴대폰: 이름 줄 오른쪽에 상태, 아래에 기수와 학교 */}
-        <MetaList oneLine items={[s.cohortName, note, s.university]} className="flex text-caption text-ink-3 md:hidden" />
-        <span className="hidden truncate text-ink-2 md:block md:w-28">{s.cohortName}</span>
-        <span className="hidden truncate text-ink-2 md:block md:w-44">{s.university}</span>
-        <span className="hidden min-w-0 items-center gap-2 md:flex md:w-56">
+
+        {/* PC. 좁은 PC(기수, 학교 열이 없는 폭)는 이름 아래에 기수와 학교. 잘린 글자는 마우스를 올리면 전부 보인다 */}
+        <span className="hidden min-w-0 flex-1 flex-col gap-0.5 md:flex xl:w-40 xl:flex-none xl:shrink-0">
+          <span className="truncate text-body-strong">{s.name}</span>
+          <span className="min-w-0 text-caption text-ink-3 xl:hidden" title={[s.cohortName, s.university].filter(Boolean).join(' ') || undefined}>
+            <MetaList oneLine items={[s.cohortName, s.university]} className="flex" />
+          </span>
+        </span>
+        {/* 상태 설명(수료 연도, 중단 사유)은 배지 옆 회색 글자. 칩으로 만들지 않는다 */}
+        <span className="hidden w-48 shrink-0 items-center gap-2 md:flex">
           <ScholarStatusBadge status={s.status} />
-          {note && <span className="truncate text-caption text-ink-3">{note}</span>}
+          {note && (
+            <span className="truncate text-caption text-ink-3" title={note}>
+              {note}
+            </span>
+          )}
         </span>
-        <span className="hidden min-w-0 flex-1 truncate text-ink-2 md:block">{s.email}</span>
+        <span className="hidden w-28 shrink-0 truncate text-ink-2 xl:block">{s.cohortName}</span>
+        <span className="hidden min-w-0 shrink grow-0 basis-44 truncate text-ink-2 xl:block" title={s.university ?? undefined}>
+          {s.university}
+        </span>
+        <span className="hidden min-w-0 flex-1 truncate text-ink-2 xl:block" title={s.email}>
+          {s.email}
+        </span>
+        <span className="hidden w-24 shrink-0 flex-col items-start gap-0.5 md:flex">{notes}</span>
       </Link>
     </li>
   )

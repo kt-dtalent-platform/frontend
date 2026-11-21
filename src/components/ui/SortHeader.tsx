@@ -20,7 +20,8 @@ export function SortHeader({ label, sortKey, sort, onSort, className, disabled, 
         aria-label={`${label}, ${state}`}
         className={cn(
           // 바탕 없이 글자색과 화살표로만 상태를 보인다. 표 머리 글자 줄 높이를 그대로 둬서 행 높이가 바뀌지 않게 한다
-          'group inline-flex cursor-pointer items-center gap-1 rounded-xs text-caption hover:text-ink aria-disabled:cursor-default',
+          // align-middle: 오른쪽 정렬 열(화살표가 앞)도 글자 높이가 다른 열과 같게
+          'group inline-flex cursor-pointer items-center gap-1 rounded-xs align-middle text-caption hover:text-ink aria-disabled:cursor-default',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
           dir ? 'font-semibold text-ink' : 'text-ink-3',
           align === 'end' && 'flex-row-reverse',
