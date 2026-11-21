@@ -10,15 +10,16 @@ const tones: Record<string, { box: string; accent: string; icon: LucideIcon; rol
   success: { box: 'bg-success-bg', accent: 'text-success-text', icon: CircleCheck, role: 'status' },
 }
 
-type Props = { tone: 'warning' | 'danger' | 'info' | 'success'; title: ReactNode; children?: ReactNode; action?: ReactNode }
+// drawIcon: 아이콘을 선으로 그리며 보여 준다(제출 완료처럼 가끔 보는 순간에만)
+type Props = { tone: 'warning' | 'danger' | 'info' | 'success'; title: ReactNode; children?: ReactNode; action?: ReactNode; drawIcon?: boolean }
 
 // 화면 위쪽에 두는 안내. 제목 한 줄 + 설명 + (있으면) 행동 버튼.
-export function Banner({ tone, title, children, action }: Props) {
+export function Banner({ tone, title, children, action, drawIcon = false }: Props) {
   const t = tones[tone]
   const Icon = t.icon
   return (
     <div role={t.role} className={cn('flex items-start gap-3 rounded-md p-4', t.box)}>
-      <Icon size={20} strokeWidth={1.75} className={cn('mt-px shrink-0', t.accent)} aria-hidden />
+      <Icon size={20} strokeWidth={1.75} className={cn('mt-px shrink-0', t.accent, drawIcon && 'check-draw')} aria-hidden />
       <div className="min-w-0 flex-1">
         <p className={cn('m-0 font-bold', t.accent)}>{title}</p>
         {children && <div className="mt-1 text-ink-2">{children}</div>}

@@ -27,6 +27,8 @@ export function MenuButton({
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
+  // 마우스로 닫을 때(바깥 누르기, 버튼 다시 누르기)만 0.1초 흐려진 뒤 닫는다. 키보드로 닫으면 바로 닫는다
+  const [closing, setClosing] = useState(false)
   // 열릴 때 초점을 둘 항목(버튼에서 ↑를 누르면 마지막 항목)
   const [start, setStart] = useState<'first' | 'last'>('first')
   const root = useRef<HTMLDivElement>(null)
@@ -37,7 +39,7 @@ export function MenuButton({
   useEffect(() => {
     if (!open) return
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false)
+      if (!root.current?.contains(e.target as Node)) setClosing(true)
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
@@ -48,8 +50,20 @@ export function MenuButton({
     if (open) itemRefs.current[start === 'first' ? 0 : items.length - 1]?.focus()
   }, [open, start, items.length])
 
+  const finishClose = () => {
+    setOpen(false)
+    setClosing(false)
+  }
+  // 페이드가 끝났다는 신호가 오지 않아도(애니메이션이 취소된 경우) 닫힌 상태로 마무리한다
+  useEffect(() => {
+    if (!closing) return
+    const t = setTimeout(finishClose, 300)
+    return () => clearTimeout(t)
+  }, [closing])
+
   const close = () => {
     setOpen(false)
+    setClosing(false)
     button.current?.focus()
   }
 
@@ -61,12 +75,20 @@ export function MenuButton({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => (setStart('first'), setOpen((o) => !o))}
+        onClick={() => {
+          setStart('first')
+          if (open && !closing) setClosing(true)
+          else {
+            setClosing(false)
+            setOpen(true)
+          }
+        }}
         // APG 메뉴 버튼: ↓는 첫 항목, ↑는 마지막 항목으로 열린다
         onKeyDown={(e) => {
           if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
           e.preventDefault()
           setStart(e.key === 'ArrowDown' ? 'first' : 'last')
+          setClosing(false)
           setOpen(true)
         }}
         className={buttonClass({ variant, size })}
@@ -80,6 +102,7 @@ export function MenuButton({
         role="menu"
         aria-label={label}
         hidden={!open}
+        onAnimationEnd={(e) => e.animationName === 'fade-out' && finishClose()}
         onKeyDown={(e) => {
           const i = itemRefs.current.findIndex((el) => el === document.activeElement)
           if (e.key === 'Escape') {
@@ -92,12 +115,16 @@ export function MenuButton({
           } else if (e.key === 'Home' || e.key === 'End') {
             e.preventDefault()
             itemRefs.current[e.key === 'Home' ? 0 : items.length - 1]?.focus()
-          } else if (e.key === 'Tab') setOpen(false)
+          } else if (e.key === 'Tab') {
+            setOpen(false)
+            setClosing(false)
+          }
         }}
         className={cn(
           'absolute right-0 z-(--z-popover) m-0 w-64 list-none rounded-md bg-surface p-1 shadow-pop',
           // 열릴 때 버튼 쪽에서 살짝 나온다. hidden이 풀릴 때마다 다시 재생된다
-          placement === 'top' ? 'bottom-full mb-1 animate-pop-up' : 'top-full mt-1 animate-pop-down',
+          placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
+          closing ? 'animate-fade-out' : placement === 'top' ? 'animate-pop-up' : 'animate-pop-down',
         )}
       >
         {items.map((item, i) => (
@@ -110,7 +137,10 @@ export function MenuButton({
               // 항목은 화살표로만 옮겨 다닌다(Tab 순서에서 뺀다)
               tabIndex={-1}
               to={item.to}
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                setClosing(false)
+              }}
               className="flex flex-col gap-0.5 rounded-sm px-3 py-2 text-ink no-underline outline-none hover:bg-control-tonal-hover focus-visible:bg-control-tonal-hover"
             >
               <span className="text-label">{item.label}</span>

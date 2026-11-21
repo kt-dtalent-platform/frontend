@@ -25,7 +25,11 @@ export function ManagerHomePage() {
       <PageTitle description={`${date} 기준`}>대시보드</PageTitle>
       {query.isPending && <LoadingCards count={2} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {query.data && <Dashboard data={query.data} />}
+      {query.data && (
+        <div className="flex animate-fade-in flex-col gap-8">
+          <Dashboard data={query.data} />
+        </div>
+      )}
     </div>
   )
 }

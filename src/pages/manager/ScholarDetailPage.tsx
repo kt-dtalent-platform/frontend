@@ -46,7 +46,11 @@ export function ScholarDetailPage() {
       {!validId && <EmptyState title="장학생을 찾을 수 없어요">명단에서 다시 골라 주세요.</EmptyState>}
       {validId && query.isPending && <LoadingCards count={1} />}
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {query.data && <Detail key={query.data.id} s={query.data} />}
+      {query.data && (
+        <div className="flex animate-fade-in flex-col gap-6">
+          <Detail key={query.data.id} s={query.data} />
+        </div>
+      )}
     </div>
   )
 }
