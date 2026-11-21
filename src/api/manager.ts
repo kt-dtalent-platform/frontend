@@ -57,7 +57,7 @@ export const PAGE_SIZE = 20
 export function useRequests({ status, page, sort }: { status: RequestStatus | null; page: number; sort?: Sort }) {
   const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
   if (status) params.set('status', status)
-  // 열 정렬. 요청 목록은 백엔드에 아직 없어 보내도 서버 기본 순서로 온다(11/15 요청)
+  // 열 정렬: sort=title|status|closesAt,asc|desc (백엔드 #114)
   const order = sortParam(sort ?? null)
   if (order) params.set('sort', order)
   return useQuery({

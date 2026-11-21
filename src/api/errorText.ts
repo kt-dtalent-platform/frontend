@@ -61,7 +61,7 @@ const TEXT: Record<string, (err: unknown) => string> = {
   DEADLINE_PASSED: () => '마감이 지났어요. 담당자에게 기한 연장을 요청하세요.',
   SUBMISSION_NOT_REVIEWABLE: () => `제출 상태가 바뀌어 검토할 수 없어요. ${REFRESH}`,
   REQUEST_NOT_EDITABLE: () => '이미 공개된 요청이라 고칠 수 없어요.',
-  REQUEST_NOT_PUBLISHABLE: () => `공개할 수 없는 요청이에요. ${REFRESH}`,
+  REQUEST_NOT_PUBLISHABLE: () => `이미 공개됐거나 공개 조건이 맞지 않아 공개할 수 없어요. ${REFRESH}`,
   ANALYSIS_NOT_FOUND: () => '문서 분석 결과가 없어요. 서류를 다시 올리면 다시 분석해요.',
 
   // 파일

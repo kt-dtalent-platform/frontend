@@ -40,7 +40,7 @@ export function useRequestSubmissions(requestId: number, q: { status: StatusFilt
   const params = new URLSearchParams({ page: String(q.page), page_size: String(pageSize) })
   if (q.status) params.set('status', q.status)
   if (q.keyword) params.set('keyword', q.keyword)
-  // 열 정렬. 백엔드에 아직 없음(11/15 요청). 실제 서버일 때는 화면에서 보내지 않는다
+  // 열 정렬: sort=name|cohort|university|status|gpa|submittedAt,asc|desc (백엔드 #114)
   const order = sortParam(q.sort ?? null)
   if (order) params.set('sort', order)
   return useQuery({

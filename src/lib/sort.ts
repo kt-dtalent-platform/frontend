@@ -1,4 +1,4 @@
-// 목록 열 정렬 값. 화면 주소와 서버 요청에 sort=name,asc 모양으로 쓴다(서버 쪽은 백엔드 확인 필요)
+// 목록 열 정렬 값. 화면 주소와 서버 요청에 sort=name,asc 모양으로 쓴다(백엔드 #114와 같은 모양)
 export type SortDir = 'asc' | 'desc'
 export type Sort = { key: string; dir: SortDir } | null
 

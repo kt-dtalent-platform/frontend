@@ -134,7 +134,8 @@ export function RequestSubmissionsPage() {
   // 마감을 늘릴 장학생(미제출, 작성 중). 고르면 대화상자가 열린다.
   // 백엔드는 진행 중인 요청만 늘려 준다. 요청 상태는 제출 현황 응답에 함께 온다(백엔드 #114)
   const [extending, setExtending] = useState<{ scholarId: number; name: string } | null>(null)
-  const canExtend = data?.request.status === 'IN_PROGRESS'
+  // 다른 요청으로 넘어가는 동안 이전 요청의 상태로 버튼을 보이지 않게, 이 요청의 응답일 때만 본다
+  const canExtend = data?.request.id === requestId && data.request.status === 'IN_PROGRESS'
 
   return (
     <div className="flex flex-col gap-6">
