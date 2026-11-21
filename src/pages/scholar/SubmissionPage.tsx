@@ -274,6 +274,8 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         <p className="m-0 text-caption text-ink-3 tabular-nums">
           <MetaList items={[`마감 ${formatDue(form.request.dueAt)}`, !locked && dDayText(dDay, late)]} />
         </p>
+        {/* 요청 안내는 따로 카드를 두지 않고 제목 아래 설명으로 */}
+        {form.request.description && <p className="m-0 text-body-long text-ink-2">{form.request.description}</p>}
         {/* 보완 요청은 제목 아래 머리 영역에 둔다(따로 상자를 만들지 않는다) */}
         {isRevision && form.revision && (
           <div className="mt-1 border-t border-line-subtle pt-4">
@@ -308,13 +310,6 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         <Banner tone="success" title="확인이 끝났어요">
           확인이 끝난 제출은 고칠 수 없어요.
         </Banner>
-      )}
-
-      {form.request.description && (
-        <section className="flex flex-col gap-3 rounded-lg bg-surface px-6 py-6 md:px-8">
-          <h2 className="m-0 text-title-2">안내</h2>
-          <p className="m-0 text-body-long text-ink-2">{form.request.description}</p>
-        </section>
       )}
 
       <section className="flex flex-col gap-6 rounded-lg bg-surface px-6 py-8 md:px-8">

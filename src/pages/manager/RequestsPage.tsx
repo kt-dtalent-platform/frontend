@@ -95,45 +95,48 @@ export function RequestsPage() {
         </Banner>
       )}
 
-      <FilterChips label="요청 상태" items={tabs.map((t) => ({ value: t.status, label: t.label }))} value={status} onChange={(s) => go({ status: s })} />
+      {/* 필터와 목록은 한 묶음(사이 16px). 장학생, 제출 현황과 같게 */}
+      <div className="flex flex-col gap-4">
+        <FilterChips label="요청 상태" items={tabs.map((t) => ({ value: t.status, label: t.label }))} value={status} onChange={(s) => go({ status: s })} />
 
-      {query.isPending && <LoadingCards count={3} />}
-      {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
-      {loadingNext && data?.items.length === 0 && <LoadingCards count={3} />}
-      {data && !loadingNext && !outOfRange && data.items.length === 0 && <EmptyState title="요청이 없어요">{tab.empty}</EmptyState>}
-      {data && data.items.length > 0 && (
-        <div
-          key={listKey}
-          className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', query.isPlaceholderData && 'opacity-60')}
-          aria-busy={query.isPlaceholderData}
-        >
-          <div className="overflow-hidden rounded-lg bg-surface">
-            {/* 머리 행: 넓은 화면에서만. 좁은 화면은 행 안에서 이름을 붙여 보여 준다 */}
-            <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
-              <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
-              <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
-              <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
-              <span aria-hidden className="w-24 text-right">
-                제출
-              </span>
-              <span aria-hidden className="w-24 text-right">
-                검토 대기
-              </span>
-              <span aria-hidden className="w-24 text-right">
-                보완 필요
-              </span>
-              <span className="w-5" />
+        {query.isPending && <LoadingCards count={3} />}
+        {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
+        {loadingNext && data?.items.length === 0 && <LoadingCards count={3} />}
+        {data && !loadingNext && !outOfRange && data.items.length === 0 && <EmptyState title="요청이 없어요">{tab.empty}</EmptyState>}
+        {data && data.items.length > 0 && (
+          <div
+            key={listKey}
+            className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', query.isPlaceholderData && 'opacity-60')}
+            aria-busy={query.isPlaceholderData}
+          >
+            <div className="overflow-hidden rounded-lg bg-surface">
+              {/* 머리 행: 넓은 화면에서만. 좁은 화면은 행 안에서 이름을 붙여 보여 준다 */}
+              <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">
+                <SortHeader label="요청" sortKey="title" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="flex-1" />
+                <SortHeader label="상태" sortKey="status" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-24" />
+                <SortHeader label="마감" sortKey="closesAt" sort={sort} onSort={(o) => go({ sort: o })} disabled={loadingNext} className="w-52" />
+                <span aria-hidden className="w-24 text-right">
+                  제출
+                </span>
+                <span aria-hidden className="w-24 text-right">
+                  검토 대기
+                </span>
+                <span aria-hidden className="w-24 text-right">
+                  보완 필요
+                </span>
+                <span className="w-5" />
+              </div>
+              <ul className="m-0 list-none p-0">
+                {data.items.map((r) => (
+                  <Row key={r.id} row={r} />
+                ))}
+              </ul>
             </div>
-            <ul className="m-0 list-none p-0">
-              {data.items.map((r) => (
-                <Row key={r.id} row={r} />
-              ))}
-            </ul>
-          </div>
 
-          <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
-        </div>
-      )}
+            <Pagination page={page} lastPage={lastPage} disabled={loadingNext} onChange={(p) => go({ page: p })} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
