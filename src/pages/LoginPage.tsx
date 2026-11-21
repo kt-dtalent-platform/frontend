@@ -95,9 +95,9 @@ export function LoginPage() {
 
 function inputClass(invalid: boolean) {
   return cn(
-    'h-control-h w-full rounded-md border bg-surface px-4 text-body text-ink outline-hidden',
-    'focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-focus',
-    invalid ? 'border-danger-line' : 'border-line-control',
+    'h-control-h w-full rounded-md border bg-surface px-4 text-body text-ink outline-hidden hover:border-line-control',
+    'focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-focus',
+    invalid ? 'border-danger-line' : 'border-line-input',
   )
 }
 

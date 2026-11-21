@@ -21,6 +21,8 @@ export type FormField = {
   // 선택지: 저장되는 값(value)과 화면에 보이는 이름(label). 백엔드 KT-17
   options?: { value: string; label: string }[] | null
   helpText?: string | null
+  // 숫자 칸 뒤에 붙는 단위(예: 학점). 템플릿에 있으면 쓴다
+  unit?: string | null
 }
 
 export type AnswerValue = string | number | boolean | string[] | null

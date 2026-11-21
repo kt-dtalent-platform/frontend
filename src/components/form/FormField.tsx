@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn'
 import { FileField, type FileHandlers } from './FileField'
 import { fieldBase, fieldControl } from './fieldClass'
 import { Checkbox } from './Checkbox'
+import { Radio } from './Radio'
 
 export type FormValues = Record<string, string | boolean | string[]>
 
@@ -29,7 +30,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
   const id = `f-${field.fieldKey}`
   // 고칠 항목 표시도 입력칸 설명으로 읽히게 한다(스크린 리더가 칸마다 '고칠 항목'을 듣도록)
   const describedBy = [highlight && `${id}-mark`, field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
-  const border = error ? 'border-danger-line' : 'border-line-control'
+  const border = error ? 'border-danger-line' : 'border-line-input'
   const rules = formatRules(field)
   const required = field.required && editable
 
@@ -42,7 +43,7 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         input = (
           <textarea
             id={id}
-            rows={4}
+            rows={3}
             aria-invalid={!!error}
             aria-required={required || undefined}
             aria-describedby={describedBy}
@@ -52,17 +53,21 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         )
         break
       case 'NUMBER':
+        // 숫자 칸은 넣을 글자 수에 맞게 좁게(4~5글자). 단위가 있으면 칸 뒤에
         input = (
-          <input
-            id={id}
-            inputMode="decimal"
-            autoComplete="off"
-            aria-invalid={!!error}
-            aria-required={required || undefined}
-            aria-describedby={describedBy}
-            className={cn(control, 'tabular-nums', border)}
-            {...register(field.fieldKey, rules)}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              id={id}
+              inputMode="decimal"
+              autoComplete="off"
+              aria-invalid={!!error}
+              aria-required={required || undefined}
+              aria-describedby={describedBy}
+              className={cn(control, 'max-w-40 tabular-nums', border)}
+              {...register(field.fieldKey, rules)}
+            />
+            {field.unit && <span className="text-ink-2">{field.unit}</span>}
+          </div>
         )
         break
       case 'DATE':
@@ -79,6 +84,21 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         )
         break
       case 'SELECT_ONE':
+        // 고를 것이 3개 이하면 펼치지 않고 한눈에 보이는 라디오로
+        if ((field.options ?? []).length <= 3) {
+          // 눌리는 높이(44px)는 지키되, 위아래 남는 여백을 걷어 다른 칸과 도움말 간격을 맞춘다
+          input = (
+            <div role="radiogroup" aria-labelledby={`${id}-label`} aria-describedby={describedBy} className="-my-2.5 flex flex-wrap gap-x-6">
+              {(field.options ?? []).map((o) => (
+                <label key={o.value} className="flex min-h-control-h cursor-pointer items-center gap-2">
+                  <Radio value={o.value} aria-invalid={!!error} {...register(field.fieldKey, rules)} />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+          )
+          break
+        }
         input = (
           <div className="relative">
             <select

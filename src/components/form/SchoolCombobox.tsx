@@ -70,7 +70,9 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={shown && active >= 0 ? optionId(active) : undefined}
+        // Safari가 연락처 자동 완성 아이콘을 붙이지 않게(확인 필요: Safari는 autocomplete=off만으로는 안 숨김)
         autoComplete="off"
+        data-1p-ignore
         value={value}
         placeholder="학교 이름으로 찾기"
         className={cn(fieldControl, fieldBorder(invalid))}
@@ -102,9 +104,10 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
       <ul
         id={listId}
         role="listbox"
+        // 스크롤 막대를 숨겨 고른 줄의 회색 바탕이 좌우 같은 여백이 되게 한다(마우스를 쓰는 맥, 윈도우는 막대가 자리를 차지함)
         aria-label="학교 목록"
         hidden={!shown}
-        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 max-h-72 animate-pop-down list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
+        className="absolute inset-x-0 top-full z-(--z-popover) m-0 mt-1 no-scrollbar max-h-72 animate-pop-down list-none overflow-y-auto rounded-md bg-surface p-1 shadow-pop"
       >
         {items.map((s, i) => (
           <li
