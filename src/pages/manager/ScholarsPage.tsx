@@ -464,6 +464,8 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
     ) : s.accountStatus === 'INACTIVE' ? (
       <RowNote icon={Ban}>사용 중지</RowNote>
     ) : null
+  // 휴대폰은 칸이 좁아 겹치는 표시를 뺀다: 중단 장학생은 늘 사용 중지라(백엔드 규칙) 중단 배지로 충분하다
+  const mobileNotes = s.status === 'WITHDRAWN' && s.accountStatus === 'INACTIVE' ? null : notes
   return (
     // 마우스를 올리면 고르기 칸까지 줄 전체를 같은 회색으로(요청 관리 목록과 같게)
     <li className={cn('flex items-center gap-4 border-b border-line-subtle pl-6 last:border-b-0 hover:bg-surface-hover', picked && 'bg-surface-hover')}>
@@ -483,10 +485,10 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
           </span>
           <span className="flex shrink-0 flex-col items-end gap-1">
             <ScholarStatusBadge status={s.status} />
-            {(mobileNote || notes) && (
+            {(mobileNote || mobileNotes) && (
               <span className="flex items-center gap-2 text-caption text-ink-3">
                 {mobileNote && <span>{mobileNote}</span>}
-                {notes}
+                {mobileNotes}
               </span>
             )}
           </span>
