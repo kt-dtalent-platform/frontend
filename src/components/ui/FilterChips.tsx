@@ -17,7 +17,7 @@ export function FilterChips<T>({ label, items, value, onChange }: { label: strin
             onClick={() => onChange(item.value)}
             className={cn(
               // 고르지 않은 칩도 버튼처럼 테두리 없이 연한 바탕(11/12)
-              'h-control-compact rounded-full px-3 text-label-sm',
+              'press h-control-compact rounded-full px-3 text-label-sm',
               active ? 'bg-action text-on-action' : 'bg-control-tonal text-ink hover:bg-control-tonal-hover active:bg-control-tonal-active',
             )}
           >

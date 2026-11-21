@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { cn } from '../../lib/cn'
 import { ToastContext, type Show } from './useToast'
 
 // 완료 알림(토스트). 끝난 일을 한 줄로 알리고 4초 뒤 사라진다(11/15).
@@ -27,26 +28,40 @@ function ToastHost({ toast, onClose }: { toast: { id: number; message: string } 
     close.current = onClose
   })
   const [paused, setPaused] = useState(false)
-  // 새 알림이 오면 멈춤을 푼다(바뀌는 사이에는 mouseleave가 오지 않는다)
+  // 시간이 다 되면 0.1초 동안 흐려진 뒤 닫는다(나갈 때는 들어올 때보다 짧게)
+  const [leaving, setLeaving] = useState(false)
+  // 새 알림이 오면 멈춤과 나가는 중을 푼다(바뀌는 사이에는 mouseleave가 오지 않는다)
   const [shownId, setShownId] = useState(toast?.id)
   if (shownId !== toast?.id) {
     setShownId(toast?.id)
     setPaused(false)
+    setLeaving(false)
   }
   useEffect(() => {
     if (!toast || paused) return
-    const t = setTimeout(() => close.current(), DURATION)
+    const t = setTimeout(() => setLeaving(true), DURATION)
     return () => clearTimeout(t)
   }, [toast, paused])
+  // 페이드가 끝났다는 신호(animationend)가 오지 않아도(애니메이션이 취소되거나 탭이 가려진 경우) 닫히게 한다
+  useEffect(() => {
+    if (!leaving) return
+    const t = setTimeout(() => close.current(), 300)
+    return () => clearTimeout(t)
+  }, [leaving])
 
   return (
     <div role="status" className="toast-host pointer-events-none fixed inset-x-0 z-(--z-toast) flex justify-center px-4">
       {toast && (
         <p
           key={toast.id}
-          onPointerEnter={(e) => e.pointerType === 'mouse' && setPaused(true)}
+          onPointerEnter={(e) => e.pointerType === 'mouse' && !leaving && setPaused(true)}
           onPointerLeave={() => setPaused(false)}
-          className="pointer-events-none m-0 w-full animate-toast-in md:pointer-events-auto rounded-md bg-ink px-5 py-3 text-body text-surface shadow-pop md:w-auto md:max-w-toast-max-w"
+          onAnimationEnd={(e) => e.animationName === 'fade-out' && close.current()}
+          className={cn(
+            'pointer-events-none m-0 w-full md:pointer-events-auto',
+            leaving ? 'animate-fade-out' : 'animate-toast-in',
+            'rounded-md bg-ink px-5 py-3 text-body text-surface shadow-pop md:w-auto md:max-w-toast-max-w',
+          )}
         >
           {toast.message}
         </p>

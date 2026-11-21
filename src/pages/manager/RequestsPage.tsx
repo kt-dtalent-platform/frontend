@@ -99,7 +99,10 @@ export function RequestsPage() {
       {loadingNext && data?.items.length === 0 && <LoadingCards count={3} />}
       {data && !loadingNext && !outOfRange && data.items.length === 0 && <EmptyState title="요청이 없어요">{tab.empty}</EmptyState>}
       {data && data.items.length > 0 && (
-        <div className={cn('flex flex-col gap-4', query.isPlaceholderData && 'opacity-60')} aria-busy={query.isPlaceholderData}>
+        <div
+          className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', query.isPlaceholderData && 'opacity-60')}
+          aria-busy={query.isPlaceholderData}
+        >
           <div className="overflow-hidden rounded-lg bg-surface">
             {/* 머리 행: 넓은 화면에서만. 좁은 화면은 행 안에서 이름을 붙여 보여 준다 */}
             <div className="hidden h-control-default items-center gap-4 border-b border-line-subtle px-6 text-caption text-ink-3 md:flex">

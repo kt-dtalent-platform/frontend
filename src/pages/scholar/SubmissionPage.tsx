@@ -47,7 +47,11 @@ export function SubmissionPage() {
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {/* key: 다른 요청으로 옮겨 가면 폼과 저장 시각을 새로 시작한다.
           저장으로 버전이 바뀌어도 폼은 그대로 둔다(저장 중에 입력한 내용을 지키기 위해). */}
-      {query.data && <SubmissionEditor key={requestId} requestId={requestId} form={query.data} onReload={() => query.refetch()} />}
+      {query.data && (
+        <div className="flex animate-fade-in flex-col gap-6">
+          <SubmissionEditor key={requestId} requestId={requestId} form={query.data} onReload={() => query.refetch()} />
+        </div>
+      )}
     </div>
   )
 }
@@ -285,7 +289,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       )}
       {submitted && (
         <div ref={topRef} tabIndex={-1} className="animate-success-in outline-none">
-          <Banner tone="success" title={submitted.status === 'RESUBMITTED' ? '다시 제출했어요' : '제출했어요'}>
+          <Banner tone="success" drawIcon title={submitted.status === 'RESUBMITTED' ? '다시 제출했어요' : '제출했어요'}>
             {submitted.completionMessage || '검토가 끝나면 내 할 일에서 알려 드려요.'}
           </Banner>
         </div>

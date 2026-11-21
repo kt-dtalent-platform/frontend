@@ -253,7 +253,7 @@ export function ScholarsPage() {
             </EmptyState>
           )
         ) : (
-          <div className={cn('flex flex-col gap-4', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
+          <div className={cn('flex animate-fade-in flex-col gap-4 transition-opacity', loadingNext && 'opacity-60')} aria-busy={loadingNext}>
             {/* 인원 수는 표 위 왼쪽. 표 머리 오른쪽 끝은 눈이 잘 가지 않는다 */}
             <div className="flex flex-col gap-2">
               <p className="m-0 text-caption text-ink-2 tabular-nums">
