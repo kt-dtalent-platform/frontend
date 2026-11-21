@@ -81,7 +81,7 @@ export function useScholars(q: { cohortId: number | null; status: ScholarStatus 
   })
 }
 
-// GET /v1/scholars/{id} (KT-11). 응답의 제출 요약과 계좌(bankAccount)는 아직 화면에 쓰지 않는다
+// GET /v1/scholars/{id} (KT-11). 응답의 제출 요약은 아직 화면에 쓰지 않는다. 계좌는 상세의 기본 정보에 보여 준다
 export type ScholarDetail = StatusInfo & {
   id: number
   name: string

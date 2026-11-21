@@ -11,7 +11,9 @@ const styles: Record<RequestStatus, { label: string; box: string; dot: string }>
 export function RequestStatusBadge({ status, className }: { status: RequestStatus; className?: string }) {
   const s = styles[status]
   return (
-    <span className={cn('inline-flex h-badge-h items-center gap-1.5 rounded-sm px-2 text-overline tracking-normal', s.box, className)}>
+    <span
+      className={cn('inline-flex h-badge-h shrink-0 items-center gap-1.5 rounded-sm px-2 text-overline tracking-normal whitespace-nowrap', s.box, className)}
+    >
       <span aria-hidden className={cn('size-1.5 rounded-full', s.dot)} />
       {s.label}
     </span>
