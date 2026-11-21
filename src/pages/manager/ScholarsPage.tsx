@@ -453,6 +453,8 @@ export function ScholarsPage() {
 function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean; disabled: boolean; onPick: (on: boolean) => void }) {
   // 상태 칸 옆 설명: 수료는 연도, 중단은 사유(기타는 "기타"로 짧게)
   const note = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년 수료` : s.status === 'WITHDRAWN' ? withdrawalText(s, true) : null
+  // 휴대폰은 배지 바로 아래라 '수료'를 다시 쓰지 않는다(수료 배지 + '2026년')
+  const mobileNote = s.status === 'COMPLETED' && s.completedYear ? `${s.completedYear}년` : note
   // 비고: 계정 상태. INACTIVE는 백엔드에서 로그인할 수 없는 계정(ACCOUNT_DISABLED). 로그인 전이라는 뜻이 아니다
   const notes =
     s.accountStatus === 'LOCKED' ? (
@@ -472,19 +474,22 @@ function Row({ s, picked, disabled, onPick }: { s: ScholarItem; picked: boolean;
         to={`/manager/scholars/${s.id}`}
         className="flex min-w-0 flex-1 items-center gap-4 py-3 pr-6 text-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus md:min-h-row-h md:py-2"
       >
-        {/* 휴대폰: 이름 줄 오른쪽에 상태, 아래에 기수와 학교, 그 아래에 상태 설명과 비고 */}
-        <span className="flex min-w-0 flex-1 flex-col gap-1 md:hidden">
-          <span className="flex items-center justify-between gap-3">
+        {/* 휴대폰: 두 줄 두 칸. 왼쪽은 누구인지(이름, 그 아래 기수와 학교), 오른쪽은 상태(배지, 그 아래 수료 연도나 중단 사유, 계정 상태).
+            이름이 가장 크고 진하게, 나머지는 작은 회색 글자 한 줄씩이라 위에서 아래로 훑으며 이름과 상태만 골라 볼 수 있다 */}
+        <span className="flex min-w-0 flex-1 items-start justify-between gap-3 md:hidden">
+          <span className="flex min-w-0 flex-col gap-1">
             <span className="truncate text-body-strong">{s.name}</span>
-            <ScholarStatusBadge status={s.status} />
+            <MetaList oneLine items={[s.cohortName, s.university]} className="flex text-caption text-ink-3" />
           </span>
-          <MetaList oneLine items={[s.cohortName, s.university]} className="flex text-caption text-ink-3" />
-          {(note || notes) && (
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-3">
-              {note && <span>{note}</span>}
-              {notes}
-            </span>
-          )}
+          <span className="flex shrink-0 flex-col items-end gap-1">
+            <ScholarStatusBadge status={s.status} />
+            {(mobileNote || notes) && (
+              <span className="flex items-center gap-2 text-caption text-ink-3">
+                {mobileNote && <span>{mobileNote}</span>}
+                {notes}
+              </span>
+            )}
+          </span>
         </span>
 
         {/* PC. 좁은 PC(기수, 학교 열이 없는 폭)는 이름 아래에 기수와 학교. 잘린 글자는 마우스를 올리면 전부 보인다 */}

@@ -22,7 +22,7 @@ const views = [
 export function MyTasksPage() {
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'done' ? 'DONE' : 'TODO'
-  // 카드가 차례로 나타나는 모션은 화면에 처음 들어올 때만. 칩을 바꿀 때는 움직이지 않는다(자주 하는 조작)
+  // 카드가 차례로 나타나는 모션은 화면에 처음 들어올 때만. 칩을 바꾸면 목록 전체가 한 번에 바뀐 걸 보이게(담당자 목록과 같은 list-in)
   const [firstView] = useState(view)
   const [switched, setSwitched] = useState(false)
   if (!switched && view !== firstView) setSwitched(true)
@@ -58,7 +58,7 @@ export function MyTasksPage() {
         </EmptyState>
       )}
       {!failed && view === 'TODO' && todo.length > 0 && (
-        <ul className={cn('m-0 flex list-none flex-col gap-3 p-0', !switched && 'stagger-in')}>
+        <ul key={view} className={cn('m-0 flex list-none flex-col gap-3 p-0', switched ? 'animate-list-in' : 'stagger-in')}>
           {todo.map((task) => (
             <li key={task.requestId}>
               <TaskCard task={task} />
@@ -67,7 +67,7 @@ export function MyTasksPage() {
         </ul>
       )}
       {!failed && view === 'DONE' && done && done.length > 0 && (
-        <ul className={cn('m-0 flex list-none flex-col gap-3 p-0', !switched && 'stagger-in')}>
+        <ul key={view} className={cn('m-0 flex list-none flex-col gap-3 p-0', switched ? 'animate-list-in' : 'stagger-in')}>
           {done.map((h) => (
             <li key={h.requestId}>
               <DoneCard item={h} />
@@ -93,9 +93,14 @@ function TaskCard({ task }: { task: MyTask }) {
             {late && <Tag tone="warning">마감 지남</Tag>}
           </div>
           <h2 className="m-0 text-title-2">{task.title}</h2>
-          <p className="m-0 flex gap-3 text-caption text-ink-3 tabular-nums">
+          <p className="m-0 flex items-center gap-3 text-caption text-ink-3 tabular-nums">
             <span>마감 {formatDue(task.dueAt)}</span>
-            {!done && <span className={cn((late || soon) && 'font-semibold text-warning-text')}>{dDayText(task.dDay, task.overdue)}</span>}
+            {/* 3일 안으로 남았으면 D-n을 태그로 올려 눈에 띄게. 마감 지남은 위쪽 태그가 이미 알린다 */}
+            {!done && soon ? (
+              <Tag tone="warning">{dDayText(task.dDay, task.overdue)}</Tag>
+            ) : (
+              !done && <span className={cn(late && 'font-semibold text-warning-text')}>{dDayText(task.dDay, task.overdue)}</span>
+            )}
           </p>
         </div>
         <ChevronRight size={20} strokeWidth={1.75} className="mt-1 shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
