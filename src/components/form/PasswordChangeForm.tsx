@@ -1,4 +1,4 @@
-import { Check, Circle } from 'lucide-react'
+import { Check, Dot } from 'lucide-react'
 import { useId } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useChangePassword } from '../../api/auth'
@@ -90,10 +90,11 @@ export function PasswordChangeForm({ email, mode, onDone, onCancel }: Props) {
         <ul id={rulesId} aria-label="비밀번호 조건" className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-caption">
           {rules.map((r) => {
             const ok = r.test(next)
-            const Icon = ok ? Check : Circle
+            // 아직이면 회색 점, 맞으면 초록 체크. 색을 못 구분해도 모양으로 알 수 있게(원은 라디오처럼 보여 쓰지 않음)
+            const Icon = ok ? Check : Dot
             return (
               <li key={r.label} className={cn('flex items-center gap-1', ok ? 'text-success-text' : 'text-ink-3')}>
-                <Icon size={14} strokeWidth={ok ? 2.5 : 1.75} aria-hidden />
+                <Icon size={14} strokeWidth={ok ? 2.5 : 4} aria-hidden />
                 {r.label}
                 <span className="sr-only">{ok ? ' 맞음' : ' 아직'}</span>
               </li>

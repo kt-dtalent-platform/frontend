@@ -147,7 +147,7 @@ export function submit(requestId: number, answers: Answers, resubmit: boolean) {
 // 장학생 홍길동(2026년 선발)의 제출 요청. MVP는 성적증명서 제출만 다룬다.
 // 40: 새로 제출할 요청(아직 안 냄), 31: 보완 필요, 28: 확인 완료
 const gradeFields: RawSubmissionForm['fields'] = [
-  { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 4.5 } },
+  { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 4.5 }, helpText: '예: 3.85' },
   {
     fieldKey: 'gpa_scale',
     label: '만점 기준',
@@ -157,9 +157,17 @@ const gradeFields: RawSubmissionForm['fields'] = [
       { value: '4.5', label: '4.5' },
       { value: '4.3', label: '4.3' },
     ],
-    helpText: '학교 성적증명서에 적힌 만점을 고르세요.',
+    helpText: '성적증명서에 적힌 평점 만점을 고르세요.',
   },
-  { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true, validation: { min: 0, max: 30 } },
+  {
+    fieldKey: 'credits',
+    label: '취득 학점 (F 제외)',
+    fieldType: 'NUMBER',
+    required: true,
+    unit: '학점',
+    validation: { min: 0, max: 30 },
+    helpText: '예: 18학점을 들었고 3학점이 F면 15',
+  },
   {
     fieldKey: 'transcript',
     label: '성적증명서',

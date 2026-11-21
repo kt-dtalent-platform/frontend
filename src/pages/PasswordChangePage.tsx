@@ -36,7 +36,7 @@ function ChangeForm({ email, role }: { email: string; role: Role }) {
         <div className="flex flex-col gap-6 rounded-xl bg-surface px-6 py-8 md:p-10">
           <div className="flex flex-col gap-2">
             <h1 className="m-0 text-title-1">비밀번호 변경</h1>
-            <p className="m-0 text-ink-2">처음 로그인했어요. 받은 임시 비밀번호를 내 비밀번호로 바꿔 주세요.</p>
+            <p className="m-0 text-balance text-ink-2">받은 임시 비밀번호를 새 비밀번호로 바꿔 주세요.</p>
           </div>
           <PasswordChangeForm email={email} mode="first" onDone={() => navigate(roleHome(role), { replace: true })} />
         </div>

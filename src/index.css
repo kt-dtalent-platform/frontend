@@ -64,6 +64,13 @@
   }
 }
 
+/* 세로 목록(학교 고르기)의 스크롤 막대는 남기고, 막대 자리를 양쪽에 같이 둔다.
+   막대가 늘 보이는 설정(맥, 윈도)에서도 강조 바탕의 좌우 여백이 같다. 휠 없는 마우스로도 끌어 내릴 수 있다 */
+@utility scrollbar-both {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable both-edges;
+}
+
 /* 가로로 미는 줄(필터 칩)의 스크롤 막대를 숨긴다. 밀기는 그대로 된다 */
 @utility no-scrollbar {
   scrollbar-width: none;
