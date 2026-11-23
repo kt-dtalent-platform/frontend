@@ -13,7 +13,7 @@ const templates = [
     fields: [
       { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER' },
       { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE' },
-      { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER' },
+      { fieldKey: 'credits', label: '취득 학점', fieldType: 'NUMBER' },
       { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE' },
       { fieldKey: 'note', label: '전달할 내용', fieldType: 'TEXTAREA' },
     ],
@@ -234,7 +234,7 @@ function sample(code: string, i: number) {
         result: i % 7 === 2 ? 'UNREADABLE' : read === gpa ? 'MATCH' : 'MISMATCH',
       },
       { field: 'gpa_scale', label: '만점 기준', entered: '4.5', extracted: '4.5', result: 'MATCH' },
-      { field: 'credits', label: '이수 학점', entered: String(15 + (i % 7)), extracted: String(15 + (i % 7)), result: 'MATCH' },
+      { field: 'credits', label: '취득 학점', entered: String(15 + (i % 7)), extracted: String(15 + (i % 7)), result: 'MATCH' },
     )
   }
   return { answers, files, comparisons }
@@ -285,7 +285,7 @@ export function exportCsv(requestId: number, statuses: string[], columns: string
     submittedAt: ['제출 일시', (r) => kst(r.submittedAt)],
     gpa: ['평점', (r) => (r.gpa != null ? r.gpa.toFixed(2) : '')],
     gpaScale: ['만점 기준', (r) => r.gpaScale ?? ''],
-    credits: ['이수 학점', (r, i) => (r.gpa != null ? String(15 + (i % 7)) : '')],
+    credits: ['취득 학점', (r, i) => (r.gpa != null ? String(15 + (i % 7)) : '')],
     revisionReason: ['보완 사유', (r) => (r.status === 'REVISION_REQUIRED' ? '성적증명서가 흐려 다시 올려 주세요' : '')],
   }
   const keys = columns.filter((k) => cell[k])
