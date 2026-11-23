@@ -17,6 +17,7 @@ import { appUrl } from '../../lib/env'
 import { MAX_ROWS, parseScholarSheet, type ImportRow, type Key } from '../../lib/scholarImport'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { errorText } from '../../api/errorText'
+import { phoneDigits } from '../../lib/phone'
 
 const TEMPLATE = appUrl('/templates/scholar-import.xlsx')
 const FILE_INPUT = 'scholar-import-file'
@@ -98,7 +99,14 @@ export function ScholarImportPage() {
     try {
       const r = await bulk.mutateAsync({
         cohortId: Number(cohort),
-        scholars: rows.map(({ name, email, phone, university, major, studentNo }) => ({ name, email, phone, university, major, studentNo })),
+        scholars: rows.map(({ name, email, phone, university, major, studentNo }) => ({
+          name,
+          email,
+          phone: phone && phoneDigits(phone),
+          university,
+          major,
+          studentNo,
+        })),
       })
       // row는 보낸 명단 순서 + 1이라 그 줄의 이름을 붙인다
       const accounts = (r.items ?? [])

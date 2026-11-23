@@ -1,5 +1,5 @@
 import type { ScholarCreate } from '../api/scholars'
-import { PHONE } from '../api/scholars'
+import { isPhone } from './phone'
 
 // 장학생 일괄 등록 엑셀을 읽어 줄마다 검사한다(11/15: 프론트가 읽고 백엔드에는 명단만 보낸다)
 // 양식: public/templates/scholar-import.xlsx. 첫 줄은 열 이름, 둘째 줄부터 한 사람씩
@@ -93,7 +93,7 @@ export function parseScholarSheet(data: unknown[][]): ParseResult {
     }
     if (!r.university) add('university', '학교가 비어 있어요')
     else if (r.university.length > 100) add('university', '학교는 100자까지 쓸 수 있어요')
-    if (r.phone && !PHONE.test(r.phone)) add('phone', '연락처는 숫자와 -만 쓸 수 있어요')
+    if (r.phone && !isPhone(r.phone)) add('phone', '연락처는 0으로 시작하는 숫자 9~11자리예요')
     if (r.major && r.major.length > 100) add('major', '전공은 100자까지 쓸 수 있어요')
     if (r.studentNo && r.studentNo.length > 30) add('studentNo', '학번은 30자까지 쓸 수 있어요')
   }
