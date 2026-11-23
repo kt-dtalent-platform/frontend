@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import {
-  PHONE,
   withdrawalText,
   useChangeScholarStatus,
   useScholar,
@@ -21,6 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
+import { formatPhoneInput, isPhone, PHONE_ERROR, phoneDigits } from '../../lib/phone'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { useFindSchoolId } from '../../api/schools'
@@ -166,7 +166,7 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
     // 백엔드는 보낸 문자열 항목만 바꾼다. 바뀐 항목만 보낸다(빈 값으로 지우기는 아직 지원 안 함)
     const body: ScholarUpdate = {}
     if (v.name.trim() !== s.name) body.name = v.name.trim()
-    if (v.phone.trim()) body.phone = v.phone.trim()
+    if (v.phone.trim()) body.phone = phoneDigits(v.phone)
     // 학교를 바꾸면 목록의 학교 ID도 같이 보낸다. 직접 쓴 이름이면 null(서버가 예전 ID를 지운다)
     if (v.university.trim() && v.university.trim() !== s.university) {
       body.university = v.university.trim()
@@ -197,16 +197,16 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
             />
           )}
         </LabeledField>
-        <LabeledField label="연락처" hint="바꿀 때만 입력하세요." error={e.phone?.message}>
+        <LabeledField label="연락처" hint={s.maskedPhone ? `지금 ${s.maskedPhone}. 바꿀 때만 입력하세요.` : '예: 010-1234-5678'} error={e.phone?.message}>
           {(p) => (
             <input
               {...p}
               type="tel"
               inputMode="tel"
               autoComplete="off"
-              placeholder={s.maskedPhone ?? '010-0000-0000'}
-              className={cn(fieldControl, fieldBorder(!!e.phone))}
-              {...register('phone', { pattern: { value: PHONE, message: '숫자와 - 만 입력하세요.' } })}
+              maxLength={13}
+              className={cn(fieldControl, 'tabular-nums', fieldBorder(!!e.phone))}
+              {...register('phone', { onChange: formatPhoneInput, validate: (x) => !x.trim() || isPhone(x) || PHONE_ERROR })}
             />
           )}
         </LabeledField>

@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
-import { PHONE, useCreateScholar } from '../../api/scholars'
+import { useCreateScholar } from '../../api/scholars'
+import { formatPhoneInput, isPhone, PHONE_ERROR, phoneDigits } from '../../lib/phone'
 import { CohortField } from '../../components/form/CohortField'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
@@ -59,7 +60,7 @@ export function ScholarCreatePage() {
         cohortId: Number(v.cohortId),
         name: v.name.trim(),
         email: v.email.trim(),
-        phone: opt(v.phone),
+        phone: opt(phoneDigits(v.phone)),
         university: v.university.trim(),
         major: opt(v.major),
         studentNo: opt(v.studentNo),
@@ -137,16 +138,16 @@ export function ScholarCreatePage() {
               />
             )}
           </LabeledField>
-          <LabeledField label="연락처" error={e.phone?.message}>
+          <LabeledField label="연락처" hint="예: 010-1234-5678" error={e.phone?.message}>
             {(p) => (
               <input
                 {...p}
                 type="tel"
                 inputMode="tel"
                 autoComplete="off"
-                placeholder="010-0000-0000"
-                className={cn(fieldControl, fieldBorder(!!e.phone))}
-                {...register('phone', { validate: (x) => (!x.trim() || PHONE.test(x.trim()) ? true : '숫자와 - 만 입력하세요.') })}
+                maxLength={13}
+                className={cn(fieldControl, 'tabular-nums', fieldBorder(!!e.phone))}
+                {...register('phone', { onChange: formatPhoneInput, validate: (x) => !x.trim() || isPhone(x) || PHONE_ERROR })}
               />
             )}
           </LabeledField>

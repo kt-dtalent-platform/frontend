@@ -3,8 +3,6 @@ import { sortParam, type Sort } from '../lib/sort'
 import { api } from './client'
 
 // 장학생 명단·상세·수정·등록. 백엔드 KT-10~13 응답·요청 모양 기준
-// 연락처 형식(숫자와 -). 백엔드 검증 규칙은 확인 필요
-export const PHONE = /^[0-9-]{9,20}$/
 
 // 장학생 상태: 재학, 휴학, 수료, 중단(11/10 재단 요청 3개 + 11/17 군휴학 때문에 휴학 추가, 백엔드와 같은 값)
 export type ScholarStatus = 'ENROLLED' | 'LEAVE' | 'COMPLETED' | 'WITHDRAWN'

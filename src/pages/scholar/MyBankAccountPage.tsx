@@ -61,7 +61,7 @@ function BankForm({ saved, name }: { saved: MyBankAccount | null; name: string }
 
   const onSubmit = handleSubmit(async (v) => {
     try {
-      await update.mutateAsync({ bankName: v.bankName, accountNumber: v.accountNumber.trim(), accountHolder: v.accountHolder.trim() })
+      await update.mutateAsync({ bankName: v.bankName, accountNumber: digits(v.accountNumber), accountHolder: v.accountHolder.trim() })
       update.reset()
       toast('계좌를 저장했어요')
       back()
