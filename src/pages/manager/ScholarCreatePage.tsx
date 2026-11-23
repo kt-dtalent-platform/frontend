@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../../api/client'
 import { useCreateScholar } from '../../api/scholars'
-import { formatPhoneInput, isPhone, PHONE_ERROR, phoneDigits } from '../../lib/phone'
+import { phoneDigits, phoneField } from '../../lib/phone'
 import { CohortField } from '../../components/form/CohortField'
 import { fieldBorder, fieldControl } from '../../components/form/fieldClass'
 import { LabeledField } from '../../components/form/LabeledField'
@@ -145,9 +145,8 @@ export function ScholarCreatePage() {
                 type="tel"
                 inputMode="tel"
                 autoComplete="off"
-                maxLength={13}
                 className={cn(fieldControl, 'tabular-nums', fieldBorder(!!e.phone))}
-                {...register('phone', { onChange: formatPhoneInput, validate: (x) => !x.trim() || isPhone(x) || PHONE_ERROR })}
+                {...register('phone', phoneField)}
               />
             )}
           </LabeledField>

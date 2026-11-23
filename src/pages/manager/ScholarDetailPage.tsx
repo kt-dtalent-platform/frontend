@@ -20,7 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
-import { formatPhoneInput, isPhone, PHONE_ERROR, phoneDigits } from '../../lib/phone'
+import { phoneDigits, phoneField } from '../../lib/phone'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { useFindSchoolId } from '../../api/schools'
@@ -204,9 +204,8 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
               type="tel"
               inputMode="tel"
               autoComplete="off"
-              maxLength={13}
               className={cn(fieldControl, 'tabular-nums', fieldBorder(!!e.phone))}
-              {...register('phone', { onChange: formatPhoneInput, validate: (x) => !x.trim() || isPhone(x) || PHONE_ERROR })}
+              {...register('phone', phoneField)}
             />
           )}
         </LabeledField>
