@@ -96,7 +96,7 @@ export const templates: RequestTemplate[] = [
     fields: [
       { fieldKey: 'gpa', label: '학기 평점', fieldType: 'NUMBER', required: true },
       { fieldKey: 'gpa_scale', label: '만점 기준', fieldType: 'SELECT_ONE', required: true },
-      { fieldKey: 'credits', label: '이수 학점', fieldType: 'NUMBER', required: true },
+      { fieldKey: 'credits', label: '취득 학점', fieldType: 'NUMBER', required: true },
       { fieldKey: 'transcript', label: '성적증명서', fieldType: 'FILE', required: true },
     ],
   },

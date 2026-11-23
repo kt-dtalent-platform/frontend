@@ -53,8 +53,16 @@ export function useFileActions(requestId: number) {
       body: { fieldKey, fileName: file.name, contentType, size: file.size },
       signal,
     })
-    await putToStorage(p.uploadUrl, file, contentType, onProgress, signal)
-    const done = await api<Completed>(`/submissions/${submissionId}/files/${p.fileId}/complete`, { method: 'POST', signal })
+    let done: Completed
+    try {
+      await putToStorage(p.uploadUrl, file, contentType, onProgress, signal)
+      done = await api<Completed>(`/submissions/${submissionId}/files/${p.fileId}/complete`, { method: 'POST', signal })
+    } catch (err) {
+      // 주소를 받을 때 서버가 잡아 둔 자리(PENDING)도 파일 개수에 들어간다.
+      // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다
+      void api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
+      throw err
+    }
     const uploaded: UploadedFile = {
       id: done.fileId,
       fieldKey,

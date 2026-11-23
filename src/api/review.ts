@@ -71,7 +71,7 @@ export const submissionExportColumns = [
       { key: 'submittedAt', label: '제출 일시', default: true },
       { key: 'gpa', label: '평점', default: true },
       { key: 'gpaScale', label: '만점 기준', default: true },
-      { key: 'credits', label: '이수 학점', default: true },
+      { key: 'credits', label: '취득 학점', default: true },
       { key: 'revisionReason', label: '보완 사유' },
     ],
   },

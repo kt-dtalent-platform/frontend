@@ -314,6 +314,10 @@ export const handlers = [
     const ext = raw === 'jpeg' ? 'jpg' : raw
     if (rule?.allowedExtensions && !rule.allowedExtensions.includes(ext)) return fail(path, 400, 'INVALID_EXTENSION', '허용되지 않은 파일 형식입니다')
     if (rule?.maxSizeMb && body.size > rule.maxSizeMb * 1024 * 1024) return fail(path, 413, 'FILE_TOO_LARGE', '허용 용량을 초과했습니다')
+    // 서버처럼 올리는 중(PENDING)인 파일도 개수에 센다
+    const pendingCount = [...pendingUploads.values()].filter((u) => u.requestId === requestId && u.fieldKey === body.fieldKey).length
+    const uploadedCount = (getForm(requestId)?.files ?? []).filter((f) => f.fieldKey === body.fieldKey).length
+    if (pendingCount + uploadedCount >= (rule?.maxFiles ?? 1)) return fail(path, 400, 'FILE_COUNT_EXCEEDED', '첨부 가능한 파일 개수를 초과했습니다.')
     const fileId = 9000 + Math.floor(Math.random() * 100000)
     pendingUploads.set(fileId, {
       requestId,
@@ -375,6 +379,8 @@ export const handlers = [
   http.delete(`${BASE}/files/:fileId`, ({ params, request }) => {
     const path = `/v1/files/${params.fileId}`
     if (!roleOf(request)) return unauthorized(path)
+    // 올리다 실패한 파일(PENDING)은 자리만 지운다
+    if (pendingUploads.delete(Number(params.fileId))) return ok(path, null)
     const owner = fileOwner(Number(params.fileId))
     if (!owner) return fail(path, 404, 'RESOURCE_NOT_FOUND', '파일을 찾을 수 없습니다')
     if (!canChangeFile(owner.requestId, owner.fieldKey))
