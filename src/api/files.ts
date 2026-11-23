@@ -59,8 +59,9 @@ export function useFileActions(requestId: number) {
       done = await api<Completed>(`/submissions/${submissionId}/files/${p.fileId}/complete`, { method: 'POST', signal })
     } catch (err) {
       // 주소를 받을 때 서버가 잡아 둔 자리(PENDING)도 파일 개수에 들어간다.
-      // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다
-      void api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
+      // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다.
+      // 지우기가 끝난 뒤에 실패를 알려야 바로 [다시 시도]해도 개수에 걸리지 않는다. 취소 신호와는 따로 보낸다
+      await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
       throw err
     }
     const uploaded: UploadedFile = {
