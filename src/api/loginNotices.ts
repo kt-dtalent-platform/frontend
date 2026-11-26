@@ -57,6 +57,8 @@ export function skipText(code: string | null) {
       return '이미 보냄'
     case 'ALREADY_QUEUED':
       return '보내는 중'
+    case 'REISSUE_REQUIRED':
+      return '전에 보내지 못해 임시 비밀번호 다시 보내기 필요'
     case 'ACCOUNT_DISABLED':
       return '로그인할 수 없는 계정'
     case 'SCHOLAR_NOT_FOUND':

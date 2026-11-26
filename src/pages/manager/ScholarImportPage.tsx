@@ -259,7 +259,8 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
   const top = useRef<HTMLDivElement>(null)
   const [saved, setSaved] = useState(false)
   // 보낼 대상: 처음에는 전원, 실패한 사람을 다시 보낼 때는 그 사람들만
-  const [mailing, setMailing] = useState<number[] | null>(null)
+  // reissue: 보내지 못한 사람에게 다시 보낼 때. 서버는 실패 이력이 있으면 재발급으로만 보낸다
+  const [mailing, setMailing] = useState<{ ids: number[]; reissue: boolean } | null>(null)
   const [mailed, setMailed] = useState<NoticeResult | null>(null)
   const result = useRef<HTMLDivElement>(null)
   // 등록 버튼이 사라지므로 결과 첫머리로 포커스를 옮겨 스크린 리더가 결과를 읽게 한다
@@ -338,7 +339,7 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
             <span className="text-caption text-ink-3">아이디와 임시 비밀번호를 장학생마다 메일로 보내요</span>
           </div>
           {!mailed && (
-            <Button size="compact" variant="primary" onClick={() => setMailing(ids)}>
+            <Button size="compact" variant="primary" onClick={() => setMailing({ ids, reissue: false })}>
               메일 보내기
             </Button>
           )}
@@ -351,7 +352,7 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
           {failed.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className="text-danger-text">보내지 못함: {failed.map(nameOf).join(', ')}</span>
-              <Button size="compact" onClick={() => setMailing(failed)}>
+              <Button size="compact" onClick={() => setMailing({ ids: failed, reissue: true })}>
                 {failed.length}명 다시 보내기
               </Button>
             </div>
@@ -386,7 +387,15 @@ function ImportResult({ accounts, onMailed }: { accounts: Account[]; onMailed: (
         </Link>
       </div>
 
-      {mailing && <LoginNoticeDialog scholarIds={mailing} who={`${mailing.length}명`} reissue={false} onClose={() => setMailing(null)} onSent={onSent} />}
+      {mailing && (
+        <LoginNoticeDialog
+          scholarIds={mailing.ids}
+          who={`${mailing.ids.length}명`}
+          reissue={mailing.reissue}
+          onClose={() => setMailing(null)}
+          onSent={onSent}
+        />
+      )}
     </div>
   )
 }

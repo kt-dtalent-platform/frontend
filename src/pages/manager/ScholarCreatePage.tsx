@@ -21,10 +21,10 @@ import { LoginNoticeDialog } from './LoginNoticeDialog'
 import { noticeText, sentText, useNoticeStatus, type NoticeResult } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
 import { errorText } from '../../api/errorText'
+import { EMAIL } from '../../lib/email'
 
 type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const opt = (v: string) => v.trim() || null
 const EMPTY: Values = { cohortId: '', name: '', email: '', phone: '', university: '', major: '', studentNo: '' }
 
@@ -223,7 +223,7 @@ function CreatedResult({
 }) {
   const toast = useToast()
   // 로그인 안내 메일(백엔드 KT-60). 보내면 서버가 새 임시 비밀번호를 만들어 보내므로 화면의 비밀번호는 숨긴다
-  const [mailing, setMailing] = useState(false)
+  const [mailing, setMailing] = useState<false | 'first' | 'reissue'>(false)
   const [mailed, setMailed] = useState<NoticeResult | null>(null)
   const status = useNoticeStatus(mailed ? [id] : [])
   const result = useRef<HTMLDivElement>(null)
@@ -271,7 +271,7 @@ function CreatedResult({
             <span className="text-caption text-ink-3">아이디와 임시 비밀번호를 {email}로 보내요</span>
           </div>
           {!mailed && (
-            <Button size="compact" variant="primary" onClick={() => setMailing(true)}>
+            <Button size="compact" variant="primary" onClick={() => setMailing('first')}>
               메일 보내기
             </Button>
           )}
@@ -282,13 +282,13 @@ function CreatedResult({
             {mailed ? (record ? noticeText(record) : sentText(mailed)) : ''}
           </p>
           {record?.status === 'FAILED' && (
-            <Button size="compact" onClick={() => setMailing(true)}>
+            <Button size="compact" onClick={() => setMailing('reissue')}>
               다시 보내기
             </Button>
           )}
         </div>
       </div>
-      {mailing && <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue={false} onClose={() => setMailing(false)} onSent={onSent} />}
+      {mailing && <LoginNoticeDialog scholarIds={[id]} who={`${name} 님`} reissue={mailing === 'reissue'} onClose={() => setMailing(false)} onSent={onSent} />}
       {!mailed && (
         <div className="flex flex-col gap-2">
           <h2 className="m-0 text-label text-ink-2">메일을 쓸 수 없을 때</h2>
