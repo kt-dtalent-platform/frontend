@@ -227,10 +227,10 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     // 올리다 멈춘 파일이 남아 있으면 서버가 제출을 거절한다
     const stalledKeys = [...new Set(form.stalledFiles.map((f) => f.fieldKey))]
     if (stalledKeys.length > 0) {
-      stalledKeys.forEach((key) => setError(key, { message: '올리다 멈춘 파일을 지우세요.' }))
+      stalledKeys.forEach((key) => setError(key, { message: '업로드에 실패한 파일을 지우세요.' }))
       // [파일 첨부]가 없을 수 있어(개수가 찬 칸) 파일 목록으로 옮긴다
       document.getElementById(`f-${stalledKeys[0]}-files`)?.focus()
-      setNotice({ title: '올리다 멈춘 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
+      setNotice({ title: '업로드에 실패한 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
       return
     }
     const missing = missingRequired(form, getValues())

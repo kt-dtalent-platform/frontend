@@ -203,12 +203,12 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
         <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-warning-bg pr-1 pl-4">
           <FileWarning size={16} strokeWidth={2} className="shrink-0 text-warning-text" aria-hidden />
           <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
-          <span className="shrink-0 text-caption text-warning-text">올리다 멈춤</span>
+          <span className="shrink-0 text-caption text-warning-text">업로드 실패</span>
           {editable && handlers && (
             <Button
               size="compact"
               variant="ghost"
-              aria-label={`올리다 멈춘 ${f.originalName} 지우기`}
+              aria-label={`업로드에 실패한 ${f.originalName} 지우기`}
               disabled={removing === f.id}
               onClick={() => void removeUploaded(f)}
             >
