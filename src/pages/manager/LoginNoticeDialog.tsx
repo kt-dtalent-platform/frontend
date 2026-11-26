@@ -8,8 +8,7 @@ import { FormDialog } from '../../components/ui/FormDialog'
 import { cn } from '../../lib/cn'
 import { FormError } from '../../components/form/FormError'
 import { errorText } from '../../api/errorText'
-
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { isEmail } from '../../lib/email'
 
 // 로그인 안내 메일 보내기(백엔드 KT-60). 명단에서 고른 여러 명, 등록 결과, 장학생 상세가 같이 쓴다.
 // reissue=false: 처음 보내기(이미 보냈거나 비밀번호를 바꾼 장학생은 서버가 건너뜀)
@@ -52,7 +51,7 @@ export function LoginNoticeDialog({
     if (askSender) {
       const next = {
         name: name.trim() ? undefined : '보내는 사람 이름을 입력하세요.',
-        address: EMAIL.test(address.trim()) ? undefined : '메일 주소 형식을 확인하세요. 예: scholarship@kt.com',
+        address: isEmail(address) ? undefined : '메일 주소 형식을 확인하세요. 예: scholarship@kt.com',
       }
       setErrors(next)
       if (next.name || next.address) return

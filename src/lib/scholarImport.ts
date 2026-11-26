@@ -1,13 +1,14 @@
 import type { ScholarCreate } from '../api/scholars'
+import { isEmail } from './email'
 import { isPhone } from './phone'
 
 // 장학생 일괄 등록 엑셀을 읽어 줄마다 검사한다(11/15: 프론트가 읽고 백엔드에는 명단만 보낸다)
 // 양식: public/templates/scholar-import.xlsx. 첫 줄은 열 이름, 둘째 줄부터 한 사람씩
 
 export const MAX_ROWS = 500
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
-export type Key = 'name' | 'email' | 'university' | 'phone' | 'major' | 'studentNo'
+export const KEYS = ['name', 'email', 'university', 'phone', 'major', 'studentNo'] as const
+export type Key = (typeof KEYS)[number]
 // 문제가 있는 칸과 이유. 화면은 그 칸을 표시하고 줄 아래에 이유를 적는다
 export type RowIssue = { field: Key; message: string }
 
@@ -84,7 +85,7 @@ export function parseScholarSheet(data: unknown[][]): ParseResult {
     if (!r.name) add('name', '이름이 비어 있어요')
     else if (r.name.length > 50) add('name', '이름은 50자까지 쓸 수 있어요')
     if (!r.email) add('email', '이메일이 비어 있어요')
-    else if (!EMAIL.test(r.email)) add('email', '이메일 형식이 아니에요')
+    else if (!isEmail(r.email)) add('email', '이메일 형식이 아니에요')
     else {
       const key = r.email.toLowerCase()
       const first = seen.get(key)

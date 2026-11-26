@@ -74,7 +74,9 @@ function Review({ d }: { d: SubmissionDetail }) {
   // 서버가 보완 기한을 받지 않은 이유(창 안 기한 칸에 보인다)
   const [dueError, setDueError] = useState<string | null>(null)
   const waiting = d.status === 'SUBMITTED' || d.status === 'RESUBMITTED'
-  const mismatched = (d.analysis?.comparisons ?? []).filter((c) => c.result !== 'MATCH')
+  // 다름은 고칠 항목 후보, 읽지 못함은 서류를 직접 봐야 하는 항목(값이 틀렸다는 뜻이 아님)
+  const mismatched = (d.analysis?.comparisons ?? []).filter((c) => c.result === 'MISMATCH')
+  const unreadable = (d.analysis?.comparisons ?? []).filter((c) => c.result === 'UNREADABLE')
 
   // 처리한 뒤: 남은 검토 대기가 있으면 다음 사람으로, 없으면 제출 현황으로
   const afterAction = (message: string) => {
@@ -203,14 +205,12 @@ function Review({ d }: { d: SubmissionDetail }) {
       <ConfirmDialog
         open={confirming}
         busy={confirm.isPending}
-        title="확인 완료"
+        title="확인 완료할까요?"
         confirmLabel="확인 완료"
         onConfirm={onConfirm}
         onCancel={() => setConfirming(false)}
       >
-        {mismatched.length > 0
-          ? `문서 값과 다른 항목이 있어요(${mismatched.map((c) => c.label).join(', ')}). 확인 완료하면 장학생이 입력한 값으로 기록돼요.`
-          : '확인 완료하면 장학생에게 결과가 보이고 더 고칠 수 없어요.'}
+        {confirmText(mismatched, unreadable)}
       </ConfirmDialog>
 
       <RevisionDialog
@@ -606,3 +606,24 @@ const show = (v: SubmissionDetail['answers'][string]) =>
 const labelsOf = (d: SubmissionDetail, keys: string[]) => keys.map((k) => d.fields.find((f) => f.fieldKey === k)?.label ?? k).join(', ')
 const historyLabel = (to: string) =>
   ({ SUBMITTED: '제출', RESUBMITTED: '다시 제출', REVISION_REQUIRED: '보완 요청', CONFIRMED: '확인 완료', DRAFT: '작성' })[to] ?? to
+
+// 확인 완료 대화상자 본문. 다시 볼 항목을 한 줄에 하나씩 먼저, 되돌릴 수 없는 결과는 버튼 바로 위에(대화상자 본문이 p라 줄은 block span으로 나눈다)
+function confirmText(mismatched: Comparison[], unreadable: Comparison[]) {
+  const labels = (list: Comparison[]) => list.map((c) => c.label).join(', ')
+  const rows = [
+    mismatched.length > 0 && { key: 'mismatch', name: '서류 값과 다름', value: labels(mismatched) },
+    unreadable.length > 0 && { key: 'unreadable', name: '서류에서 못 읽음', value: labels(unreadable) },
+  ].filter((r) => r !== false)
+  if (rows.length === 0) return '장학생에게 결과가 보이고, 더 고칠 수 없어요.'
+  return (
+    <>
+      {rows.map((r) => (
+        <span key={r.key} className="flex gap-3">
+          <span className="w-28 shrink-0 text-ink-3">{r.name}</span>
+          <span className="font-semibold text-ink">{r.value}</span>
+        </span>
+      ))}
+      <span className="mt-3 block">장학생이 입력한 값으로 기록되고, 더 고칠 수 없어요.</span>
+    </>
+  )
+}
