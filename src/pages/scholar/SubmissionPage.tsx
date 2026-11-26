@@ -149,13 +149,18 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   )
 
   const fileHandlers: FileHandlers = {
-    upload: async (fieldKey, file, onProgress, signal) => {
+    upload: async (fieldKey, file, onProgress, signal, onFileId) => {
       const submissionId = await ensureSubmissionId()
-      const uploaded = await fileActions.upload({ submissionId, fieldKey, file, onProgress, signal })
+      const uploaded = await fileActions.upload({ submissionId, fieldKey, file, onProgress, signal, onFileId })
       clearErrors(fieldKey)
       return uploaded
     },
-    remove: (fileId) => fileActions.remove(fileId),
+    remove: async (fileId) => {
+      const stalled = form.stalledFiles.find((f) => f.id === fileId)
+      const latest = await fileActions.remove(fileId)
+      // 그 칸의 멈춘 파일을 다 지웠으면 "지우세요" 오류도 지운다(동시에 지운 경우도 있어 최신 폼으로 본다)
+      if (stalled && !latest?.stalledFiles.some((f) => f.fieldKey === stalled.fieldKey)) clearErrors(stalled.fieldKey)
+    },
     onBusyChange,
   }
 
@@ -217,6 +222,15 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         title: '파일을 올리는 중이에요',
         body: '다 올라간 뒤 제출하세요.',
       })
+      return
+    }
+    // 올리다 멈춘 파일이 남아 있으면 서버가 제출을 거절한다
+    const stalledKeys = [...new Set(form.stalledFiles.map((f) => f.fieldKey))]
+    if (stalledKeys.length > 0) {
+      stalledKeys.forEach((key) => setError(key, { message: '업로드에 실패한 파일을 지우세요.' }))
+      // [파일 첨부]가 없을 수 있어(개수가 찬 칸) 파일 목록으로 옮긴다
+      document.getElementById(`f-${stalledKeys[0]}-files`)?.focus()
+      setNotice({ title: '업로드에 실패한 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
       return
     }
     const missing = missingRequired(form, getValues())
@@ -327,6 +341,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
               hint={crossCheck(field, watch)}
               value={form.answers[field.fieldKey] ?? null}
               files={form.files.filter((f) => f.fieldKey === field.fieldKey)}
+              stalledFiles={form.stalledFiles.filter((f) => f.fieldKey === field.fieldKey)}
               fileHandlers={fileHandlers}
             />
           )

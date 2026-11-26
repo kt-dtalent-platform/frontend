@@ -275,7 +275,10 @@ export const handlers = [
     const path = `/v1/me/submissions/${params.requestId}`
     if (!roleOf(request)) return unauthorized(path)
     const form = getForm(Number(params.requestId))
-    return form ? ok(path, form) : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다.')
+    // 서버처럼 올리다 멈춘 파일(PENDING)도 함께 준다
+    return form
+      ? ok(path, { ...form, files: [...form.files, ...pendingFilesOf(Number(params.requestId))] })
+      : fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없거나 아직 공개되지 않았습니다.')
   }),
 
   http.put(`${BASE}/me/submissions/:requestId/draft`, async ({ params, request }) => {
@@ -409,6 +412,12 @@ export const handlers = [
       if (kind === 'resubmit' && Object.keys(body.answers).some((k) => !form.revision?.fieldKeys.includes(k))) {
         return fail(path, 400, 'FIELD_NOT_EDITABLE', '보완 요청되지 않은 항목은 수정할 수 없습니다')
       }
+      // 서버처럼 올리다 멈춘 파일이 있으면 그 항목 오류로 거절한다
+      const stalled = pendingFilesOf(id)
+      if (stalled.length)
+        return fail(path, 400, 'VALIDATION_ERROR', '입력값을 확인해주세요.', {
+          fieldErrors: [...new Set(stalled.map((f) => f.fieldKey))].map((key) => ({ key, message: '업로드를 완료하거나 진행 중 파일을 삭제하세요.' })),
+        })
       const result = submit(id, body.answers, kind === 'resubmit')
       if ('fieldErrors' in result)
         return fail(path, 400, 'VALIDATION_ERROR', '입력값을 확인해주세요.', {
@@ -753,5 +762,45 @@ export const handlers = [
   }),
 ]
 
-// 발급만 하고 아직 완료 처리 안 된 파일(서버의 PENDING 행 역할)
-const pendingUploads = new Map<number, { requestId: number; fieldKey: string; originalName: string; size: number }>()
+// 발급만 하고 아직 완료 처리 안 된 파일(서버의 PENDING 행 역할).
+// 서버처럼 새로고침해도 남도록 sessionStorage에 둔다
+type PendingUpload = { requestId: number; fieldKey: string; originalName: string; size: number }
+const PENDING_KEY = 'kt-dtalent:mock-pending-files'
+const pendingUploads = {
+  all(): Map<number, PendingUpload> {
+    try {
+      return new Map(JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? '[]') as [number, PendingUpload][])
+    } catch {
+      return new Map()
+    }
+  },
+  save(m: Map<number, PendingUpload>) {
+    try {
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify([...m]))
+    } catch {
+      // 저장소를 못 쓰면 이번 화면에서만 기억한다
+    }
+  },
+  get(id: number) {
+    return this.all().get(id)
+  },
+  set(id: number, v: PendingUpload) {
+    const m = this.all()
+    m.set(id, v)
+    this.save(m)
+  },
+  delete(id: number) {
+    const m = this.all()
+    const had = m.delete(id)
+    this.save(m)
+    return had
+  },
+  values() {
+    return this.all().values()
+  },
+}
+// 그 요청의 올리다 멈춘 파일(서버 제출 폼 응답의 uploadStatus PENDING)
+const pendingFilesOf = (requestId: number) =>
+  [...pendingUploads.all()]
+    .filter(([, u]) => u.requestId === requestId)
+    .map(([id, u]) => ({ id, fieldKey: u.fieldKey, originalName: u.originalName, uploadStatus: 'PENDING' as const }))

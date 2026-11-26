@@ -19,6 +19,7 @@ type Props = {
   hint?: ReactNode // 막지는 않는 경고(예: 평점이 만점보다 큼)
   value: AnswerValue
   files: UploadedFile[]
+  stalledFiles?: UploadedFile[]
   fileHandlers?: FileHandlers
 }
 
@@ -26,7 +27,7 @@ const base = fieldBase
 const control = fieldControl
 
 // 서버가 준 항목 정의(fieldType)대로 입력칸 하나를 그린다.
-export function FormField({ field, register, editable, highlight, error, hint, value, files, fileHandlers }: Props) {
+export function FormField({ field, register, editable, highlight, error, hint, value, files, stalledFiles, fileHandlers }: Props) {
   const id = `f-${field.fieldKey}`
   // 고칠 항목 표시도 입력칸 설명으로 읽히게 한다(스크린 리더가 칸마다 '고칠 항목'을 듣도록)
   const describedBy = [highlight && `${id}-mark`, field.helpText && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
@@ -138,7 +139,18 @@ export function FormField({ field, register, editable, highlight, error, hint, v
         input = null
         break
       case 'FILE':
-        input = <FileField id={id} field={field} files={files} editable={editable} invalid={!!error} describedBy={describedBy} handlers={fileHandlers} />
+        input = (
+          <FileField
+            id={id}
+            field={field}
+            files={files}
+            stalled={stalledFiles}
+            editable={editable}
+            invalid={!!error}
+            describedBy={describedBy}
+            handlers={fileHandlers}
+          />
+        )
         break
       default:
         input = (

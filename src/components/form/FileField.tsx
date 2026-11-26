@@ -8,7 +8,8 @@ import { Button } from '../ui/Button'
 import { errorText } from '../../api/errorText'
 
 export type FileHandlers = {
-  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<UploadedFile>
+  // onFileId: 주소를 받아 서버에 자리(PENDING)가 생기면 그 번호를 알린다
+  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal, onFileId: (fileId: number) => void) => Promise<UploadedFile>
   remove: (fileId: number) => Promise<unknown>
   onBusyChange: (fieldKey: string, busy: boolean) => void
 }
@@ -19,12 +20,15 @@ type Pending = {
   progress: number
   error: string | null
   controller: AbortController
+  fileId?: number // 서버에 생긴 자리 번호. 다시 불러온 멈춘 파일 목록에서 이 파일을 뺄 때 쓴다
 }
 
 type Props = {
   id: string
   field: Field
   files: UploadedFile[]
+  // 올리다 멈춘 파일(서버 PENDING). 지워야 다시 올리고 제출할 수 있다
+  stalled?: UploadedFile[]
   editable: boolean
   invalid: boolean
   describedBy?: string
@@ -32,7 +36,7 @@ type Props = {
 }
 
 // 첨부 파일 항목: 올린 파일 목록 + 올리는 중(진행률) + 실패(다시 시도) + 파일 첨부/끌어 놓기
-export function FileField({ id, field, files, editable, invalid, describedBy, handlers }: Props) {
+export function FileField({ id, field, files, stalled = [], editable, invalid, describedBy, handlers }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLButtonElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -47,7 +51,11 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   const rule = field.validation
   const maxFiles = rule?.maxFiles ?? 1
   const busy = pending.some((p) => !p.error)
-  const full = files.length + pending.length >= maxFiles
+  // 이 화면에서 올리는 중인 파일도 서버에는 PENDING이라, 올리는 중에 다시 불러오면 멈춘 파일 목록에 들어올 수 있다. 그 번호만 뺀다
+  const mine = new Set(pending.flatMap((p) => (p.fileId ? [p.fileId] : [])))
+  const stuck = stalled.filter((f) => !mine.has(f.id))
+  const used = files.length + stuck.length + pending.length
+  const full = used >= maxFiles
   const accept = rule?.allowedExtensions?.flatMap((e) => (e.toLowerCase() === 'jpg' ? ['.jpg', '.jpeg'] : [`.${e}`])).join(',')
   const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(', ')
 
@@ -85,7 +93,13 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   async function start(item: Pending) {
     if (!handlers) return
     try {
-      const uploaded = await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
+      const uploaded = await handlers.upload(
+        field.fieldKey,
+        item.file,
+        (progress) => patch(item.key, { progress }),
+        item.controller.signal,
+        (fileId) => patch(item.key, { fileId }),
+      )
       setJustUploaded((ids) => [...ids, uploaded.id])
       drop(item.key)
       setLive(`${item.file.name}을(를) 올렸어요.`)
@@ -105,7 +119,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   function add(list: FileList | null) {
     setMessage(null)
     if (!list?.length) return
-    const room = maxFiles - files.length - pending.length
+    const room = maxFiles - used
     const picked = Array.from(list)
     if (picked.length > room) {
       setMessage(room <= 0 ? '더 올릴 수 없어요. 기존 파일을 지운 뒤 올리세요.' : `${room}개만 더 올릴 수 있어요.`)
@@ -135,6 +149,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
       progress: 0,
       error: null,
       controller: new AbortController(),
+      fileId: undefined,
     }
     patch(item.key, next)
     void start(next)
@@ -163,7 +178,7 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   }
 
   return (
-    <div ref={rootRef} tabIndex={-1} className="flex flex-col gap-2 outline-none">
+    <div ref={rootRef} id={`${id}-files`} tabIndex={-1} aria-describedby={describedBy} className="flex flex-col gap-2 outline-none">
       <p className="sr-only" aria-live="polite">
         {live}
       </p>
@@ -181,6 +196,28 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
               <X size={16} strokeWidth={2} aria-hidden />
             </Button>
           )}
+        </div>
+      ))}
+
+      {/* 업로드에 실패하고 남은 파일. 이 화면에서 올리다 실패한 줄과 같은 모양(빨간 바탕, 아래 오류 문구, X로 지우기) */}
+      {stuck.map((f) => (
+        <div key={f.id} className="flex flex-col gap-2 rounded-md bg-danger-bg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <FileText size={16} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
+            {editable && handlers && (
+              <Button
+                size="compact"
+                variant="ghost"
+                aria-label={`업로드에 실패한 ${f.originalName} 지우기`}
+                disabled={removing === f.id}
+                onClick={() => void removeUploaded(f)}
+              >
+                <X size={16} strokeWidth={2} aria-hidden />
+              </Button>
+            )}
+          </div>
+          <p className="m-0 text-caption text-danger-text">업로드에 실패했어요. 지운 뒤 다시 올리세요.</p>
         </div>
       ))}
 
