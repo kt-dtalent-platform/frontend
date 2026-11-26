@@ -1,4 +1,4 @@
-import { CircleCheck, FileText, FileWarning, Paperclip, RotateCw, X } from 'lucide-react'
+import { CircleCheck, FileText, Paperclip, RotateCw, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { checkFile, uploadErrorText } from '../../api/files'
 import type { FormField as Field, UploadedFile } from '../../api/submissions'
@@ -199,22 +199,25 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
         </div>
       ))}
 
+      {/* 업로드에 실패하고 남은 파일. 이 화면에서 올리다 실패한 줄과 같은 모양(빨간 바탕, 아래 오류 문구, X로 지우기) */}
       {stuck.map((f) => (
-        <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-warning-bg pr-1 pl-4">
-          <FileWarning size={16} strokeWidth={2} className="shrink-0 text-warning-text" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
-          <span className="shrink-0 text-caption text-warning-text">업로드 실패</span>
-          {editable && handlers && (
-            <Button
-              size="compact"
-              variant="ghost"
-              aria-label={`업로드에 실패한 ${f.originalName} 지우기`}
-              disabled={removing === f.id}
-              onClick={() => void removeUploaded(f)}
-            >
-              지우기
-            </Button>
-          )}
+        <div key={f.id} className="flex flex-col gap-2 rounded-md bg-danger-bg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <FileText size={16} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
+            {editable && handlers && (
+              <Button
+                size="compact"
+                variant="ghost"
+                aria-label={`업로드에 실패한 ${f.originalName} 지우기`}
+                disabled={removing === f.id}
+                onClick={() => void removeUploaded(f)}
+              >
+                <X size={16} strokeWidth={2} aria-hidden />
+              </Button>
+            )}
+          </div>
+          <p className="m-0 text-caption text-danger-text">업로드에 실패했어요. 지운 뒤 다시 올리세요.</p>
         </div>
       ))}
 
