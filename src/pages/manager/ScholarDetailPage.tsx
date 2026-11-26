@@ -197,6 +197,10 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
             />
           )}
         </LabeledField>
+        {/* 이메일은 로그인 아이디라 바꾸지 않는다. 칸을 숨기면 왜 못 바꾸는지 알 수 없어 읽기 전용으로 보여 준다 */}
+        <LabeledField label="이메일" hint="로그인 아이디라 바꿀 수 없어요.">
+          {(p) => <input {...p} type="email" value={s.email} readOnly className={cn(fieldControl, fieldBorder(false), 'bg-surface-sunken text-ink-2')} />}
+        </LabeledField>
         <LabeledField label="연락처" hint={s.maskedPhone ? `지금 ${s.maskedPhone}. 바꿀 때만 입력하세요.` : '예: 010-1234-5678'} error={e.phone?.message}>
           {(p) => (
             <input
