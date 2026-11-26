@@ -124,11 +124,12 @@ export function ScholarImportPage() {
             taken.has(r.email.toLowerCase()) ? { ...r, errors: [...r.errors, { field: 'email', message: '이미 등록된 이메일이에요' }] } : r,
           ),
         )
-      } else if (err instanceof ApiError && err.code === 'INVALID_REQUEST' && rowIssues(err.details, rows.length)) {
-        // 서버가 거절한 칸을 그 줄에 표시한다. row는 엑셀 줄 번호(첫 사람이 2)
-        const found = rowIssues(err.details, rows.length)!
-        setRows((prev) => prev.map((r, i): ImportRow => (found.has(i) ? { ...r, errors: [...r.errors, ...found.get(i)!] } : r)))
-      } else setServerError(errorText(err))
+      } else {
+        // 서버가 거절한 칸을 그 줄에 표시한다. 모르는 모양이면 일반 문구
+        const found = err instanceof ApiError && err.code === 'INVALID_REQUEST' ? rowIssues(err.details, rows.length) : null
+        if (found) setRows((prev) => prev.map((r, i): ImportRow => (found.has(i) ? { ...r, errors: [...r.errors, ...found.get(i)!] } : r)))
+        else setServerError(errorText(err))
+      }
     }
   }
 
@@ -523,7 +524,7 @@ function ReadyList({ rows }: { rows: ImportRow[] }) {
   )
 }
 
-// 서버 형식 오류(INVALID_REQUEST)의 details: [{ row, field, message }]. 줄마다 고칠 점으로 바꾼다.
+// 서버 형식 오류(INVALID_REQUEST)의 details: [{ row, field, message }]. row는 보낸 명단 순서 + 2(첫 사람이 2). 줄마다 고칠 점으로 바꾼다.
 // 모르는 모양이거나 명단 밖 줄, 모르는 칸이 있으면 null(일반 오류 문구로 보여 준다)
 const SERVER_ISSUE: Record<Key, string> = {
   name: '이름 형식이 맞지 않아요',

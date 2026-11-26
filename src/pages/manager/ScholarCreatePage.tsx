@@ -21,7 +21,7 @@ import { LoginNoticeDialog } from './LoginNoticeDialog'
 import { noticeText, sentText, useNoticeStatus, type NoticeResult } from '../../api/loginNotices'
 import { useToast } from '../../components/ui/useToast'
 import { errorText } from '../../api/errorText'
-import { EMAIL } from '../../lib/email'
+import { isEmail } from '../../lib/email'
 
 type Values = { cohortId: string; name: string; email: string; phone: string; university: string; major: string; studentNo: string }
 
@@ -134,7 +134,7 @@ export function ScholarCreatePage() {
                 inputMode="email"
                 autoComplete="off"
                 className={cn(fieldControl, fieldBorder(!!e.email))}
-                {...register('email', { required: '이메일을 입력하세요.', pattern: { value: EMAIL, message: '이메일 형식으로 입력하세요.' } })}
+                {...register('email', { required: '이메일을 입력하세요.', validate: (v: string) => isEmail(v) || '이메일 형식으로 입력하세요.' })}
               />
             )}
           </LabeledField>
