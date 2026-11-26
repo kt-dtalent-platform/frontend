@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type Ref } from 'react'
 import { useController, type Control, type FieldValues, type Path, type UseControllerProps } from 'react-hook-form'
-import { useSchools } from '../../api/schools'
+import { schoolKey, useSchools } from '../../api/schools'
 import { cn } from '../../lib/cn'
 import { LabeledField, type FieldA11y } from './LabeledField'
 import { fieldBorder, fieldControl } from './fieldClass'
@@ -33,7 +33,7 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
   const items = query.data?.items ?? []
   const typed = value.trim()
   // 고른 학교 하나만 맞을 때만 목록을 숨긴다. "고려대학교"를 골라도 "고려대학교 (세종캠퍼스)"는 계속 보이게
-  const onlyExact = items.length === 1 && items[0].name === typed
+  const onlyExact = items.length === 1 && schoolKey(items[0].name) === schoolKey(typed)
   const shown = open && typed.length > 0 && items.length > 0 && !onlyExact
   const optionId = (i: number) => `${listId}-${i}`
   // 목록이 바뀌면 고르던 위치를 비운다(없는 항목을 가리키지 않게)
@@ -45,7 +45,7 @@ export function SchoolCombobox({ value, onChange, onBlur, invalid, name, ref, on
 
   // 목록에 있는 학교인지: 입력을 멈추고(keyword가 따라잡고) 목록이 닫혔을 때만 판단한다
   const settled = !open && keyword === value && !query.isFetching
-  const listed = !typed ? true : settled && query.data ? items.some((s) => s.name === typed) : null
+  const listed = !typed ? true : settled && query.data ? items.some((s) => schoolKey(s.name) === schoolKey(typed)) : null
   useEffect(() => {
     onListedChange?.(listed)
   }, [listed, onListedChange])
