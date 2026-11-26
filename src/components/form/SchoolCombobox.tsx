@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type Ref } from 'react'
 import { useController, type Control, type FieldValues, type Path, type UseControllerProps } from 'react-hook-form'
-import { useSchools } from '../../api/schools'
+import { schoolKey, useSchools } from '../../api/schools'
 import { cn } from '../../lib/cn'
 import { LabeledField, type FieldA11y } from './LabeledField'
 import { fieldBorder, fieldControl } from './fieldClass'
@@ -163,10 +163,4 @@ export function SchoolField<T extends FieldValues>({ control, name, required, ru
       )}
     </LabeledField>
   )
-}
-
-// 학교 이름 비교 기준. 서버 학교 검색과 같게 띄어쓰기와 괄호를 빼고 영문은 소문자로 본다
-// 예: "고려대학교(세종캠퍼스)"와 "고려대학교 (세종캠퍼스)"는 같은 학교
-function schoolKey(name: string) {
-  return name.replace(/[\s()]/g, '').toLowerCase()
 }

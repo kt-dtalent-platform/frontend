@@ -19,6 +19,12 @@ export function useSchools(keyword: string) {
 // 저장할 때 학교 이름으로 목록의 학교 ID를 찾는다(백엔드 KT-54, #83).
 // 목록에서 골랐거나 이름을 똑같이 쓴 경우만 ID가 나오고, 목록에 없으면 null(이름만 저장).
 // 고르는 칸이 이미 같은 검색을 했으므로 보통 캐시에서 바로 나온다. 찾기에 실패해도 저장은 막지 않는다
+// 학교 이름 비교 기준. 서버 학교 검색과 같게 띄어쓰기와 괄호를 빼고 영문은 소문자로 본다
+// 예: "고려대학교(세종캠퍼스)"와 "고려대학교 (세종캠퍼스)"는 같은 학교
+export function schoolKey(name: string) {
+  return name.replace(/[\s()]/g, '').toLowerCase()
+}
+
 export function useFindSchoolId() {
   const queryClient = useQueryClient()
   return async (name: string): Promise<number | null> => {
@@ -26,9 +32,7 @@ export function useFindSchoolId() {
     if (!k) return null
     try {
       const data = await queryClient.fetchQuery(schoolsQuery(k))
-      // 서버 검색과 같은 규칙으로 비교한다: 띄어쓰기와 괄호를 빼고 소문자로
-      const norm = (v: string) => v.replace(/[\s()]/g, '').toLowerCase()
-      return data.items.find((s) => norm(s.name) === norm(k))?.id ?? null
+      return data.items.find((s) => schoolKey(s.name) === schoolKey(k))?.id ?? null
     } catch {
       return null
     }
