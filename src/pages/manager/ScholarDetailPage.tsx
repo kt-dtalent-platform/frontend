@@ -20,7 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { PageTitle } from '../../components/ui/PageTitle'
 import { ScholarStatusBadge } from '../../components/ui/ScholarStatusBadge'
 import { EmptyState, ErrorState, LoadingCards } from '../../components/ui/StateView'
-import { phoneDigits, phoneField } from '../../lib/phone'
+import { formatPhone, phoneDigits, phoneField } from '../../lib/phone'
 import { cn } from '../../lib/cn'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { useFindSchoolId } from '../../api/schools'
@@ -156,7 +156,7 @@ type Values = { name: string; phone: string; university: string; major: string }
 function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 'unchanged' | null) => void }) {
   const update = useUpdateScholar(s.id)
   const { register, handleSubmit, formState, setError, control } = useForm<Values>({
-    defaultValues: { name: s.name, phone: '', university: s.university, major: s.major ?? '' },
+    defaultValues: { name: s.name, phone: s.phone ? formatPhone(phoneDigits(s.phone)) : '', university: s.university, major: s.major ?? '' },
     mode: 'onBlur',
   })
   const e = formState.errors
@@ -166,7 +166,7 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
     // 백엔드는 보낸 문자열 항목만 바꾼다. 바뀐 항목만 보낸다(빈 값으로 지우기는 아직 지원 안 함)
     const body: ScholarUpdate = {}
     if (v.name.trim() !== s.name) body.name = v.name.trim()
-    if (v.phone.trim()) body.phone = phoneDigits(v.phone)
+    if (v.phone.trim() && phoneDigits(v.phone) !== phoneDigits(s.phone ?? '')) body.phone = phoneDigits(v.phone)
     // 학교를 바꾸면 목록의 학교 ID도 같이 보낸다. 직접 쓴 이름이면 null(서버가 예전 ID를 지운다)
     if (v.university.trim() && v.university.trim() !== s.university) {
       body.university = v.university.trim()
@@ -210,7 +210,11 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
             />
           )}
         </LabeledField>
-        <LabeledField label="연락처" hint={s.maskedPhone ? `지금 ${s.maskedPhone}. 바꿀 때만 입력하세요.` : '예: 010-1234-5678'} error={e.phone?.message}>
+        <LabeledField
+          label="연락처"
+          hint={s.phone === undefined && s.maskedPhone ? `지금 ${s.maskedPhone}. 바꿀 때만 입력하세요.` : s.phone ? undefined : '예: 010-1234-5678'}
+          error={e.phone?.message}
+        >
           {(p) => (
             <input
               {...p}
@@ -218,7 +222,11 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
               inputMode="tel"
               autoComplete="off"
               className={cn(fieldControl, 'tabular-nums', fieldBorder(!!e.phone))}
-              {...register('phone', phoneField)}
+              {...register('phone', {
+                ...phoneField,
+                // 백엔드가 빈 값으로 지우기를 아직 지원하지 않는다
+                validate: (x: string) => (!x.trim() && s.phone ? '연락처는 비워 둘 수 없어요.' : phoneField.validate(x)),
+              })}
             />
           )}
         </LabeledField>

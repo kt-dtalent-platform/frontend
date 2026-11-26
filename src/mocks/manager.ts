@@ -2,6 +2,7 @@ import { sortRows } from './sort'
 // 담당자 화면 목업. 모양은 노션 명세서(옛 자료)에서 MVP 범위만 가져왔다(확인 필요).
 import type { Cohort, CreateRequestBody, RequestRow, RequestTemplate } from '../api/manager'
 import { dueIn } from './db'
+import { enrolledCount } from './scholars'
 
 // 검토 대기 수는 제출 현황 목업에서 세어 목록 응답에 붙인다(handlers)
 type MockRow = Omit<RequestRow, 'waitingCount'>
@@ -187,7 +188,10 @@ export function publishRequest(id: number) {
   const row = rows().find((r) => r.id === id)
   if (!row) return { error: 'NOT_FOUND' as const }
   if (row.status !== 'DRAFT') return { error: 'INVALID_STATE_TRANSITION' as const }
-  const targetCount = row.cohortName ? (cohorts.find((c) => c.name === row.cohortName)?.scholarCount ?? 0) : cohorts.reduce((n, c) => n + c.scholarCount, 0)
+  // 서버처럼 재학생만 대상
+  const targetCount = row.cohortName
+    ? enrolledCount(cohorts.find((c) => c.name === row.cohortName)?.id ?? -1)
+    : cohorts.reduce((n, c) => n + enrolledCount(c.id), 0)
   const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   patch(id, { row: { status: 'IN_PROGRESS', targetCount, publishedAt } })
   return { status: 'IN_PROGRESS' as const, targetCount, publishedAt }

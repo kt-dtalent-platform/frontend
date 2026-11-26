@@ -83,7 +83,8 @@ export function useRequestTemplates() {
 }
 
 // GET /v1/programs/{programId}/cohorts · 백엔드 PR #11(KT-9) 기준: items[{id, name, startedOn, endedOn, scholarCount}]
-export type Cohort = { id: number; name: string; startedOn: string | null; endedOn: string | null; scholarCount: number }
+// enrolledScholarCount: 재학이면서 사용 중지가 아닌 장학생 수. 요청 공개 대상과 같은 기준(백엔드 #127). 머지 전 서버에는 없다
+export type Cohort = { id: number; name: string; startedOn: string | null; endedOn: string | null; scholarCount: number; enrolledScholarCount?: number }
 
 export function useCohorts(programId: number | undefined) {
   return useQuery({

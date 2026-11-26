@@ -5,7 +5,7 @@ import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submissionHistory, submit, taskList } from './db'
 import { cohorts, createCohort, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
-import { changeScholarStatus, createScholar, createScholarsBulk, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
+import { changeScholarStatus, createScholar, createScholarsBulk, enrolledCount, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { searchSchools } from './schools'
 import { getSender, noticeStatus, sendNotices, setSender } from './loginNotices'
 import type { Sender } from '../api/loginNotices'
@@ -604,7 +604,7 @@ export const handlers = [
     const path = `/v1/programs/${params.programId}/cohorts`
     if (roleOf(request) !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
     if (Number(params.programId) !== 1) return fail(path, 404, 'PROGRAM_NOT_FOUND', '프로그램을 찾을 수 없습니다.')
-    return ok(path, { items: cohorts })
+    return ok(path, { items: cohorts.map((c) => ({ ...c, enrolledScholarCount: enrolledCount(c.id) })) })
   }),
 
   http.post(`${BASE}/requests`, async ({ request }) => {

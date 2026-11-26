@@ -165,7 +165,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const [leaving, setLeaving] = useState<{ status: RequestStatus; toast?: string; notice?: Notice } | null>(null)
   const [today] = useState(kstToday)
   const running = useRef(false) // 빠르게 두 번 눌러도 한 번만 보내게
-  const { register, handleSubmit, control, setError, trigger, formState } = useForm<Values>({
+  const { register, handleSubmit, control, setError, clearErrors, trigger, formState } = useForm<Values>({
     // 요청 유형이 하나뿐이면 미리 골라 둔다
     defaultValues: existing ? fromDetail(existing) : { ...defaults(), templateId: templates.length === 1 ? String(templates[0].id) : '' },
     mode: 'onBlur',
@@ -183,7 +183,9 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
   const [templateId, cohortId] = useWatch({ control, name: ['templateId', 'cohortId'] })
   const template = templates.find((t) => String(t.id) === templateId)
   const cohort = cohorts.find((c) => String(c.id) === cohortId)
-  const targetCount = cohort ? cohort.scholarCount : cohorts.reduce((n, c) => n + c.scholarCount, 0)
+  // 공개하면 재학생만 대상이 된다. 서버가 재학생 수를 아직 주지 않으면 전체 장학생 수로 대신한다
+  const enrolled = (c: (typeof cohorts)[number]) => c.enrolledScholarCount ?? c.scholarCount
+  const targetCount = cohort ? enrolled(cohort) : cohorts.reduce((n, c) => n + enrolled(c), 0)
   const busy = formState.isSubmitting || create.isPending || update.isPending || publish.isPending
 
   // 날짜·시각을 그대로 두면 서버 값의 초(예: 23:59:59)를 지킨다
@@ -233,7 +235,11 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
     })
   }
 
-  const onPublishClick = handleSubmit(() => setConfirming(true))
+  const onPublishClick = handleSubmit(() => {
+    // 재학생이 없으면 서버가 공개를 거절한다. 미리 알린다
+    if (targetCount === 0) return setError('cohortId', { message: '재학생이 없어 공개할 수 없어요.' }, { shouldFocus: true })
+    setConfirming(true)
+  })
 
   const doPublish = handleSubmit(async (v) => {
     setConfirming(false)
@@ -311,10 +317,14 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
           )}
         </Field>
 
-        <Field label="대상" required hint={`장학생 ${targetCount}명`}>
+        <Field label="대상" required hint={`재학생 ${targetCount}명`} error={errors.cohortId?.message}>
           {(p) => (
             <SelectBox>
-              <select {...p} className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(false))} {...register('cohortId')}>
+              <select
+                {...p}
+                className={cn(fieldControl, 'appearance-none pr-10', fieldBorder(!!errors.cohortId))}
+                {...register('cohortId', { onChange: () => clearErrors('cohortId') })}
+              >
                 <option value="">전체 기수</option>
                 {cohorts.map((c) => (
                   <option key={c.id} value={String(c.id)}>
@@ -430,7 +440,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
       </div>
 
       <ConfirmDialog open={confirming} title="공개하기" confirmLabel="공개하기" onConfirm={once(doPublish)} onCancel={() => setConfirming(false)}>
-        {cohort ? cohort.name : '전체 기수'} 장학생 {targetCount}명의 내 할 일에 이 요청이 바로 보여요. 공개한 뒤에는 입력 항목을 바꿀 수 없어요.
+        {cohort ? cohort.name : '전체 기수'} 재학생 {targetCount}명의 내 할 일에 이 요청이 바로 보여요. 공개한 뒤에는 입력 항목을 바꿀 수 없어요.
       </ConfirmDialog>
     </form>
   )

@@ -85,6 +85,8 @@ export type ScholarDetail = StatusInfo & {
   name: string
   email: string
   maskedPhone: string | null
+  // 수정 폼에 채우는 전체 연락처(백엔드 #127). 상세 보기에는 maskedPhone을 쓴다. 머지 전 서버에는 없다
+  phone?: string | null
   university: string
   major: string | null
   cohort: { id: number; name: string }
