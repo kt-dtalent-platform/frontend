@@ -130,7 +130,6 @@ export function uploadErrorText(error: unknown) {
   if (error instanceof ApiError) return errorText(error)
   const code = (error as { code?: string } | null)?.code
   if (code === 'FORM_INVALID') return '형식이 맞지 않는 항목을 먼저 고친 뒤 올리세요.'
-  // 저장소(S3)로 바로 올리는 단계의 실패
-  if (code === 'STORAGE_FAILED') return '저장소가 파일을 받지 않았어요. 다시 올리세요.'
-  return '올리지 못했어요. 인터넷 연결을 확인하고 다시 올리세요.'
+  // 저장소(S3)로 바로 올리는 단계의 실패와 연결 끊김
+  return '업로드에 실패했어요.'
 }
