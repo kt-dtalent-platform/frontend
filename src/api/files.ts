@@ -45,14 +45,26 @@ export function useFileActions(requestId: number) {
   const setFiles = (update: (files: UploadedFile[]) => UploadedFile[]) =>
     queryClient.setQueryData<SubmissionForm>(key, (prev) => (prev ? { ...prev, files: update(prev.files) } : prev))
 
-  async function upload(args: { submissionId: number; fieldKey: string; file: File; onProgress: (ratio: number) => void; signal: AbortSignal }) {
-    const { submissionId, fieldKey, file, onProgress, signal } = args
+  // 이 파일의 자리가 다시 불러온 멈춘 파일 목록에 들어와 있으면 뺀다(끝났거나 지웠으므로)
+  const dropStalled = (fileId: number) =>
+    queryClient.setQueryData<SubmissionForm>(key, (prev) => (prev ? { ...prev, stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev))
+
+  async function upload(args: {
+    submissionId: number
+    fieldKey: string
+    file: File
+    onProgress: (ratio: number) => void
+    signal: AbortSignal
+    onFileId?: (fileId: number) => void
+  }) {
+    const { submissionId, fieldKey, file, onProgress, signal, onFileId } = args
     const contentType = file.type || 'application/octet-stream'
     const p = await api<Presign>(`/submissions/${submissionId}/files/presign`, {
       method: 'POST',
       body: { fieldKey, fileName: file.name, contentType, size: file.size },
       signal,
     })
+    onFileId?.(p.fileId)
     let done: Completed
     try {
       await putToStorage(p.uploadUrl, file, contentType, onProgress, signal)
@@ -62,6 +74,7 @@ export function useFileActions(requestId: number) {
       // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다.
       // 지우기가 끝난 뒤에 실패를 알려야 바로 [다시 시도]해도 개수에 걸리지 않는다. 취소 신호와는 따로 보낸다
       await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
+      dropStalled(p.fileId)
       throw err
     }
     const uploaded: UploadedFile = {
@@ -71,15 +84,17 @@ export function useFileActions(requestId: number) {
       sizeBytes: done.sizeBytes,
     }
     setFiles((files) => [...files, uploaded])
+    dropStalled(p.fileId)
     return uploaded
   }
 
-  // 올린 파일과 올리다 멈춘 파일 모두 같은 API로 지운다
+  // 올린 파일과 올리다 멈춘 파일 모두 같은 API로 지운다. 지운 뒤의 최신 폼을 돌려준다
   async function remove(fileId: number) {
     await api<null>(`/files/${fileId}`, { method: 'DELETE' })
     queryClient.setQueryData<SubmissionForm>(key, (prev) =>
       prev ? { ...prev, files: prev.files.filter((f) => f.id !== fileId), stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev,
     )
+    return queryClient.getQueryData<SubmissionForm>(key)
   }
 
   return { upload, remove }

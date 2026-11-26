@@ -8,7 +8,8 @@ import { Button } from '../ui/Button'
 import { errorText } from '../../api/errorText'
 
 export type FileHandlers = {
-  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<UploadedFile>
+  // onFileId: 주소를 받아 서버에 자리(PENDING)가 생기면 그 번호를 알린다
+  upload: (fieldKey: string, file: File, onProgress: (ratio: number) => void, signal: AbortSignal, onFileId: (fileId: number) => void) => Promise<UploadedFile>
   remove: (fileId: number) => Promise<unknown>
   onBusyChange: (fieldKey: string, busy: boolean) => void
 }
@@ -19,6 +20,7 @@ type Pending = {
   progress: number
   error: string | null
   controller: AbortController
+  fileId?: number // 서버에 생긴 자리 번호. 다시 불러온 멈춘 파일 목록에서 이 파일을 뺄 때 쓴다
 }
 
 type Props = {
@@ -49,9 +51,11 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   const rule = field.validation
   const maxFiles = rule?.maxFiles ?? 1
   const busy = pending.some((p) => !p.error)
-  // 이 화면에서 올리는 중이면 그 파일도 서버에는 PENDING이라 멈춘 파일 목록과 겹칠 수 있다. 올리는 동안은 멈춘 파일을 보지 않는다
-  const stuck = busy ? [] : stalled
-  const full = files.length + stuck.length + pending.length >= maxFiles
+  // 이 화면에서 올리는 중인 파일도 서버에는 PENDING이라, 올리는 중에 다시 불러오면 멈춘 파일 목록에 들어올 수 있다. 그 번호만 뺀다
+  const mine = new Set(pending.flatMap((p) => (p.fileId ? [p.fileId] : [])))
+  const stuck = stalled.filter((f) => !mine.has(f.id))
+  const used = files.length + stuck.length + pending.length
+  const full = used >= maxFiles
   const accept = rule?.allowedExtensions?.flatMap((e) => (e.toLowerCase() === 'jpg' ? ['.jpg', '.jpeg'] : [`.${e}`])).join(',')
   const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(', ')
 
@@ -89,7 +93,13 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   async function start(item: Pending) {
     if (!handlers) return
     try {
-      const uploaded = await handlers.upload(field.fieldKey, item.file, (progress) => patch(item.key, { progress }), item.controller.signal)
+      const uploaded = await handlers.upload(
+        field.fieldKey,
+        item.file,
+        (progress) => patch(item.key, { progress }),
+        item.controller.signal,
+        (fileId) => patch(item.key, { fileId }),
+      )
       setJustUploaded((ids) => [...ids, uploaded.id])
       drop(item.key)
       setLive(`${item.file.name}을(를) 올렸어요.`)
@@ -109,7 +119,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   function add(list: FileList | null) {
     setMessage(null)
     if (!list?.length) return
-    const room = maxFiles - files.length - pending.length
+    const room = maxFiles - used
     const picked = Array.from(list)
     if (picked.length > room) {
       setMessage(room <= 0 ? '더 올릴 수 없어요. 기존 파일을 지운 뒤 올리세요.' : `${room}개만 더 올릴 수 있어요.`)
@@ -139,6 +149,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
       progress: 0,
       error: null,
       controller: new AbortController(),
+      fileId: undefined,
     }
     patch(item.key, next)
     void start(next)
@@ -167,7 +178,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   }
 
   return (
-    <div ref={rootRef} tabIndex={-1} className="flex flex-col gap-2 outline-none">
+    <div ref={rootRef} id={`${id}-files`} tabIndex={-1} aria-describedby={describedBy} className="flex flex-col gap-2 outline-none">
       <p className="sr-only" aria-live="polite">
         {live}
       </p>
@@ -194,7 +205,13 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
           <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
           <span className="shrink-0 text-caption text-warning-text">올리다 멈춤</span>
           {editable && handlers && (
-            <Button size="compact" variant="ghost" disabled={removing === f.id} onClick={() => void removeUploaded(f)}>
+            <Button
+              size="compact"
+              variant="ghost"
+              aria-label={`올리다 멈춘 ${f.originalName} 지우기`}
+              disabled={removing === f.id}
+              onClick={() => void removeUploaded(f)}
+            >
               지우기
             </Button>
           )}

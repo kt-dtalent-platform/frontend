@@ -149,17 +149,17 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
   )
 
   const fileHandlers: FileHandlers = {
-    upload: async (fieldKey, file, onProgress, signal) => {
+    upload: async (fieldKey, file, onProgress, signal, onFileId) => {
       const submissionId = await ensureSubmissionId()
-      const uploaded = await fileActions.upload({ submissionId, fieldKey, file, onProgress, signal })
+      const uploaded = await fileActions.upload({ submissionId, fieldKey, file, onProgress, signal, onFileId })
       clearErrors(fieldKey)
       return uploaded
     },
     remove: async (fileId) => {
       const stalled = form.stalledFiles.find((f) => f.id === fileId)
-      await fileActions.remove(fileId)
-      // 그 칸의 멈춘 파일을 다 지웠으면 "지우세요" 오류도 지운다
-      if (stalled && !form.stalledFiles.some((f) => f.id !== fileId && f.fieldKey === stalled.fieldKey)) clearErrors(stalled.fieldKey)
+      const latest = await fileActions.remove(fileId)
+      // 그 칸의 멈춘 파일을 다 지웠으면 "지우세요" 오류도 지운다(동시에 지운 경우도 있어 최신 폼으로 본다)
+      if (stalled && !latest?.stalledFiles.some((f) => f.fieldKey === stalled.fieldKey)) clearErrors(stalled.fieldKey)
     },
     onBusyChange,
   }
@@ -228,7 +228,8 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     const stalledKeys = [...new Set(form.stalledFiles.map((f) => f.fieldKey))]
     if (stalledKeys.length > 0) {
       stalledKeys.forEach((key) => setError(key, { message: '올리다 멈춘 파일을 지우세요.' }))
-      document.getElementById(`f-${stalledKeys[0]}`)?.focus()
+      // [파일 첨부]가 없을 수 있어(개수가 찬 칸) 파일 목록으로 옮긴다
+      document.getElementById(`f-${stalledKeys[0]}-files`)?.focus()
       setNotice({ title: '올리다 멈춘 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
       return
     }
