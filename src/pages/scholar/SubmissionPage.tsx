@@ -293,7 +293,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         {/* 보완 요청은 제목 아래 머리 영역에 둔다(따로 상자를 만들지 않는다) */}
         {isRevision && form.revision && (
           <div className="mt-1 border-t border-line-subtle pt-4">
-            <RevisionNote reason={form.revision.reason} hint="아래에 '고칠 항목'이라고 표시된 칸만 고칠 수 있어요." />
+            <RevisionNote reason={form.revision.reason} hint="'고칠 항목' 표시가 있는 칸만 고칠 수 있어요" />
           </div>
         )}
       </header>

@@ -126,7 +126,7 @@ export function ScholarCreatePage() {
               />
             )}
           </LabeledField>
-          <LabeledField label="이메일" required hint="로그인 아이디로 써요." error={e.email?.message}>
+          <LabeledField label="이메일" required hint="로그인 아이디로 써요" error={e.email?.message}>
             {(p) => (
               <input
                 {...p}
