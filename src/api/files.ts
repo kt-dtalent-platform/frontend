@@ -48,6 +48,10 @@ export function useFileActions(requestId: number) {
   // 이 파일의 자리가 다시 불러온 멈춘 파일 목록에 들어와 있으면 뺀다(끝났거나 지웠으므로)
   const dropStalled = (fileId: number) =>
     queryClient.setQueryData<SubmissionForm>(key, (prev) => (prev ? { ...prev, stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev))
+  const keepStalled = (file: UploadedFile) =>
+    queryClient.setQueryData<SubmissionForm>(key, (prev) =>
+      prev && !prev.stalledFiles.some((f) => f.id === file.id) ? { ...prev, stalledFiles: [...prev.stalledFiles, file] } : prev,
+    )
 
   async function upload(args: {
     submissionId: number
@@ -73,8 +77,13 @@ export function useFileActions(requestId: number) {
       // 주소를 받을 때 서버가 잡아 둔 자리(PENDING)도 파일 개수에 들어간다.
       // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다.
       // 지우기가 끝난 뒤에 실패를 알려야 바로 [다시 시도]해도 개수에 걸리지 않는다. 취소 신호와는 따로 보낸다
-      await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
-      dropStalled(p.fileId)
+      // 지우기도 실패하면(예: 연결 끊김) 서버에 남은 자리를 업로드 실패 목록에 넣어, 화면의 X와 제출 전 확인이 다룰 수 있게 한다
+      const removed = await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).then(
+        () => true,
+        () => false,
+      )
+      if (removed) dropStalled(p.fileId)
+      else keepStalled({ id: p.fileId, fieldKey, originalName: file.name })
       throw err
     }
     const uploaded: UploadedFile = {

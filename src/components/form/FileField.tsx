@@ -143,7 +143,34 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
     items.forEach((item) => void start(item))
   }
 
-  function retry(item: Pending) {
+  // 실패한 뒤 자동 삭제도 못 해서 서버에 자리가 남은 파일인지(업로드 실패 목록에 들어와 있음)
+  const leftover = (item: Pending) => (item.fileId && stalled.some((f) => f.id === item.fileId) ? item.fileId : null)
+
+  // 서버에 남은 자리를 지운다. 못 지우면 안내하고 false
+  async function clearLeftover(item: Pending) {
+    const fileId = leftover(item)
+    if (!fileId || !handlers) return true
+    setMessage(null)
+    setRemoving(fileId)
+    try {
+      await handlers.remove(fileId)
+      return true
+    } catch (err) {
+      setMessage(`${item.file.name}을(를) 지우지 못했어요. ${errorText(err)}`)
+      return false
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  async function dismiss(item: Pending) {
+    if (!(await clearLeftover(item))) return
+    drop(item.key)
+    refocus()
+  }
+
+  async function retry(item: Pending) {
+    if (!(await clearLeftover(item))) return
     const next = {
       ...item,
       progress: 0,
@@ -230,7 +257,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
               <span className="shrink-0 text-caption text-ink-3 tabular-nums">{p.progress > 0 ? `${Math.round(p.progress * 100)}%` : '올리는 중'}</span>
             )}
             {p.error && (
-              <Button size="compact" variant="ghost" onClick={() => retry(p)}>
+              <Button size="compact" variant="ghost" disabled={removing !== null && removing === p.fileId} onClick={() => void retry(p)}>
                 <RotateCw size={16} strokeWidth={2} aria-hidden />
                 다시 시도
               </Button>
@@ -238,12 +265,11 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
             <Button
               size="compact"
               variant="ghost"
-              aria-label={p.error ? `${p.file.name} 목록에서 빼기` : `${p.file.name} 올리기 취소`}
+              aria-label={p.error ? `업로드에 실패한 ${p.file.name} 지우기` : `${p.file.name} 올리기 취소`}
+              disabled={removing !== null && removing === p.fileId}
               onClick={() => {
-                if (p.error) {
-                  drop(p.key)
-                  refocus()
-                } else p.controller.abort()
+                if (p.error) void dismiss(p)
+                else p.controller.abort()
               }}
             >
               <X size={16} strokeWidth={2} aria-hidden />
