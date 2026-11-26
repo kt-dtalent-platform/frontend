@@ -102,7 +102,8 @@ function Review({ d }: { d: SubmissionDetail }) {
       )
     )
 
-  const lastRevision = d.status === 'REVISION_REQUIRED' ? d.revisions.at(-1) : undefined
+  // 서버는 보완 이력을 최신 것부터 준다
+  const lastRevision = d.status === 'REVISION_REQUIRED' ? d.revisions[0] : undefined
   const revisionNotice = lastRevision && (
     <Banner tone="warning" title="보완 요청 중이에요">
       {lastRevision.reason} ({labelsOf(d, lastRevision.fieldKeys)})

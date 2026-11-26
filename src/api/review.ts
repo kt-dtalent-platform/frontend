@@ -131,6 +131,7 @@ export type SubmissionDetail = {
   files: { id: number; fieldKey: string; originalName: string; contentType: string; sizeBytes: number }[]
   analysis: { overallResult: 'MATCH' | 'MISMATCH' | 'UNREADABLE'; comparisons: Comparison[] } | null
   history: { from: string | null; to: string; actorType: 'SCHOLAR' | 'MANAGER'; changedAt: string }[]
+  // 최신 보완 요청이 맨 앞
   revisions: { fieldKeys: string[]; reason: string; dueAt: string | null; resolvedAt: string | null }[]
   version: number
 }
