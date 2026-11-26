@@ -250,9 +250,10 @@ export function review(id: number, action: 'confirm' | 'revision', body: { versi
   saveOverride(id, {
     status,
     version: d.version + 1,
+    // 서버처럼 최신 보완 요청을 맨 앞에 둔다
     revisions:
       action === 'revision'
-        ? [...d.revisions, { fieldKeys: body.fieldKeys ?? [], reason: body.reason ?? '', dueAt: body.dueAt ?? null, resolvedAt: null }]
+        ? [{ fieldKeys: body.fieldKeys ?? [], reason: body.reason ?? '', dueAt: body.dueAt ?? null, resolvedAt: null }, ...d.revisions]
         : d.revisions,
     history: [...d.history, { from: d.status, to: status, actorType: 'MANAGER', changedAt: now }],
   })
