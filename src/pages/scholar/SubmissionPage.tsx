@@ -33,6 +33,8 @@ import { MetaList } from '../../components/ui/MetaList'
 import { errorCode, errorText } from '../../api/errorText'
 
 // S02 제출 입력 · 임시 저장
+
+const STALLED_NOTICE = { title: '업로드에 실패한 파일이 있어요', body: '삭제한 뒤 다시 올리고 제출하세요.' }
 export function SubmissionPage() {
   const requestId = Number(useParams().requestId)
   const query = useSubmissionForm(requestId)
@@ -160,6 +162,8 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       const latest = await fileActions.remove(fileId)
       // 그 칸의 멈춘 파일을 다 지웠으면 "지우세요" 오류도 지운다(동시에 지운 경우도 있어 최신 폼으로 본다)
       if (stalled && !latest?.stalledFiles.some((f) => f.fieldKey === stalled.fieldKey)) clearErrors(stalled.fieldKey)
+      // 업로드에 실패한 파일을 모두 지웠으면 제출 때 띄운 안내도 닫는다
+      if (latest && latest.stalledFiles.length === 0) setNotice((n) => (n?.title === STALLED_NOTICE.title ? null : n))
     },
     onBusyChange,
   }
@@ -227,10 +231,10 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
     // 올리다 멈춘 파일이 남아 있으면 서버가 제출을 거절한다
     const stalledKeys = [...new Set(form.stalledFiles.map((f) => f.fieldKey))]
     if (stalledKeys.length > 0) {
-      stalledKeys.forEach((key) => setError(key, { message: '업로드에 실패한 파일을 지우세요.' }))
+      // 파일 줄마다 오류 문구가 있어 칸 오류는 따로 달지 않는다(문구 하나만)
       // [파일 첨부]가 없을 수 있어(개수가 찬 칸) 파일 목록으로 옮긴다
       document.getElementById(`f-${stalledKeys[0]}-files`)?.focus()
-      setNotice({ title: '업로드에 실패한 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
+      setNotice(STALLED_NOTICE)
       return
     }
     const missing = missingRequired(form, getValues())

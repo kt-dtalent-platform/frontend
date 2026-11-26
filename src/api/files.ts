@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, api } from './client'
-import { errorText } from './errorText'
+import { errorCode, errorText } from './errorText'
 import { submissionKey, type SubmissionForm, type UploadedFile } from './submissions'
 
 // 파일 올리기 3단계: 업로드 주소 발급 → 저장소(S3)에 직접 PUT → 업로드 완료 처리
@@ -48,6 +48,10 @@ export function useFileActions(requestId: number) {
   // 이 파일의 자리가 다시 불러온 멈춘 파일 목록에 들어와 있으면 뺀다(끝났거나 지웠으므로)
   const dropStalled = (fileId: number) =>
     queryClient.setQueryData<SubmissionForm>(key, (prev) => (prev ? { ...prev, stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev))
+  const keepStalled = (file: UploadedFile) =>
+    queryClient.setQueryData<SubmissionForm>(key, (prev) =>
+      prev && !prev.stalledFiles.some((f) => f.id === file.id) ? { ...prev, stalledFiles: [...prev.stalledFiles, file] } : prev,
+    )
 
   async function upload(args: {
     submissionId: number
@@ -73,8 +77,13 @@ export function useFileActions(requestId: number) {
       // 주소를 받을 때 서버가 잡아 둔 자리(PENDING)도 파일 개수에 들어간다.
       // 지우지 않으면 1개짜리 칸은 서버가 치울 때(24시간)까지 다시 올릴 수 없다.
       // 지우기가 끝난 뒤에 실패를 알려야 바로 [다시 시도]해도 개수에 걸리지 않는다. 취소 신호와는 따로 보낸다
-      await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).catch(() => undefined)
-      dropStalled(p.fileId)
+      // 지우기도 실패하면(예: 연결 끊김) 서버에 남은 자리를 업로드 실패 목록에 넣어, 화면의 X와 제출 전 확인이 다룰 수 있게 한다
+      const removed = await api<null>(`/files/${p.fileId}`, { method: 'DELETE' }).then(
+        () => true,
+        () => false,
+      )
+      if (removed) dropStalled(p.fileId)
+      else keepStalled({ id: p.fileId, fieldKey, originalName: file.name })
       throw err
     }
     const uploaded: UploadedFile = {
@@ -90,7 +99,10 @@ export function useFileActions(requestId: number) {
 
   // 올린 파일과 올리다 멈춘 파일 모두 같은 API로 지운다. 지운 뒤의 최신 폼을 돌려준다
   async function remove(fileId: number) {
-    await api<null>(`/files/${fileId}`, { method: 'DELETE' })
+    // 404: 앞선 삭제 요청이 서버에는 닿았는데 응답만 끊긴 경우. 이미 지워졌으니 지운 것으로 본다
+    await api<null>(`/files/${fileId}`, { method: 'DELETE' }).catch((err) => {
+      if (!(err instanceof ApiError && err.status === 404)) throw err
+    })
     queryClient.setQueryData<SubmissionForm>(key, (prev) =>
       prev ? { ...prev, files: prev.files.filter((f) => f.id !== fileId), stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev,
     )
@@ -118,10 +130,10 @@ export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxS
 }
 
 export function uploadErrorText(error: unknown) {
-  if (error instanceof ApiError) return errorText(error)
+  // 연결이 끊긴 실패는 어느 단계(주소 발급, 저장소, 완료 처리)든 같은 문구로
+  if (error instanceof ApiError && errorCode(error) !== 'NETWORK_ERROR') return errorText(error)
   const code = (error as { code?: string } | null)?.code
   if (code === 'FORM_INVALID') return '형식이 맞지 않는 항목을 먼저 고친 뒤 올리세요.'
-  // 저장소(S3)로 바로 올리는 단계의 실패
-  if (code === 'STORAGE_FAILED') return '저장소가 파일을 받지 않았어요. 다시 올리세요.'
-  return '올리지 못했어요. 인터넷 연결을 확인하고 다시 올리세요.'
+  // 저장소(S3)로 바로 올리는 단계의 실패와 연결 끊김
+  return '업로드에 실패했어요.'
 }

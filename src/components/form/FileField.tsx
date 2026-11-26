@@ -1,11 +1,14 @@
-import { CircleCheck, FileText, Paperclip, RotateCw, X } from 'lucide-react'
+import { CircleCheck, FileText, Paperclip, RotateCw, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { checkFile, uploadErrorText } from '../../api/files'
 import type { FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
 import { formatBytes } from '../../lib/format'
 import { Button } from '../ui/Button'
-import { errorText } from '../../api/errorText'
+import { errorCode, errorText } from '../../api/errorText'
+
+// 업로드에 실패한 줄의 X를 눌렀는데 서버에서 지우지 못했을 때(연결 끊김 등) 그 줄에 보이는 문구
+const REMOVE_FAILED = '삭제하지 못했어요. 인터넷 연결을 확인하세요.'
 
 export type FileHandlers = {
   // onFileId: 주소를 받아 서버에 자리(PENDING)가 생기면 그 번호를 알린다
@@ -44,6 +47,19 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   const [pending, setPending] = useState<Pending[]>([])
   const [removing, setRemoving] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  // 서버에서 지우지 못한 업로드 실패 파일과 그 줄에 보일 문구
+  const deleting = useRef(new Set<number>())
+  const [removeError, setRemoveError] = useState<Record<number, string>>({})
+  const clearRemoveError = (id: number) =>
+    setRemoveError((m) => {
+      const { [id]: _, ...rest } = m
+      return rest
+    })
+  // 연결 끊김이면 그 줄 문구를, 그 밖의 이유면 서버가 알려 준 이유를 보여 주고 화면 낭독기에도 알린다
+  const failRemove = (id: number, name: string, err: unknown) => {
+    setRemoveError((m) => ({ ...m, [id]: errorCode(err) === 'NETWORK_ERROR' ? REMOVE_FAILED : errorText(err) }))
+    setLive(`${name}을(를) 삭제하지 못했어요.`)
+  }
   const [dragOver, setDragOver] = useState(false)
   // 이번에 올린 파일: 완료 표시(체크)를 보여 준다
   const [justUploaded, setJustUploaded] = useState<number[]>([])
@@ -112,7 +128,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
         return
       }
       patch(item.key, { error: uploadErrorText(error) })
-      setLive(`${item.file.name}을(를) 올리지 못했어요.`)
+      setLive(`${item.file.name} 업로드에 실패했어요.`)
     }
   }
 
@@ -143,7 +159,39 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
     items.forEach((item) => void start(item))
   }
 
-  function retry(item: Pending) {
+  // 실패한 뒤 자동 삭제도 못 해서 서버에 자리가 남은 파일인지(업로드 실패 목록에 들어와 있음)
+  const leftover = (item: Pending) => (item.fileId && stalled.some((f) => f.id === item.fileId) ? item.fileId : null)
+
+  // 서버에 남은 자리를 지운다. 못 지우면 안내하고 false
+  async function clearLeftover(item: Pending) {
+    const fileId = leftover(item)
+    if (!fileId || !handlers) return true
+    // 빨리 두 번 눌러도 삭제 요청은 한 번만
+    if (deleting.current.has(fileId)) return false
+    deleting.current.add(fileId)
+    setMessage(null)
+    setRemoving(fileId)
+    try {
+      await handlers.remove(fileId)
+      clearRemoveError(fileId)
+      return true
+    } catch (err) {
+      failRemove(fileId, item.file.name, err)
+      return false
+    } finally {
+      deleting.current.delete(fileId)
+      setRemoving(null)
+    }
+  }
+
+  async function dismiss(item: Pending) {
+    if (!(await clearLeftover(item))) return
+    drop(item.key)
+    refocus()
+  }
+
+  async function retry(item: Pending) {
+    if (!(await clearLeftover(item))) return
     const next = {
       ...item,
       progress: 0,
@@ -160,12 +208,16 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
     if (!handlers) return
     setMessage(null)
     setRemoving(file.id)
+    const failedUpload = stalled.some((f) => f.id === file.id)
     try {
       await handlers.remove(file.id)
+      clearRemoveError(file.id)
       setLive(`${file.originalName}을(를) 지웠어요.`)
       refocus()
     } catch (err) {
-      setMessage(`${file.originalName}을(를) 지우지 못했어요. ${errorText(err)}`)
+      // 업로드 실패 줄은 그 줄 안에서 알린다(줄마다 오류 문구 하나)
+      if (failedUpload) failRemove(file.id, file.originalName, err)
+      else setMessage(`${file.originalName}을(를) 지우지 못했어요. ${errorText(err)}`)
     } finally {
       setRemoving(null)
     }
@@ -203,7 +255,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
       {stuck.map((f) => (
         <div key={f.id} className="flex flex-col gap-2 rounded-md bg-danger-bg px-4 py-3">
           <div className="flex items-center gap-2">
-            <FileText size={16} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            <TriangleAlert size={16} strokeWidth={2} className="shrink-0 text-danger-text" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
             {editable && handlers && (
               <Button
@@ -217,20 +269,24 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
               </Button>
             )}
           </div>
-          <p className="m-0 text-caption text-danger-text">업로드에 실패했어요. 지운 뒤 다시 올리세요.</p>
+          <p className="m-0 text-caption text-danger-text">{removeError[f.id] ?? '업로드에 실패했어요. 삭제한 뒤 다시 올리세요.'}</p>
         </div>
       ))}
 
       {pending.map((p) => (
         <div key={p.key} className={cn('flex flex-col gap-2 rounded-md px-4 py-3', p.error ? 'bg-danger-bg' : 'bg-surface-sunken')}>
           <div className="flex items-center gap-2">
-            <FileText size={16} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            {p.error ? (
+              <TriangleAlert size={16} strokeWidth={2} className="shrink-0 text-danger-text" aria-hidden />
+            ) : (
+              <FileText size={16} strokeWidth={2} className="shrink-0 text-ink-2" aria-hidden />
+            )}
             <span className="min-w-0 flex-1 truncate text-ink-2">{p.file.name}</span>
             {!p.error && (
               <span className="shrink-0 text-caption text-ink-3 tabular-nums">{p.progress > 0 ? `${Math.round(p.progress * 100)}%` : '올리는 중'}</span>
             )}
             {p.error && (
-              <Button size="compact" variant="ghost" onClick={() => retry(p)}>
+              <Button size="compact" variant="ghost" disabled={removing !== null && removing === p.fileId} onClick={() => void retry(p)}>
                 <RotateCw size={16} strokeWidth={2} aria-hidden />
                 다시 시도
               </Button>
@@ -238,12 +294,11 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
             <Button
               size="compact"
               variant="ghost"
-              aria-label={p.error ? `${p.file.name} 목록에서 빼기` : `${p.file.name} 올리기 취소`}
+              aria-label={p.error ? `업로드에 실패한 ${p.file.name} 지우기` : `${p.file.name} 올리기 취소`}
+              disabled={removing !== null && removing === p.fileId}
               onClick={() => {
-                if (p.error) {
-                  drop(p.key)
-                  refocus()
-                } else p.controller.abort()
+                if (p.error) void dismiss(p)
+                else p.controller.abort()
               }}
             >
               <X size={16} strokeWidth={2} aria-hidden />
@@ -251,7 +306,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
           </div>
           {p.error ? (
             <p className="m-0 text-caption text-danger-text" role="alert">
-              {p.error}
+              {(p.fileId && removeError[p.fileId]) || p.error}
             </p>
           ) : (
             <div
