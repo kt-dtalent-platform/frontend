@@ -386,7 +386,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
           </Field>
         </div>
 
-        <Field label="제출 안내" hint="장학생 제출 화면 맨 위에 보여요.">
+        <Field label="제출 안내" hint="장학생 제출 화면 맨 위에 보여요">
           {(p) => (
             <textarea
               {...p}
@@ -397,7 +397,7 @@ export function CreateForm({ programId, templates, cohorts, existing }: FormProp
           )}
         </Field>
 
-        <Field label="제출 완료 안내" hint="제출한 직후 장학생에게 보여요.">
+        <Field label="제출 완료 안내" hint="제출하면 장학생에게 보여요">
           {(p) => (
             <textarea
               {...p}

@@ -99,7 +99,7 @@ function NewCohortDialog({ programId, taken, onDone, onCancel }: { programId: nu
 
   return (
     <FormDialog open title="새 기수 만들기" submitLabel="만들기" busy={create.isPending} onSubmit={() => void submit()} onCancel={onCancel}>
-      <LabeledField label="선발 연도" required hint={`기수 이름은 '${cohortName(year || '0000')}'로 만들어져요.`} error={error ?? undefined}>
+      <LabeledField label="선발 연도" required hint={`기수 이름은 '${cohortName(year || '0000')}'이 돼요`} error={error ?? undefined}>
         {(p) => (
           // 숫자 칸 바로 뒤에 '년 선발'(칸 밖 글자). 칸은 네 자리에 맞춘 폭
           <div className="flex items-center gap-2">

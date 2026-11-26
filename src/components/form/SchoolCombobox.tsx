@@ -147,7 +147,7 @@ export function SchoolField<T extends FieldValues>({ control, name, required, ru
       label="학교"
       required={required}
       error={fieldState.error?.message}
-      hint={listed === false ? '목록에 없는 학교예요. 이름이 맞는지 한 번 더 확인하세요.' : '목록에 없으면 그대로 입력하세요.'}
+      hint={listed === false ? '목록에 없는 학교예요. 이름을 확인하세요' : '목록에 없으면 직접 입력하세요'}
     >
       {(p) => (
         <SchoolCombobox
