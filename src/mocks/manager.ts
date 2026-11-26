@@ -192,6 +192,7 @@ export function publishRequest(id: number) {
   const targetCount = row.cohortName
     ? enrolledCount(cohorts.find((c) => c.name === row.cohortName)?.id ?? -1)
     : cohorts.reduce((n, c) => n + enrolledCount(c.id), 0)
+  if (targetCount === 0) return { error: 'NO_TARGETS' as const }
   const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   patch(id, { row: { status: 'IN_PROGRESS', targetCount, publishedAt } })
   return { status: 'IN_PROGRESS' as const, targetCount, publishedAt }

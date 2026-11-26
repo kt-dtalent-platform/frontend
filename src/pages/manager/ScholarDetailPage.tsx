@@ -225,7 +225,11 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
               {...register('phone', {
                 ...phoneField,
                 // 백엔드가 빈 값으로 지우기를 아직 지원하지 않는다
-                validate: (x: string) => (!x.trim() && s.phone ? '연락처는 비워 둘 수 없어요.' : phoneField.validate(x)),
+                validate: (x: string) => {
+                  if (!x.trim()) return s.phone ? '연락처는 비워 둘 수 없어요.' : true
+                  // 저장된 번호를 그대로 두면 예전 형식이어도 다른 항목을 저장할 수 있게 검사하지 않는다
+                  return phoneDigits(x) === phoneDigits(s.phone ?? '') || phoneField.validate(x)
+                },
               })}
             />
           )}

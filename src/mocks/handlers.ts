@@ -647,6 +647,7 @@ export const handlers = [
     await delay(300)
     const result = publishRequest(Number(params.requestId))
     if ('error' in result) {
+      if (result.error === 'NO_TARGETS') return fail(path, 409, 'REQUEST_NOT_PUBLISHABLE', '요청을 공개할 수 없습니다.', ['targets'])
       return result.error === 'NOT_FOUND'
         ? fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
         : fail(path, 422, 'INVALID_STATE_TRANSITION', '작성 중인 요청만 공개할 수 있습니다')
