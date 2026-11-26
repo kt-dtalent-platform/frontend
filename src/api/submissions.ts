@@ -48,6 +48,9 @@ export type SubmissionForm = {
   status: SubmissionStatus
   answers: Answers
   files: UploadedFile[]
+  // 올리다 멈춘 파일(서버 PENDING). 새로고침이나 창 닫기로 끝을 못 낸 업로드.
+  // 서버가 파일 개수에 세고 남아 있으면 제출을 거절하므로 보여 주고 지울 수 있게 한다
+  stalledFiles: UploadedFile[]
   editableFieldKeys: string[] // 수정 가능한 항목. 백엔드가 주지 않아 상태로 계산한다
   revision: { reason: string } | null
   version: number
@@ -71,6 +74,7 @@ export function toForm(raw: RawSubmissionForm): SubmissionForm {
     status,
     answers: raw.submission?.answers ?? {},
     files: raw.files.filter((f) => f.uploadStatus === 'UPLOADED').map(({ id, fieldKey, originalName }) => ({ id, fieldKey, originalName })),
+    stalledFiles: raw.files.filter((f) => f.uploadStatus === 'PENDING').map(({ id, fieldKey, originalName }) => ({ id, fieldKey, originalName })),
     editableFieldKeys,
     revision: raw.revision ? { reason: raw.revision.reason } : null,
     version: raw.submission?.version ?? 0,

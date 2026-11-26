@@ -74,9 +74,12 @@ export function useFileActions(requestId: number) {
     return uploaded
   }
 
+  // 올린 파일과 올리다 멈춘 파일 모두 같은 API로 지운다
   async function remove(fileId: number) {
     await api<null>(`/files/${fileId}`, { method: 'DELETE' })
-    setFiles((files) => files.filter((f) => f.id !== fileId))
+    queryClient.setQueryData<SubmissionForm>(key, (prev) =>
+      prev ? { ...prev, files: prev.files.filter((f) => f.id !== fileId), stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev,
+    )
   }
 
   return { upload, remove }

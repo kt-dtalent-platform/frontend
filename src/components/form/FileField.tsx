@@ -1,4 +1,4 @@
-import { CircleCheck, FileText, Paperclip, RotateCw, X } from 'lucide-react'
+import { CircleCheck, FileText, FileWarning, Paperclip, RotateCw, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { checkFile, uploadErrorText } from '../../api/files'
 import type { FormField as Field, UploadedFile } from '../../api/submissions'
@@ -25,6 +25,8 @@ type Props = {
   id: string
   field: Field
   files: UploadedFile[]
+  // 올리다 멈춘 파일(서버 PENDING). 지워야 다시 올리고 제출할 수 있다
+  stalled?: UploadedFile[]
   editable: boolean
   invalid: boolean
   describedBy?: string
@@ -32,7 +34,7 @@ type Props = {
 }
 
 // 첨부 파일 항목: 올린 파일 목록 + 올리는 중(진행률) + 실패(다시 시도) + 파일 첨부/끌어 놓기
-export function FileField({ id, field, files, editable, invalid, describedBy, handlers }: Props) {
+export function FileField({ id, field, files, stalled = [], editable, invalid, describedBy, handlers }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLButtonElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -47,7 +49,9 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
   const rule = field.validation
   const maxFiles = rule?.maxFiles ?? 1
   const busy = pending.some((p) => !p.error)
-  const full = files.length + pending.length >= maxFiles
+  // 이 화면에서 올리는 중이면 그 파일도 서버에는 PENDING이라 멈춘 파일 목록과 겹칠 수 있다. 올리는 동안은 멈춘 파일을 보지 않는다
+  const stuck = busy ? [] : stalled
+  const full = files.length + stuck.length + pending.length >= maxFiles
   const accept = rule?.allowedExtensions?.flatMap((e) => (e.toLowerCase() === 'jpg' ? ['.jpg', '.jpeg'] : [`.${e}`])).join(',')
   const ruleText = [rule?.allowedExtensions?.join(', ').toUpperCase(), rule?.maxSizeMb && `${rule.maxSizeMb}MB 이하`].filter(Boolean).join(', ')
 
@@ -179,6 +183,19 @@ export function FileField({ id, field, files, editable, invalid, describedBy, ha
           {editable && handlers && (
             <Button size="compact" variant="ghost" aria-label={`${f.originalName} 지우기`} disabled={removing === f.id} onClick={() => void removeUploaded(f)}>
               <X size={16} strokeWidth={2} aria-hidden />
+            </Button>
+          )}
+        </div>
+      ))}
+
+      {stuck.map((f) => (
+        <div key={f.id} className="flex min-h-control-h items-center gap-2 rounded-md bg-warning-bg pr-1 pl-4">
+          <FileWarning size={16} strokeWidth={2} className="shrink-0 text-warning-text" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-ink-2">{f.originalName}</span>
+          <span className="shrink-0 text-caption text-warning-text">올리다 멈춤</span>
+          {editable && handlers && (
+            <Button size="compact" variant="ghost" disabled={removing === f.id} onClick={() => void removeUploaded(f)}>
+              지우기
             </Button>
           )}
         </div>

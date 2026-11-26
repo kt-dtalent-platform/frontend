@@ -155,7 +155,12 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
       clearErrors(fieldKey)
       return uploaded
     },
-    remove: (fileId) => fileActions.remove(fileId),
+    remove: async (fileId) => {
+      const stalled = form.stalledFiles.find((f) => f.id === fileId)
+      await fileActions.remove(fileId)
+      // 그 칸의 멈춘 파일을 다 지웠으면 "지우세요" 오류도 지운다
+      if (stalled && !form.stalledFiles.some((f) => f.id !== fileId && f.fieldKey === stalled.fieldKey)) clearErrors(stalled.fieldKey)
+    },
     onBusyChange,
   }
 
@@ -217,6 +222,14 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         title: '파일을 올리는 중이에요',
         body: '다 올라간 뒤 제출하세요.',
       })
+      return
+    }
+    // 올리다 멈춘 파일이 남아 있으면 서버가 제출을 거절한다
+    const stalledKeys = [...new Set(form.stalledFiles.map((f) => f.fieldKey))]
+    if (stalledKeys.length > 0) {
+      stalledKeys.forEach((key) => setError(key, { message: '올리다 멈춘 파일을 지우세요.' }))
+      document.getElementById(`f-${stalledKeys[0]}`)?.focus()
+      setNotice({ title: '올리다 멈춘 파일이 있어요', body: '지운 뒤 다시 올리고 제출하세요.' })
       return
     }
     const missing = missingRequired(form, getValues())
@@ -327,6 +340,7 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
               hint={crossCheck(field, watch)}
               value={form.answers[field.fieldKey] ?? null}
               files={form.files.filter((f) => f.fieldKey === field.fieldKey)}
+              stalledFiles={form.stalledFiles.filter((f) => f.fieldKey === field.fieldKey)}
               fileHandlers={fileHandlers}
             />
           )
