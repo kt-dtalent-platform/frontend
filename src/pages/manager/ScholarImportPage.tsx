@@ -14,7 +14,7 @@ import { PageTitle } from '../../components/ui/PageTitle'
 import { useToast } from '../../components/ui/useToast'
 import { cn } from '../../lib/cn'
 import { appUrl } from '../../lib/env'
-import { MAX_ROWS, parseScholarSheet, type ImportRow, type Key } from '../../lib/scholarImport'
+import { KEYS, MAX_ROWS, parseScholarSheet, type ImportRow, type Key, type RowIssue } from '../../lib/scholarImport'
 import { usePageTitle } from '../../lib/usePageTitle'
 import { errorText } from '../../api/errorText'
 import { phoneDigits } from '../../lib/phone'
@@ -124,6 +124,10 @@ export function ScholarImportPage() {
             taken.has(r.email.toLowerCase()) ? { ...r, errors: [...r.errors, { field: 'email', message: '이미 등록된 이메일이에요' }] } : r,
           ),
         )
+      } else if (err instanceof ApiError && err.code === 'INVALID_REQUEST' && rowIssues(err.details, rows.length)) {
+        // 서버가 거절한 칸을 그 줄에 표시한다. row는 엑셀 줄 번호(첫 사람이 2)
+        const found = rowIssues(err.details, rows.length)!
+        setRows((prev) => prev.map((r, i): ImportRow => (found.has(i) ? { ...r, errors: [...r.errors, ...found.get(i)!] } : r)))
       } else setServerError(errorText(err))
     }
   }
@@ -508,4 +512,29 @@ function ReadyList({ rows }: { rows: ImportRow[] }) {
       </ul>
     </section>
   )
+}
+
+// 서버 형식 오류(INVALID_REQUEST)의 details: [{ row, field, message }]. 줄마다 고칠 점으로 바꾼다.
+// 모르는 모양이거나 명단 밖 줄, 모르는 칸이 있으면 null(일반 오류 문구로 보여 준다)
+const SERVER_ISSUE: Record<Key, string> = {
+  name: '이름 형식이 맞지 않아요',
+  email: '이메일 형식이 아니에요',
+  university: '학교 이름 형식이 맞지 않아요',
+  phone: '연락처는 0으로 시작하는 숫자 9~11자리예요',
+  major: '전공 형식이 맞지 않아요',
+  studentNo: '학번 형식이 맞지 않아요',
+}
+function rowIssues(details: unknown, count: number): Map<number, RowIssue[]> | null {
+  if (!Array.isArray(details) || details.length === 0) return null
+  const found = new Map<number, RowIssue[]>()
+  for (const d of details) {
+    const row = (d as { row?: unknown })?.row
+    const field = (d as { field?: unknown })?.field
+    const i = typeof row === 'number' ? row - 2 : -1
+    if (i < 0 || i >= count || !KEYS.includes(field as Key)) return null
+    const list = found.get(i) ?? []
+    if (!list.some((x) => x.field === field)) list.push({ field: field as Key, message: SERVER_ISSUE[field as Key] })
+    found.set(i, list)
+  }
+  return found
 }
