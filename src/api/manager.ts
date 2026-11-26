@@ -83,14 +83,17 @@ export function useRequestTemplates() {
 }
 
 // GET /v1/programs/{programId}/cohorts · 백엔드 PR #11(KT-9) 기준: items[{id, name, startedOn, endedOn, scholarCount}]
-export type Cohort = { id: number; name: string; startedOn: string | null; endedOn: string | null; scholarCount: number }
+// enrolledScholarCount: 재학이면서 사용 중지가 아닌 장학생 수. 요청 공개 대상과 같은 기준(백엔드 #127). 머지 전 서버에는 없다
+export type Cohort = { id: number; name: string; startedOn: string | null; endedOn: string | null; scholarCount: number; enrolledScholarCount?: number }
 
-export function useCohorts(programId: number | undefined) {
+// fresh: 화면을 열 때마다 다시 불러온다. 장학생 등록이나 상태 변경 뒤 인원 수가 바뀌므로 숫자로 공개를 막는 화면에서 쓴다
+export function useCohorts(programId: number | undefined, { fresh = false } = {}) {
   return useQuery({
     queryKey: ['manager', 'cohorts', programId],
     queryFn: async () => (await api<{ items: Cohort[] }>(`/programs/${programId}/cohorts`)).items,
     enabled: programId !== undefined,
     staleTime: 10 * 60_000,
+    refetchOnMount: fresh ? 'always' : true,
   })
 }
 

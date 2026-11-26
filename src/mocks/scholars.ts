@@ -110,6 +110,10 @@ export function scholarList(q: URLSearchParams) {
   return { items, page, pageSize: size, total: list.length }
 }
 
+// 요청 공개 대상 수: 재학이면서 사용 중지가 아닌 장학생(백엔드 공개 대상 조건과 같게)
+export const enrolledCount = (cohortId: number) =>
+  all().filter((x) => x.cohort.id === cohortId && x.status === 'ENROLLED' && x.accountStatus !== 'INACTIVE').length
+
 // 계정 상태(로그인 안내 메일 목업이 쓴다)
 export const accountStatusOf = (id: number) => all().find((x) => x.id === id)?.accountStatus ?? null
 
@@ -122,7 +126,7 @@ export function scholarDetail(id: number): ScholarDetail | null {
     r.id % 4 === 0
       ? null
       : { bankName: ['KB국민은행', '신한은행', '카카오뱅크'][r.id % 3], accountNumber: String(1002000000000 + r.id * 7919), accountHolder: r.name }
-  return { ...detail, bankAccount }
+  return { ...detail, phone: r.phone ? r.phone.replace(/\D/g, '') : null, bankAccount }
 }
 
 export function updateScholar(id: number, body: ScholarUpdate) {
