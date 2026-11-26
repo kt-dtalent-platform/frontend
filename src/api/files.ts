@@ -89,7 +89,9 @@ export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxS
   const ext = file.name.includes('.') ? norm(file.name.split('.').pop()!) : ''
   const allowed = rule?.allowedExtensions?.map(norm)
   if (allowed?.length && !allowed.includes(ext)) {
-    return `${allowed.map((e) => e.toUpperCase()).join(', ')} 파일만 올릴 수 있어요.`
+    // 안내는 서버가 정한 이름 그대로(jpg와 jpeg를 합친 목록으로 쓰면 JPG가 두 번 나온다)
+    const names = [...new Set(rule!.allowedExtensions!.map((e) => e.toUpperCase()))]
+    return `${names.join(', ')} 파일만 올릴 수 있어요.`
   }
   if (rule?.maxSizeMb && file.size > rule.maxSizeMb * 1024 * 1024) {
     return `${rule.maxSizeMb}MB 이하 파일만 올릴 수 있어요. 이 파일은 ${(file.size / 1024 / 1024).toFixed(1)}MB예요.`
