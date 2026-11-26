@@ -198,7 +198,7 @@ function EditForm({ s, onDone }: { s: ScholarDetail; onDone: (result: 'saved' | 
           )}
         </LabeledField>
         {/* 이메일은 로그인 아이디라 바꾸지 않는다. 칸을 숨기면 왜 못 바꾸는지 알 수 없어 읽기 전용으로 보여 준다 */}
-        <LabeledField label="이메일" hint="로그인 아이디라 바꿀 수 없어요.">
+        <LabeledField label="이메일" hint="로그인 아이디라 바꿀 수 없어요">
           {(p) => (
             <input
               {...p}
