@@ -204,7 +204,7 @@ function Review({ d }: { d: SubmissionDetail }) {
       <ConfirmDialog
         open={confirming}
         busy={confirm.isPending}
-        title="확인 완료"
+        title="확인 완료할까요?"
         confirmLabel="확인 완료"
         onConfirm={onConfirm}
         onCancel={() => setConfirming(false)}
@@ -606,13 +606,23 @@ const labelsOf = (d: SubmissionDetail, keys: string[]) => keys.map((k) => d.fiel
 const historyLabel = (to: string) =>
   ({ SUBMITTED: '제출', RESUBMITTED: '다시 제출', REVISION_REQUIRED: '보완 요청', CONFIRMED: '확인 완료', DRAFT: '작성' })[to] ?? to
 
-// 확인 완료 대화상자 문구. 다른 항목과 읽지 못한 항목을 나눠 알린다
+// 확인 완료 대화상자 본문. 다시 볼 항목을 한 줄에 하나씩 먼저, 되돌릴 수 없는 결과는 버튼 바로 위에(대화상자 본문이 p라 줄은 block span으로 나눈다)
 function confirmText(mismatched: Comparison[], unreadable: Comparison[]) {
   const labels = (list: Comparison[]) => list.map((c) => c.label).join(', ')
-  const notes = [
-    mismatched.length > 0 && `서류 값과 다른 항목: ${labels(mismatched)}.`,
-    unreadable.length > 0 && `서류에서 읽지 못한 항목: ${labels(unreadable)}. 원본을 직접 확인하세요.`,
-  ].filter(Boolean)
-  if (notes.length === 0) return '확인 완료하면 장학생에게 결과가 보이고 더 고칠 수 없어요.'
-  return `${notes.join(' ')} 확인 완료하면 장학생이 입력한 값으로 기록돼요.`
+  const rows = [
+    mismatched.length > 0 && { key: 'mismatch', name: '서류 값과 다름', value: labels(mismatched) },
+    unreadable.length > 0 && { key: 'unreadable', name: '서류에서 못 읽음', value: labels(unreadable) },
+  ].filter((r) => r !== false)
+  if (rows.length === 0) return '장학생에게 결과가 보이고, 더 고칠 수 없어요.'
+  return (
+    <>
+      {rows.map((r) => (
+        <span key={r.key} className="flex gap-3">
+          <span className="w-28 shrink-0 text-ink-3">{r.name}</span>
+          <span className="font-semibold text-ink">{r.value}</span>
+        </span>
+      ))}
+      <span className="mt-3 block">장학생이 입력한 값으로 기록되고, 더 고칠 수 없어요.</span>
+    </>
+  )
 }
