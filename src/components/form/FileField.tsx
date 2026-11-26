@@ -5,7 +5,7 @@ import type { FormField as Field, UploadedFile } from '../../api/submissions'
 import { cn } from '../../lib/cn'
 import { formatBytes } from '../../lib/format'
 import { Button } from '../ui/Button'
-import { errorText } from '../../api/errorText'
+import { errorCode, errorText } from '../../api/errorText'
 
 // 업로드에 실패한 줄의 X를 눌렀는데 서버에서 지우지 못했을 때(연결 끊김 등) 그 줄에 보이는 문구
 const REMOVE_FAILED = '삭제하지 못했어요. 인터넷 연결을 확인하세요.'
@@ -47,8 +47,19 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   const [pending, setPending] = useState<Pending[]>([])
   const [removing, setRemoving] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  // 서버에서 지우지 못한 업로드 실패 파일. 그 줄의 오류 문구를 바꿔 보여 준다
-  const [removeFailed, setRemoveFailed] = useState<number[]>([])
+  // 서버에서 지우지 못한 업로드 실패 파일과 그 줄에 보일 문구
+  const deleting = useRef(new Set<number>())
+  const [removeError, setRemoveError] = useState<Record<number, string>>({})
+  const clearRemoveError = (id: number) =>
+    setRemoveError((m) => {
+      const { [id]: _, ...rest } = m
+      return rest
+    })
+  // 연결 끊김이면 그 줄 문구를, 그 밖의 이유면 서버가 알려 준 이유를 보여 주고 화면 낭독기에도 알린다
+  const failRemove = (id: number, name: string, err: unknown) => {
+    setRemoveError((m) => ({ ...m, [id]: errorCode(err) === 'NETWORK_ERROR' ? REMOVE_FAILED : errorText(err) }))
+    setLive(`${name}을(를) 삭제하지 못했어요.`)
+  }
   const [dragOver, setDragOver] = useState(false)
   // 이번에 올린 파일: 완료 표시(체크)를 보여 준다
   const [justUploaded, setJustUploaded] = useState<number[]>([])
@@ -155,16 +166,20 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
   async function clearLeftover(item: Pending) {
     const fileId = leftover(item)
     if (!fileId || !handlers) return true
+    // 빨리 두 번 눌러도 삭제 요청은 한 번만
+    if (deleting.current.has(fileId)) return false
+    deleting.current.add(fileId)
     setMessage(null)
     setRemoving(fileId)
     try {
       await handlers.remove(fileId)
-      setRemoveFailed((ids) => ids.filter((id) => id !== fileId))
+      clearRemoveError(fileId)
       return true
-    } catch {
-      setRemoveFailed((ids) => (ids.includes(fileId) ? ids : [...ids, fileId]))
+    } catch (err) {
+      failRemove(fileId, item.file.name, err)
       return false
     } finally {
+      deleting.current.delete(fileId)
       setRemoving(null)
     }
   }
@@ -196,12 +211,12 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
     const failedUpload = stalled.some((f) => f.id === file.id)
     try {
       await handlers.remove(file.id)
-      setRemoveFailed((ids) => ids.filter((id) => id !== file.id))
+      clearRemoveError(file.id)
       setLive(`${file.originalName}을(를) 지웠어요.`)
       refocus()
     } catch (err) {
       // 업로드 실패 줄은 그 줄 안에서 알린다(줄마다 오류 문구 하나)
-      if (failedUpload) setRemoveFailed((ids) => (ids.includes(file.id) ? ids : [...ids, file.id]))
+      if (failedUpload) failRemove(file.id, file.originalName, err)
       else setMessage(`${file.originalName}을(를) 지우지 못했어요. ${errorText(err)}`)
     } finally {
       setRemoving(null)
@@ -254,9 +269,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
               </Button>
             )}
           </div>
-          <p className="m-0 text-caption text-danger-text" role={removeFailed.includes(f.id) ? 'alert' : undefined}>
-            {removeFailed.includes(f.id) ? REMOVE_FAILED : '업로드에 실패했어요. 삭제한 뒤 다시 올리세요.'}
-          </p>
+          <p className="m-0 text-caption text-danger-text">{removeError[f.id] ?? '업로드에 실패했어요. 삭제한 뒤 다시 올리세요.'}</p>
         </div>
       ))}
 
@@ -293,7 +306,7 @@ export function FileField({ id, field, files, stalled = [], editable, invalid, d
           </div>
           {p.error ? (
             <p className="m-0 text-caption text-danger-text" role="alert">
-              {p.fileId && removeFailed.includes(p.fileId) ? REMOVE_FAILED : p.error}
+              {(p.fileId && removeError[p.fileId]) || p.error}
             </p>
           ) : (
             <div

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, api } from './client'
-import { errorText } from './errorText'
+import { errorCode, errorText } from './errorText'
 import { submissionKey, type SubmissionForm, type UploadedFile } from './submissions'
 
 // 파일 올리기 3단계: 업로드 주소 발급 → 저장소(S3)에 직접 PUT → 업로드 완료 처리
@@ -99,7 +99,10 @@ export function useFileActions(requestId: number) {
 
   // 올린 파일과 올리다 멈춘 파일 모두 같은 API로 지운다. 지운 뒤의 최신 폼을 돌려준다
   async function remove(fileId: number) {
-    await api<null>(`/files/${fileId}`, { method: 'DELETE' })
+    // 404: 앞선 삭제 요청이 서버에는 닿았는데 응답만 끊긴 경우. 이미 지워졌으니 지운 것으로 본다
+    await api<null>(`/files/${fileId}`, { method: 'DELETE' }).catch((err) => {
+      if (!(err instanceof ApiError && err.status === 404)) throw err
+    })
     queryClient.setQueryData<SubmissionForm>(key, (prev) =>
       prev ? { ...prev, files: prev.files.filter((f) => f.id !== fileId), stalledFiles: prev.stalledFiles.filter((f) => f.id !== fileId) } : prev,
     )
@@ -127,7 +130,8 @@ export function checkFile(file: File, rule: { allowedExtensions?: string[]; maxS
 }
 
 export function uploadErrorText(error: unknown) {
-  if (error instanceof ApiError) return errorText(error)
+  // 연결이 끊긴 실패는 어느 단계(주소 발급, 저장소, 완료 처리)든 같은 문구로
+  if (error instanceof ApiError && errorCode(error) !== 'NETWORK_ERROR') return errorText(error)
   const code = (error as { code?: string } | null)?.code
   if (code === 'FORM_INVALID') return '형식이 맞지 않는 항목을 먼저 고친 뒤 올리세요.'
   // 저장소(S3)로 바로 올리는 단계의 실패와 연결 끊김
