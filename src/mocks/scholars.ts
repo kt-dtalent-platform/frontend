@@ -218,7 +218,8 @@ export function createScholarsBulk(cohortId: number, list: Omit<ScholarCreate, '
   const items = list.map((r, i) => {
     const made = createScholar({ ...r, cohortId })
     const id = ('id' in made && made.id) || 0
-    return { row: i + 1, id, email: r.email, temporaryPassword: `temp${String(1000 + ((id * 7919) % 9000))}` }
+    // 서버처럼 엑셀 줄 번호(머리글이 1줄이라 첫 사람이 2)
+    return { row: i + 2, id, email: r.email, temporaryPassword: `temp${String(1000 + ((id * 7919) % 9000))}` }
   })
   return { created: list.length, items }
 }

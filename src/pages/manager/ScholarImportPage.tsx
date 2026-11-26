@@ -108,10 +108,11 @@ export function ScholarImportPage() {
           studentNo,
         })),
       })
-      // row는 보낸 명단 순서 + 1이라 그 줄의 이름을 붙인다
+      // 이름은 이메일로 찾아 붙인다. 응답의 row는 엑셀 줄 번호(머리글 다음 줄이 2)라 순서로 찾으면 한 줄씩 밀린다
+      const nameByEmail = new Map(rows.map((x) => [x.email.trim().toLowerCase(), x.name]))
       const accounts = (r.items ?? [])
         .filter((it) => it.temporaryPassword)
-        .map((it) => ({ id: it.id, name: rows[it.row - 1]?.name ?? '', email: it.email, password: it.temporaryPassword }))
+        .map((it) => ({ id: it.id, name: nameByEmail.get(it.email.trim().toLowerCase()) ?? '', email: it.email, password: it.temporaryPassword }))
       if (accounts.length) setCreated(accounts)
       bulk.reset()
       setDone(r.created)
