@@ -3,6 +3,7 @@
 import type { Answers, RawSubmissionForm } from '../api/submissions'
 import type { SubmissionStatus } from '../api/types'
 import { daysBetween, kstParts, kstToday, kstToUtc } from '../lib/time'
+import { rows } from './manager'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -78,7 +79,7 @@ export function saveDraft(requestId: number, answers: Answers) {
 }
 
 export function requestOfSubmission(submissionId: number) {
-  return [40, 31, 28].find((id) => current(id).exists && current(id).id === submissionId)
+  return [40, 31, 28, 27].find((id) => current(id).exists && current(id).id === submissionId)
 }
 
 export function fieldOf(requestId: number, fieldKey: string) {
@@ -93,14 +94,16 @@ export function addFile(requestId: number, file: MockFile) {
 // 파일을 바꿀 수 있는지: 검토 대기·확인 완료·마감이면 안 되고, 보완 필요면 보완 요청된 항목만
 export function canChangeFile(requestId: number, fieldKey: string) {
   const form = getForm(requestId)
-  if (!form || form.request.status === 'CLOSED') return false
+  if (!form) return false
   const status = form.submission?.status ?? 'NOT_SUBMITTED'
+  // 마감된 요청은 보완 항목만(백엔드 #131)
+  if (form.request.status === 'CLOSED' && status !== 'REVISION_REQUIRED') return false
   if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'CONFIRMED') return false
   return status !== 'REVISION_REQUIRED' || !!form.revision?.fieldKeys.includes(fieldKey)
 }
 
 export function fileOwner(fileId: number) {
-  for (const id of [40, 31, 28]) {
+  for (const id of [40, 31, 28, 27]) {
     const file = current(id).files.find((f) => f.id === fileId)
     if (file) return { requestId: id, fieldKey: file.fieldKey }
   }
@@ -108,7 +111,7 @@ export function fileOwner(fileId: number) {
 }
 
 export function removeFile(fileId: number) {
-  for (const id of [40, 31, 28]) {
+  for (const id of [40, 31, 28, 27]) {
     const prev = current(id)
     if (prev.files.some((f) => f.id === fileId)) {
       write(id, { ...prev, files: prev.files.filter((f) => f.id !== fileId) })
@@ -206,6 +209,14 @@ function forms(): Record<number, RawSubmissionForm> {
       files: [{ id: 9001, fieldKey: 'transcript', originalName: '성적증명서_2026-1.jpg', uploadStatus: 'UPLOADED' }],
       revision: { id: 71, reason: '성적증명서 사진이 흐려 평점이 보이지 않습니다. 원본 PDF로 다시 올려 주세요.', fieldKeys: ['transcript', 'gpa'] },
     },
+    // 마감된 요청인데 보완 요청을 받은 경우(마감 뒤에도 보완 항목은 다시 낼 수 있다)
+    27: {
+      request: { id: 27, title: '2025학년도 1학기 성적증명서 제출', description: null, requestDueAt: dueIn(-40), status: 'CLOSED' },
+      fields: gradeFields,
+      submission: { id: 470, status: 'REVISION_REQUIRED', answers: { gpa: 3.71, gpa_scale: '4.5', credits: 18, note: null }, version: 3 },
+      files: [{ id: 7001, fieldKey: 'transcript', originalName: '성적증명서_2025-1.pdf', uploadStatus: 'UPLOADED' }],
+      revision: { id: 61, reason: '성적증명서의 평점과 입력한 평점이 달라요. 성적증명서를 확인하고 평점을 고쳐 주세요.', fieldKeys: ['gpa'] },
+    },
     28: {
       request: { id: 28, title: '2025학년도 2학기 성적증명서 제출', description: null, requestDueAt: dueIn(-15), status: 'CLOSED' },
       fields: gradeFields,
@@ -217,8 +228,11 @@ function forms(): Record<number, RawSubmissionForm> {
 }
 
 export function getForm(requestId: number): RawSubmissionForm | undefined {
-  const base = forms()[requestId]
-  if (!base) return undefined
+  const fixture = forms()[requestId]
+  if (!fixture) return undefined
+  // 담당자 목업에서 마감하면 장학생 화면도 마감으로 본다
+  const closedByManager = rows().find((r) => r.id === requestId)?.status === 'CLOSED'
+  const base = closedByManager ? { ...fixture, request: { ...fixture.request, status: 'CLOSED' as const } } : fixture
   const saved = load()[requestId]
   if (!saved) return base
   const { files, ...submission } = saved
@@ -227,10 +241,13 @@ export function getForm(requestId: number): RawSubmissionForm | undefined {
   return { ...base, submission, files: files ?? base.files, revision }
 }
 
-// 백엔드처럼 진행 중인 요청만(마감된 요청은 내 제출 이력에서 본다)
+// 백엔드처럼 진행 중인 요청과, 마감됐지만 보완 요청을 받은 요청(마감된 나머지는 내 제출 이력에서 본다)
 export function taskList() {
-  return [40, 31, 28]
-    .filter((id) => getForm(id)!.request.status === 'IN_PROGRESS')
+  return [40, 31, 28, 27]
+    .filter((id) => {
+      const f = getForm(id)!
+      return f.request.status === 'IN_PROGRESS' || f.submission?.status === 'REVISION_REQUIRED'
+    })
     .map((id) => {
       const f = getForm(id)!
       return {
@@ -247,14 +264,14 @@ export function taskList() {
 // GET /me/submissions: 작성 중을 뺀 내 제출, 최근 제출 순. 기본 데이터의 제출 시각은 마감 며칠 전으로 둔다
 export function submissionHistory() {
   const saved = load()
-  return [40, 31, 28]
+  return [40, 31, 28, 27]
     .map((id) => ({ id, form: getForm(id)! }))
     .filter(({ form }) => form.submission && form.submission.status !== 'DRAFT')
     .map(({ id, form }) => ({
       requestId: id,
       title: form.request.title,
       status: form.submission!.status,
-      submittedAt: saved[id]?.submittedAt ?? (id === 28 ? dueIn(-18) : dueIn(-3)),
+      submittedAt: saved[id]?.submittedAt ?? (id === 28 ? dueIn(-18) : id === 27 ? dueIn(-42) : dueIn(-3)),
       confirmedAt: form.submission!.status === 'CONFIRMED' ? dueIn(-12) : null,
       purged: false,
     }))

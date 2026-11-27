@@ -21,9 +21,12 @@ export type DashboardRequest = {
   waiting: number
   revisionRequired: number
   notSubmitted: number
+  // 마감 후 제출 수와 요청 상태(백엔드 #131). 마감된 요청도 검토 대기나 보완 필요가 남으면 온다. 머지 전 서버에는 없다
+  late?: number
+  status?: 'IN_PROGRESS' | 'CLOSED'
 }
 export type ManagerDashboard = {
-  review: { waiting: number; resubmitted: number; oldestSubmissionId: number | null; oldestSubmittedAt: string | null }
+  review: { waiting: number; resubmitted: number; oldestSubmissionId: number | null; oldestSubmittedAt: string | null; late?: number }
   requests: DashboardRequest[]
 }
 
@@ -171,5 +174,15 @@ export function usePublishRequest() {
       void queryClient.invalidateQueries({ queryKey: ['manager', 'requests'] })
       void queryClient.invalidateQueries({ queryKey: ['manager', 'dashboard'] })
     },
+  })
+}
+
+// POST /requests/{id}/close: 담당자가 요청을 마감한다(백엔드 #131). 미제출이 남아도 된다.
+// 마감 뒤에는 새 제출만 막히고, 검토와 보완 재제출은 계속된다
+export function useCloseRequest(requestId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<{ requestId: number; status: 'CLOSED' }>(`/requests/${requestId}/close`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manager'] }),
   })
 }

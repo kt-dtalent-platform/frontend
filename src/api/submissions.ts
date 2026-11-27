@@ -60,7 +60,8 @@ export function toForm(raw: RawSubmissionForm): SubmissionForm {
   const status = raw.submission?.status ?? 'NOT_SUBMITTED'
   const closed = raw.request.status === 'CLOSED'
   const allKeys = raw.fields.map((f) => f.fieldKey)
-  const editableFieldKeys = closed || isDone(status) ? [] : status === 'REVISION_REQUIRED' ? (raw.revision?.fieldKeys ?? []) : allKeys
+  // 마감된 요청도 보완 요청을 받은 사람은 보완 항목을 고쳐 다시 낼 수 있다(백엔드 #131)
+  const editableFieldKeys = status === 'REVISION_REQUIRED' ? (raw.revision?.fieldKeys ?? []) : closed || isDone(status) ? [] : allKeys
   return {
     request: {
       id: raw.request.id,

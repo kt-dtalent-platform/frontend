@@ -6,8 +6,9 @@ import { cn } from '../../lib/cn'
 // 바탕을 칠하지 않고 아이콘과 작은 글자로만 둔다. 행에서 바탕이 있는 건 상태 배지 하나뿐이라 눈이 상태부터 간다
 export function RowNote({ icon: Icon, tone = 'neutral', children }: { icon: LucideIcon; tone?: 'neutral' | 'warning'; children: ReactNode }) {
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 text-caption whitespace-nowrap', tone === 'warning' ? 'text-warning-text' : 'text-ink-3')}>
-      <Icon size={14} strokeWidth={2} aria-hidden />
+    // 아이콘은 가운데, 글자 기준선은 글자로 잡아 옆 글자와 기준선 정렬(items-baseline)이 맞게 한다
+    <span className={cn('inline-flex shrink-0 items-baseline gap-1 text-caption whitespace-nowrap', tone === 'warning' ? 'text-warning-text' : 'text-ink-3')}>
+      <Icon size={14} strokeWidth={2} className="self-center" aria-hidden />
       {children}
     </span>
   )

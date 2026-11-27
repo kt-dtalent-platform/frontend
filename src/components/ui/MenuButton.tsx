@@ -4,7 +4,8 @@ import { Link } from 'react-router'
 import { cn } from '../../lib/cn'
 import { buttonClass, type ButtonSize, type ButtonVariant } from './buttonClass'
 
-export type MenuItem = { to: string; label: string; description?: string }
+// 항목은 화면 이동(to)이나 동작(onSelect) 중 하나
+export type MenuItem = { label: string; description?: string } & ({ to: string; onSelect?: never } | { onSelect: () => void; to?: never })
 
 // 누르면 고를 수 있는 항목이 펼쳐지는 버튼(메뉴 버튼). 같은 일을 하는 방법이 여럿일 때 버튼 하나로 묶는다
 // 예: 장학생 등록 → 한 명 / 엑셀로 여러 명(Carbon Menu button: 같은 무게의 만들기 방법을 한곳에)
@@ -17,6 +18,7 @@ export function MenuButton({
   variant = 'primary',
   size = 'compact',
   placement = 'bottom',
+  align = 'end',
 }: {
   label: string
   icon?: ReactNode
@@ -24,6 +26,8 @@ export function MenuButton({
   variant?: ButtonVariant
   size?: ButtonSize
   placement?: 'top' | 'bottom'
+  // 목록이 버튼의 어느 쪽 끝에 맞춰 펼쳐질지. 화면 왼쪽에 있는 버튼이면 start
+  align?: 'start' | 'end'
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -33,7 +37,7 @@ export function MenuButton({
   const [start, setStart] = useState<'first' | 'last'>('first')
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
-  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const itemRefs = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([])
 
   // 바깥을 누르면 닫는다
   useEffect(() => {
@@ -121,33 +125,61 @@ export function MenuButton({
           }
         }}
         className={cn(
-          'absolute right-0 z-(--z-popover) m-0 w-64 list-none rounded-md bg-surface p-1 shadow-pop',
+          'absolute z-(--z-popover) m-0 w-64 list-none rounded-md bg-surface p-1 shadow-pop',
+          align === 'start' ? 'left-0' : 'right-0',
           // 열릴 때 버튼 쪽에서 살짝 나온다. hidden이 풀릴 때마다 다시 재생된다
           placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
           closing ? 'animate-fade-out' : placement === 'top' ? 'animate-pop-up' : 'animate-pop-down',
         )}
       >
-        {items.map((item, i) => (
-          <li key={item.to} role="none">
-            <Link
-              ref={(el) => {
-                itemRefs.current[i] = el
-              }}
-              role="menuitem"
-              // 항목은 화살표로만 옮겨 다닌다(Tab 순서에서 뺀다)
-              tabIndex={-1}
-              to={item.to}
-              onClick={() => {
-                setOpen(false)
-                setClosing(false)
-              }}
-              className="flex flex-col gap-0.5 rounded-sm px-3 py-2 text-ink no-underline outline-none hover:bg-control-tonal-hover focus-visible:bg-control-tonal-hover"
-            >
+        {items.map((item, i) => {
+          const ref = (el: HTMLAnchorElement | HTMLButtonElement | null) => {
+            itemRefs.current[i] = el
+          }
+          const cls =
+            'flex w-full flex-col items-start gap-0.5 rounded-sm px-3 py-2 text-left text-ink no-underline outline-none hover:bg-control-tonal-hover focus-visible:bg-control-tonal-hover'
+          const body = (
+            <>
               <span className="text-label">{item.label}</span>
               {item.description && <span className="text-caption text-ink-3">{item.description}</span>}
-            </Link>
-          </li>
-        ))}
+            </>
+          )
+          return (
+            <li key={item.label} role="none">
+              {item.to !== undefined ? (
+                // 항목은 화살표로만 옮겨 다닌다(Tab 순서에서 뺀다)
+                <Link
+                  ref={ref}
+                  role="menuitem"
+                  tabIndex={-1}
+                  to={item.to}
+                  onClick={() => {
+                    setOpen(false)
+                    setClosing(false)
+                  }}
+                  className={cls}
+                >
+                  {body}
+                </Link>
+              ) : (
+                <button
+                  ref={ref}
+                  type="button"
+                  role="menuitem"
+                  tabIndex={-1}
+                  onClick={() => {
+                    setOpen(false)
+                    setClosing(false)
+                    item.onSelect?.()
+                  }}
+                  className={cls}
+                >
+                  {body}
+                </button>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

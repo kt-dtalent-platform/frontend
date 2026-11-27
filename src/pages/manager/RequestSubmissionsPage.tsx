@@ -8,8 +8,13 @@ import {
   useRequestSubmissions,
   useTargetDeadline,
   type StatusFilter,
+  type StatusSummary,
   type SubmissionRow,
 } from '../../api/review'
+import { useCloseRequest } from '../../api/manager'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { RequestStatusBadge } from '../../components/ui/RequestStatusBadge'
+import { MenuButton } from '../../components/ui/MenuButton'
 import { daysUntil, isPastDue } from '../../api/tasks'
 import { TIME_ZONE, kstParts, kstToUtc, kstToday, toDate } from '../../lib/time'
 import { ApiError } from '../../api/client'
@@ -137,6 +142,8 @@ export function RequestSubmissionsPage() {
   // 마감을 늘릴 장학생(미제출, 작성 중). 고르면 대화상자가 열린다.
   // 백엔드는 진행 중인 요청만 늘려 준다. 요청 상태는 제출 현황 응답에 함께 온다(백엔드 #114)
   const [extending, setExtending] = useState<{ scholarId: number; name: string } | null>(null)
+  // 확인창을 연 요청을 기억한다. 뒤로 가기로 다른 요청이 보이면 그 요청을 마감하지 않게
+  const [closingId, setClosingId] = useState<number | null>(null)
   // 다른 요청으로 넘어가는 동안 이전 요청의 상태로 버튼을 보이지 않게, 이 요청의 응답일 때만 본다
   const canExtend = data?.request.id === requestId && data.request.status === 'IN_PROGRESS'
 
@@ -152,7 +159,31 @@ export function RequestSubmissionsPage() {
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {data && (
         <>
-          <PageTitle description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} />}>{data.request.title}</PageTitle>
+          {/* 상태는 제목 위에. 진행 중이면 상태를 누르면 마감할 수 있다(Google Forms의 응답 받기, SurveyMonkey 수집기 상태처럼 상태와 그 상태를 바꾸는 행동을 한자리에) */}
+          <div className="flex flex-col gap-3">
+            {canExtend ? (
+              <div className="self-start">
+                <MenuButton
+                  label="진행 중"
+                  icon={<span aria-hidden className="size-1.5 rounded-full bg-info-dot" />}
+                  variant="secondary"
+                  size="compact"
+                  align="start"
+                  items={[{ label: '요청 마감', description: '새 제출을 받지 않아요', onSelect: () => setClosingId(requestId) }]}
+                />
+              </div>
+            ) : (
+              <RequestStatusBadge status={data.request.status} className="self-start" />
+            )}
+            <PageTitle
+              description={<RequestMeta cohortName={data.request.cohortName} closesAt={data.request.closesAt} closed={data.request.status === 'CLOSED'} />}
+            >
+              {data.request.title}
+            </PageTitle>
+          </div>
+          {closingId === requestId && data.request.id === requestId && (
+            <CloseDialog requestId={requestId} summary={data.summary} onClose={() => setClosingId(null)} />
+          )}
           {exportError != null && (
             <Banner tone="danger" title="파일을 만들지 못했어요">
               {errorText(exportError)}
@@ -291,7 +322,7 @@ export function RequestSubmissionsPage() {
   )
 }
 
-export function RequestMeta({ cohortName, closesAt }: { cohortName: string | null; closesAt: string | null }) {
+export function RequestMeta({ cohortName, closesAt, closed = false }: { cohortName: string | null; closesAt: string | null; closed?: boolean }) {
   if (!closesAt) return <>{cohortName ?? '전체 기수'}</>
   const overdue = isPastDue(closesAt)
   const dDay = daysUntil(closesAt)
@@ -301,9 +332,12 @@ export function RequestMeta({ cohortName, closesAt }: { cohortName: string | nul
         items={[
           cohortName ?? '전체 기수',
           `마감 ${formatDue(closesAt)}`,
-          <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
-            {dDayText(dDay, overdue)}
-          </span>,
+          // 마감된 요청은 위 상태 배지가 알려 주니 남은 날은 쓰지 않는다
+          !closed && (
+            <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
+              {dDayText(dDay, overdue)}
+            </span>
+          ),
         ]}
       />
     </>
@@ -402,6 +436,44 @@ function Row({ row, requestId, onExtend }: { row: SubmissionRow; requestId: numb
         </div>
       )}
     </li>
+  )
+}
+
+// 요청 마감(백엔드 #131). 마감으로 바뀌는 것(미제출은 더 못 냄)과 이어지는 것(검토, 보완)을 한 문단으로
+function CloseDialog({ requestId, summary, onClose }: { requestId: number; summary: StatusSummary; onClose: () => void }) {
+  const toast = useToast()
+  const close = useCloseRequest(requestId)
+  const stopped = summary.notSubmitted > 0 ? `미제출 ${summary.notSubmitted}명은 더 제출할 수 없어요.` : '새 제출은 받지 않아요.'
+  const { submitted: w, revisionRequired: r } = summary
+  const going =
+    w > 0 && r > 0
+      ? `검토 대기 ${w}명은 계속 검토하고, 보완 필요 ${r}명은 보완 기한까지 다시 받을 수 있어요.`
+      : w > 0
+        ? `검토 대기 ${w}명은 계속 검토할 수 있어요.`
+        : r > 0
+          ? `보완 필요 ${r}명은 보완 기한까지 다시 받을 수 있어요.`
+          : null
+  return (
+    <ConfirmDialog
+      open
+      title="요청을 마감할까요?"
+      confirmLabel="마감하기"
+      busy={close.isPending}
+      onCancel={onClose}
+      onConfirm={() =>
+        close.mutate(undefined, {
+          onSuccess: () => {
+            toast('요청을 마감했어요')
+            onClose()
+          },
+        })
+      }
+    >
+      {/* 막히는 것(새 제출)과 이어지는 것(검토, 보완)을 나눠 한 줄씩 */}
+      {stopped}
+      {going && <span className="mt-2 block">{going}</span>}
+      {close.isError && <span className="mt-3 block text-danger-text">{errorText(close.error)}</span>}
+    </ConfirmDialog>
   )
 }
 

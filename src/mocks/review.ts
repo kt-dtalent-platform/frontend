@@ -49,12 +49,15 @@ const minutesAgo = (m: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
+const CLOSED_FIXTURES = [27, 28]
+
 // 요청 하나의 장학생별 기본 상태: 확인 완료 → 보완 필요 → 검토 대기(일부 재제출) → 미제출 순으로 나눈다
 function baseRows(requestId: number): (SubmissionRow & { index: number })[] {
   const req = rows().find((r) => r.id === requestId)
   if (!req || req.targetCount === 0) return []
-  // 마감한 요청은 보완 중인 건 말고 모두 확인을 마친 것으로 둔다
-  const confirmed = req.status === 'CLOSED' ? req.submittedCount - req.revisionCount : Math.floor(req.submittedCount * 0.3)
+  // 처음부터 마감돼 있던 목업 요청(27, 28)만 보완 중인 건 말고 모두 확인을 마친 것으로 둔다.
+  // 담당자가 마감한 요청은 제출 상태를 그대로 둔다(마감해도 검토와 보완은 이어진다)
+  const confirmed = CLOSED_FIXTURES.includes(requestId) ? req.submittedCount - req.revisionCount : Math.floor(req.submittedCount * 0.3)
   const revision = req.revisionCount
   const waiting = Math.max(0, req.submittedCount - confirmed - revision)
   return Array.from({ length: req.targetCount }, (_, i) => {
@@ -298,12 +301,21 @@ export function exportCsv(requestId: number, statuses: string[], columns: string
 
 // 대시보드: 진행 중 요청의 상태별 인원과 검토 대기 중 가장 오래된 제출
 export function managerDashboard(): ManagerDashboard {
-  const live = rows()
-    .filter((r) => r.status === 'IN_PROGRESS' && r.closesAt)
+  // 서버처럼 공개된 요청 전체에서 세고, 목록은 진행 중이거나 검토, 보완이 남은 마감 요청만
+  const published = rows()
+    .filter((r) => (r.status === 'IN_PROGRESS' || r.status === 'CLOSED') && r.closesAt)
     .sort((a, b) => a.closesAt!.localeCompare(b.closesAt!))
+  const lateOf = (id: number) => withOverrides(baseRows(id)).filter((w) => w.late && w.status !== 'NOT_SUBMITTED' && w.status !== 'DRAFT').length
+  const live = published.filter((r) => {
+    if (r.status === 'IN_PROGRESS') return true
+    const s = submissionList(r.id, null, '', 1, 1)!.summary
+    return s.submitted > 0 || s.revisionRequired > 0
+  })
   const requests = live.map((r) => {
     const s = submissionList(r.id, null, '', 1, 1)!.summary
     return {
+      status: r.status as 'IN_PROGRESS' | 'CLOSED',
+      late: lateOf(r.id),
       requestId: r.id,
       title: r.title,
       closesAt: r.closesAt!,
@@ -323,6 +335,7 @@ export function managerDashboard(): ManagerDashboard {
       resubmitted: waiting.filter((w) => w.status === 'RESUBMITTED').length,
       oldestSubmissionId: waiting[0]?.submissionId ?? null,
       oldestSubmittedAt: waiting[0]?.submittedAt ?? null,
+      late: published.reduce((n, r) => n + lateOf(r.id), 0),
     },
     requests,
   }
