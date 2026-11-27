@@ -302,8 +302,9 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
         )}
       </header>
 
-      {late && (
-        <Banner tone="danger" title="마감이 지났어요">
+      {/* 마감 뒤 제출은 오류가 아니라 받는 일이라 알림 정도로. 보완 중에는 보완 요청이 먼저라 배너를 두지 않고 제출 확인창에서 알린다 */}
+      {late && !isRevision && (
+        <Banner tone="info" title="마감이 지났어요">
           지금 제출해도 받지만 지연 제출로 표시돼요.
         </Banner>
       )}
@@ -319,9 +320,10 @@ function SubmissionEditor({ requestId, form, onReload }: EditorProps) {
           결과가 나오면 여기와 내 할 일에서 알려 드려요.
         </Banner>
       )}
-      {form.request.closed && form.status !== 'CONFIRMED' && (
+      {/* 마감 뒤에는 처음 제출만 막힌다. 낸 제출은 검토와 보완이 이어진다 */}
+      {form.request.closed && (form.status === 'NOT_SUBMITTED' || form.status === 'DRAFT') && (
         <Banner tone="info" title="마감된 요청이에요">
-          더 이상 고치거나 제출할 수 없어요.
+          더 이상 제출할 수 없어요.
         </Banner>
       )}
       {form.status === 'CONFIRMED' && (
