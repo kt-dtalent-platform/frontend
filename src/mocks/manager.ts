@@ -184,6 +184,14 @@ export function createRequest(body: CreateRequestBody) {
   return { id, status: row.status, fields: templates.find((t) => t.id === body.templateId)?.fields ?? [] }
 }
 
+// 담당자가 직접 마감(백엔드 #131). 이미 마감이면 그대로
+export function closeRequest(id: number) {
+  const row = rows().find((r) => r.id === id)
+  if (!row || row.status === 'DRAFT') return { error: 'NOT_FOUND' as const }
+  if (row.status !== 'CLOSED') patch(id, { row: { status: 'CLOSED' } })
+  return { requestId: id, status: 'CLOSED' as const }
+}
+
 export function publishRequest(id: number) {
   const row = rows().find((r) => r.id === id)
   if (!row) return { error: 'NOT_FOUND' as const }

@@ -3,7 +3,7 @@ import type { CreateRequestBody } from '../api/manager'
 import { scholarStatuses, type ScholarBulkCreate, type ScholarCreate, type ScholarUpdate, type StatusChange } from '../api/scholars'
 import type { Answers } from '../api/submissions'
 import { addFile, canChangeFile, fieldOf, fileOwner, getForm, now, removeFile, requestOfSubmission, saveDraft, submissionHistory, submit, taskList } from './db'
-import { cohorts, createCohort, createRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
+import { cohorts, createCohort, createRequest, closeRequest, publishRequest, requestDetail, requestList, templates, updateRequest } from './manager'
 import { fail, ok } from './respond'
 import { changeScholarStatus, createScholar, createScholarsBulk, enrolledCount, exportScholarsCsv, scholarDetail, scholarList, updateScholar } from './scholars'
 import { searchSchools } from './schools'
@@ -289,7 +289,8 @@ export const handlers = [
     if (!form) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
     const body = (await request.json()) as { answers: Answers; version: number }
     const status = form.submission?.status ?? 'NOT_SUBMITTED'
-    if (form.request.status === 'CLOSED' || ['SUBMITTED', 'RESUBMITTED', 'CONFIRMED'].includes(status)) {
+    // 마감된 요청은 보완 요청을 받은 제출만 저장할 수 있다(백엔드 #131)
+    if ((form.request.status === 'CLOSED' && status !== 'REVISION_REQUIRED') || ['SUBMITTED', 'RESUBMITTED', 'CONFIRMED'].includes(status)) {
       return fail(path, 422, 'SUBMISSION_LOCKED', '이미 제출했거나 마감된 요청입니다')
     }
     if (body.version !== (form.submission?.version ?? 0)) {
@@ -639,6 +640,18 @@ export const handlers = [
         : fail(path, 422, 'INVALID_STATE_TRANSITION', '작성 중인 요청만 고칠 수 있습니다')
     }
     return ok(path, r)
+  }),
+
+  http.post(`${BASE}/requests/:requestId/close`, async ({ params, request }) => {
+    const id = Number(params.requestId)
+    const path = `/v1/requests/${id}/close`
+    const role = roleOf(request)
+    if (!role) return unauthorized(path)
+    if (role !== 'MANAGER') return fail(path, 403, 'FORBIDDEN', '담당자 권한이 필요합니다')
+    await delay(300)
+    const result = closeRequest(id)
+    if ('error' in result) return fail(path, 404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없습니다')
+    return ok(path, result)
   }),
 
   http.post(`${BASE}/requests/:requestId/publish`, async ({ params, request }) => {

@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Clock } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useManagerDashboard, type DashboardRequest, type ManagerDashboard } from '../../api/manager'
@@ -6,6 +6,8 @@ import { daysUntil, isPastDue } from '../../api/tasks'
 import { buttonClass } from '../../components/ui/buttonClass'
 import { MetaList } from '../../components/ui/MetaList'
 import { PageTitle } from '../../components/ui/PageTitle'
+import { RequestStatusBadge } from '../../components/ui/RequestStatusBadge'
+import { RowNote } from '../../components/ui/RowNote'
 import { ErrorState, LoadingCards } from '../../components/ui/StateView'
 import { cn } from '../../lib/cn'
 import { dDayText, formatDue } from '../../lib/format'
@@ -14,7 +16,7 @@ import { usePageTitle } from '../../lib/usePageTitle'
 
 const today = new Intl.DateTimeFormat('ko-KR', { timeZone: TIME_ZONE, month: 'long', day: 'numeric', weekday: 'long' })
 
-// A08 담당자 대시보드: 담당자가 움직이는 숫자 세 개(검토 대기, 미제출, 보완 필요)와 각 행동 → 진행 중 요청
+// A08 담당자 대시보드: 담당자가 움직이는 숫자 세 개(검토 대기, 미제출, 보완 필요)와 각 행동 → 처리할 요청(진행 중, 마감됐지만 검토나 보완이 남은 요청)
 export function ManagerHomePage() {
   usePageTitle('대시보드')
   const query = useManagerDashboard()
@@ -36,12 +38,16 @@ export function ManagerHomePage() {
 
 function Dashboard({ data }: { data: ManagerDashboard }) {
   const id = useId()
+  // 마감된 요청도 검토 대기나 보완 필요가 남으면 온다(백엔드 #131). 미제출은 더 낼 수 없으니 진행 중 요청만 센다
   const live = data.requests
-  // 진행 중 요청이 하나면 그 요청의 제출 현황으로, 여럿이면 요청 관리로 보낸다
-  const listOf = (status: string) => (live.length === 1 ? `/manager/requests/${live[0].requestId}?status=${status}` : '/manager/requests?status=IN_PROGRESS')
-  const notSubmitted = live.reduce((n, r) => n + r.notSubmitted, 0)
+  const open = live.filter((r) => r.status !== 'CLOSED')
+  // 요청이 하나면 그 요청의 제출 현황으로, 여럿이면 요청 관리로 보낸다
+  const listOf = (status: string, list: DashboardRequest[]) =>
+    list.length === 1 ? `/manager/requests/${list[0].requestId}?status=${status}` : '/manager/requests'
+  const notSubmitted = open.reduce((n, r) => n + r.notSubmitted, 0)
+  const revisionList = live.filter((r) => r.revisionRequired > 0)
   const revision = live.reduce((n, r) => n + r.revisionRequired, 0)
-  const nearest = live[0] // 마감이 가까운 순으로 온다
+  const nearest = open[0] // 마감이 가까운 순으로 온다
   const hasReview = data.review.waiting > 0 && data.review.oldestSubmissionId !== null
   // 요청이 둘 이상이면 한 사람이 여러 번 셀 수 있어 사람 수(명)가 아니라 건수로 적는다
   const unit = live.length > 1 ? '건' : '명'
@@ -70,7 +76,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           note={nearest ? <Due closesAt={nearest.closesAt} /> : null}
           action={
             notSubmitted > 0 && (
-              <Link to={listOf('NOT_SUBMITTED')} className={buttonClass({ size: 'default' })}>
+              <Link to={listOf('NOT_SUBMITTED', open)} className={buttonClass({ size: 'default' })}>
                 명단 보기
               </Link>
             )
@@ -83,7 +89,7 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
           note={revision > 0 ? '장학생이 고치는 중' : null}
           action={
             revision > 0 && (
-              <Link to={listOf('REVISION_REQUIRED')} className={buttonClass({ size: 'default' })}>
+              <Link to={listOf('REVISION_REQUIRED', revisionList)} className={buttonClass({ size: 'default' })}>
                 명단 보기
               </Link>
             )
@@ -92,12 +98,14 @@ function Dashboard({ data }: { data: ManagerDashboard }) {
       </section>
 
       <section aria-labelledby={`${id}-requests`} className="flex flex-col gap-4">
-        <h2 id={`${id}-requests`} className="m-0 text-title-2">
-          진행 중인 요청
-        </h2>
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id={`${id}-requests`} className="m-0 text-title-2">
+            처리할 요청
+          </h2>
+        </div>
         {live.length === 0 ? (
           <div className="flex flex-col items-start gap-4 rounded-lg bg-surface px-6 py-8">
-            <p className="m-0 text-ink-3">진행 중인 요청이 없어요.</p>
+            <p className="m-0 text-ink-3">처리할 요청이 없어요.</p>
             <Link to="/manager/requests/new" className={buttonClass({ size: 'default' })}>
               요청 만들기
             </Link>
@@ -135,7 +143,7 @@ function TaskCard({ label, value, unit, note, action }: { label: string; value: 
   )
 }
 
-function Due({ closesAt }: { closesAt: string }) {
+function Due({ closesAt, closed = false }: { closesAt: string; closed?: boolean }) {
   const dDay = daysUntil(closesAt)
   const overdue = isPastDue(closesAt)
   return (
@@ -143,15 +151,18 @@ function Due({ closesAt }: { closesAt: string }) {
       className="tabular-nums"
       items={[
         `마감 ${formatDue(closesAt)}`,
-        <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
-          {dDayText(dDay, overdue)}
-        </span>,
+        // 마감된 요청은 제목 옆 배지가 알려 주니 남은 날은 쓰지 않는다
+        !closed && (
+          <span key="d" className={cn((overdue || dDay <= 3) && 'font-semibold text-warning-text')}>
+            {dDayText(dDay, overdue)}
+          </span>
+        ),
       ]}
     />
   )
 }
 
-// 진행 중 요청 한 줄: 제목과 마감, 오른쪽에 제출 인원. 상태별 숫자는 위 카드와 제출 현황에서 본다
+// 요청 한 줄: 제목(마감이면 배지)과 마감, 오른쪽에 마감 후 제출과 제출 인원. 상태별 숫자는 위 카드와 제출 현황에서 본다
 function RequestRow({ r }: { r: DashboardRequest }) {
   const done = r.targetCount - r.notSubmitted
   return (
@@ -161,17 +172,25 @@ function RequestRow({ r }: { r: DashboardRequest }) {
         className="group flex items-center gap-4 px-6 py-4 text-ink no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-body-strong">{r.title}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-body-strong">{r.title}</span>
+            {r.status === 'CLOSED' && <RequestStatusBadge status="CLOSED" />}
+          </span>
           <span className="text-caption text-ink-3">
-            <Due closesAt={r.closesAt} />
+            <Due closesAt={r.closesAt} closed={r.status === 'CLOSED'} />
           </span>
           {/* 휴대폰: 제목이 잘리지 않게 제출 인원은 아래 줄로 */}
-          <span className="text-caption text-ink-3 tabular-nums md:hidden">
-            제출 <span className="text-ink">{done}</span> / {r.targetCount}명
+          <span className="flex flex-wrap items-center gap-x-3 text-caption text-ink-3 tabular-nums md:hidden">
+            <span>
+              제출 <span className="text-ink">{done}</span> / {r.targetCount}명
+            </span>
+            {!!r.late && <RowNote icon={Clock}>{`마감 후 ${r.late}명`}</RowNote>}
           </span>
         </span>
-        <span className="hidden shrink-0 text-caption text-ink-3 tabular-nums md:block">
-          제출 <span className="text-body text-ink">{done}</span> / {r.targetCount}명
+        {/* 오른쪽 두 정보는 폭을 고정한 열로 둬서 행이 바뀌어도 같은 자리에 선다. 글자 크기도 하나로 맞춘다 */}
+        <span className="hidden w-24 shrink-0 justify-end md:flex">{!!r.late && <RowNote icon={Clock}>{`마감 후 ${r.late}명`}</RowNote>}</span>
+        <span className="hidden w-28 shrink-0 text-right text-caption text-ink-3 tabular-nums md:block">
+          제출 <span className="font-semibold text-ink">{done}</span> / {r.targetCount}명
         </span>
         <ChevronRight size={20} strokeWidth={1.75} className="shrink-0 text-ink-3 group-hover:text-ink" aria-hidden />
       </Link>

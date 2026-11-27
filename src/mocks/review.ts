@@ -298,12 +298,21 @@ export function exportCsv(requestId: number, statuses: string[], columns: string
 
 // 대시보드: 진행 중 요청의 상태별 인원과 검토 대기 중 가장 오래된 제출
 export function managerDashboard(): ManagerDashboard {
-  const live = rows()
-    .filter((r) => r.status === 'IN_PROGRESS' && r.closesAt)
+  // 서버처럼 공개된 요청 전체에서 세고, 목록은 진행 중이거나 검토, 보완이 남은 마감 요청만
+  const published = rows()
+    .filter((r) => (r.status === 'IN_PROGRESS' || r.status === 'CLOSED') && r.closesAt)
     .sort((a, b) => a.closesAt!.localeCompare(b.closesAt!))
+  const lateOf = (id: number) => withOverrides(baseRows(id)).filter((w) => w.late && w.status !== 'NOT_SUBMITTED' && w.status !== 'DRAFT').length
+  const live = published.filter((r) => {
+    if (r.status === 'IN_PROGRESS') return true
+    const s = submissionList(r.id, null, '', 1, 1)!.summary
+    return s.submitted > 0 || s.revisionRequired > 0
+  })
   const requests = live.map((r) => {
     const s = submissionList(r.id, null, '', 1, 1)!.summary
     return {
+      status: r.status as 'IN_PROGRESS' | 'CLOSED',
+      late: lateOf(r.id),
       requestId: r.id,
       title: r.title,
       closesAt: r.closesAt!,
@@ -323,6 +332,7 @@ export function managerDashboard(): ManagerDashboard {
       resubmitted: waiting.filter((w) => w.status === 'RESUBMITTED').length,
       oldestSubmissionId: waiting[0]?.submissionId ?? null,
       oldestSubmittedAt: waiting[0]?.submittedAt ?? null,
+      late: published.reduce((n, r) => n + lateOf(r.id), 0),
     },
     requests,
   }
