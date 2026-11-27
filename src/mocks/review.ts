@@ -49,12 +49,15 @@ const minutesAgo = (m: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
+const CLOSED_FIXTURES = [27, 28]
+
 // 요청 하나의 장학생별 기본 상태: 확인 완료 → 보완 필요 → 검토 대기(일부 재제출) → 미제출 순으로 나눈다
 function baseRows(requestId: number): (SubmissionRow & { index: number })[] {
   const req = rows().find((r) => r.id === requestId)
   if (!req || req.targetCount === 0) return []
-  // 마감한 요청은 보완 중인 건 말고 모두 확인을 마친 것으로 둔다
-  const confirmed = req.status === 'CLOSED' ? req.submittedCount - req.revisionCount : Math.floor(req.submittedCount * 0.3)
+  // 처음부터 마감돼 있던 목업 요청(27, 28)만 보완 중인 건 말고 모두 확인을 마친 것으로 둔다.
+  // 담당자가 마감한 요청은 제출 상태를 그대로 둔다(마감해도 검토와 보완은 이어진다)
+  const confirmed = CLOSED_FIXTURES.includes(requestId) ? req.submittedCount - req.revisionCount : Math.floor(req.submittedCount * 0.3)
   const revision = req.revisionCount
   const waiting = Math.max(0, req.submittedCount - confirmed - revision)
   return Array.from({ length: req.targetCount }, (_, i) => {

@@ -3,6 +3,7 @@
 import type { Answers, RawSubmissionForm } from '../api/submissions'
 import type { SubmissionStatus } from '../api/types'
 import { daysBetween, kstParts, kstToday, kstToUtc } from '../lib/time'
+import { rows } from './manager'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -227,8 +228,11 @@ function forms(): Record<number, RawSubmissionForm> {
 }
 
 export function getForm(requestId: number): RawSubmissionForm | undefined {
-  const base = forms()[requestId]
-  if (!base) return undefined
+  const fixture = forms()[requestId]
+  if (!fixture) return undefined
+  // 담당자 목업에서 마감하면 장학생 화면도 마감으로 본다
+  const closedByManager = rows().find((r) => r.id === requestId)?.status === 'CLOSED'
+  const base = closedByManager ? { ...fixture, request: { ...fixture.request, status: 'CLOSED' as const } } : fixture
   const saved = load()[requestId]
   if (!saved) return base
   const { files, ...submission } = saved

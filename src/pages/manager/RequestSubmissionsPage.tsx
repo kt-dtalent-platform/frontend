@@ -142,7 +142,8 @@ export function RequestSubmissionsPage() {
   // 마감을 늘릴 장학생(미제출, 작성 중). 고르면 대화상자가 열린다.
   // 백엔드는 진행 중인 요청만 늘려 준다. 요청 상태는 제출 현황 응답에 함께 온다(백엔드 #114)
   const [extending, setExtending] = useState<{ scholarId: number; name: string } | null>(null)
-  const [closing, setClosing] = useState(false)
+  // 확인창을 연 요청을 기억한다. 뒤로 가기로 다른 요청이 보이면 그 요청을 마감하지 않게
+  const [closingId, setClosingId] = useState<number | null>(null)
   // 다른 요청으로 넘어가는 동안 이전 요청의 상태로 버튼을 보이지 않게, 이 요청의 응답일 때만 본다
   const canExtend = data?.request.id === requestId && data.request.status === 'IN_PROGRESS'
 
@@ -168,7 +169,7 @@ export function RequestSubmissionsPage() {
                   variant="secondary"
                   size="compact"
                   align="start"
-                  items={[{ label: '요청 마감', description: '새 제출을 받지 않아요', onSelect: () => setClosing(true) }]}
+                  items={[{ label: '요청 마감', description: '새 제출을 받지 않아요', onSelect: () => setClosingId(requestId) }]}
                 />
               </div>
             ) : (
@@ -180,7 +181,9 @@ export function RequestSubmissionsPage() {
               {data.request.title}
             </PageTitle>
           </div>
-          {closing && <CloseDialog requestId={requestId} summary={data.summary} onClose={() => setClosing(false)} />}
+          {closingId === requestId && data.request.id === requestId && (
+            <CloseDialog requestId={requestId} summary={data.summary} onClose={() => setClosingId(null)} />
+          )}
           {exportError != null && (
             <Banner tone="danger" title="파일을 만들지 못했어요">
               {errorText(exportError)}
